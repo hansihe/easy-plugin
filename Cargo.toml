@@ -1,0 +1,17 @@
+[package]
+
+name = "easy-plugin"
+authors = ["Kyle Mayes <kyle@mayeses.com>"]
+
+version = "0.0.1"
+
+readme = "README.md"
+license = "MIT"
+
+description = "A compiler plugin that makes it easier to write compiler plugins."
+
+repository = "https://github.com/KyleMayes/easy-plugin"
+
+[lib]
+
+plugin = true
