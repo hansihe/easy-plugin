@@ -10,6 +10,7 @@ license = "MIT"
 
 description = "A compiler plugin that makes it easier to write compiler plugins."
 
+documentation = "https://kylemayes.github.io/easy-plugin/easy_plugin"
 repository = "https://github.com/KyleMayes/easy-plugin"
 
 [lib]
