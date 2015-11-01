@@ -13,6 +13,11 @@ use syntax::ast::{TokenTree};
 use syntax::codemap::{Span};
 use syntax::ext::base::{ExtCtxt, DummyResult, MacResult};
 
+mod utility;
+
+mod specification;
+pub use self::specification::*;
+
 /// A result type suitable for reporting errors in plugins.
 pub type PluginResult<T> = Result<T, (Span, String)>;
 
