@@ -47,5 +47,6 @@ pub fn expand_easy_plugin(
 #[doc(hidden)]
 #[plugin_registrar]
 pub fn plugin_registrar(registry: &mut Registry) {
+    registry.register_macro("parse_specification", expand_parse_specification);
     registry.register_macro("easy_plugin", expand_easy_plugin);
 }

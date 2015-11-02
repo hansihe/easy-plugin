@@ -1,12 +1,15 @@
 use std::collections::{HashSet};
 
 use syntax::parse::token;
-use syntax::ast::{Ident, KleeneOp, TokenTree};
+use syntax::ast::{Expr, Ident, KleeneOp, TokenTree};
+use syntax::ext::base::{DummyResult, ExtCtxt, MacEager, MacResult};
+use syntax::ext::build::{AstBuilder};
 use syntax::codemap::{DUMMY_SP, Span};
 use syntax::parse::token::{BinOpToken, DelimToken, IdentStyle, Token};
+use syntax::ptr::{P};
 
 use super::{PluginResult};
-use super::utility::{SpanAsError, TtsIterator};
+use super::utility::{AsExpr, SpanAsError, TtsIterator};
 
 /// A piece of a plugin argument specification.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -47,6 +50,60 @@ pub enum Specifier {
     Delimited(DelimToken, Vec<Specifier>),
     /// A sequence piece.
     Sequence(KleeneOp, Option<Token>, Vec<Specifier>),
+}
+
+impl AsExpr for Specifier {
+    fn as_expr(&self, context: &mut ExtCtxt, span: Span) -> P<Expr> {
+        macro_rules! expr {
+            ($variant:expr, $($argument:expr), *) => ({
+                let path = vec![
+                    context.ident_of("easy_plugin"),
+                    context.ident_of("Specifier"),
+                    context.ident_of($variant),
+                ];
+
+                let arguments = vec![$($argument), *];
+                context.expr_call_global(span, path, arguments)
+            });
+        }
+
+        macro_rules! string {
+            ($name:expr) => ({
+                let name = context.expr_str(span, context.name_of($name).as_str());
+                let into = context.ident_of("into");
+                context.expr_method_call(span, name, into, vec![])
+            });
+        }
+
+        match *self {
+            Specifier::BinOp(ref name) => expr!("BinOp", string!(name)),
+            Specifier::Block(ref name) => expr!("Block", string!(name)),
+            Specifier::Delim(ref name) => expr!("Delim", string!(name)),
+            Specifier::Expr(ref name) => expr!("Expr", string!(name)),
+            Specifier::Ident(ref name) => expr!("Ident", string!(name)),
+            Specifier::Item(ref name) => expr!("Item", string!(name)),
+            Specifier::Lftm(ref name) => expr!("Lftm", string!(name)),
+            Specifier::Lit(ref name) => expr!("Lit", string!(name)),
+            Specifier::Meta(ref name) => expr!("Meta", string!(name)),
+            Specifier::Pat(ref name) => expr!("Pat", string!(name)),
+            Specifier::Path(ref name) => expr!("Path", string!(name)),
+            Specifier::Stmt(ref name) => expr!("Stmt", string!(name)),
+            Specifier::Ty(ref name) => expr!("Ty", string!(name)),
+            Specifier::Tok(ref name) => expr!("Tok", string!(name)),
+            Specifier::Tt(ref name) => expr!("Tt", string!(name)),
+            Specifier::Specific(ref token) => expr!("Specific", token.as_expr(context, span)),
+            Specifier::Delimited(delimiter, ref subspecification) => {
+                let subspecification = subspecification.as_expr(context, span);
+                expr!("Delimited", delimiter.as_expr(context, span), subspecification)
+            },
+            Specifier::Sequence(kleene, ref separator, ref subspecification) => {
+                let kleene = kleene.as_expr(context, span);
+                let separator = separator.as_expr(context, span);
+                let subspecification = subspecification.as_expr(context, span);
+                expr!("Sequence", kleene, separator, subspecification)
+            },
+        }
+    }
 }
 
 impl Specifier {
@@ -159,6 +216,22 @@ pub fn parse_specification(tts: &[TokenTree]) -> PluginResult<Vec<Specifier>> {
     let end = tts.iter().last().map(|s| s.get_span()).unwrap_or(DUMMY_SP);
     let span = Span { lo: start.lo, hi: end.hi, expn_id: start.expn_id };
     parse_specification_(span, tts, &mut HashSet::new())
+}
+
+#[doc(hidden)]
+pub fn expand_parse_specification(
+    context: &mut ExtCtxt, span: Span, arguments: &[TokenTree]
+) -> Box<MacResult> {
+    match parse_specification(arguments) {
+        Ok(specification) => {
+            let exprs = specification.iter().map(|s| s.as_expr(context, span)).collect();
+            MacEager::expr(context.expr_vec_slice(span, exprs))
+        },
+        Err((span, message)) => {
+            context.span_err(span, &message);
+            DummyResult::any(span)
+        },
+    }
 }
 
 #[cfg(test)]
