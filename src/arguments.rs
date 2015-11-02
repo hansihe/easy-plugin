@@ -489,10 +489,9 @@ mod tests {
     use super::super::{Specifier};
 
     use syntax::parse;
-    use syntax::parse::token;
     use syntax::ast::*;
     use syntax::parse::{ParseSess};
-    use syntax::parse::token::{BinOpToken, DelimToken, IdentStyle, Token};
+    use syntax::parse::token::{BinOpToken, DelimToken, Token};
 
     fn with_tts<F>(source: &str, f: F) where F: Fn(Vec<TokenTree>) {
         let session = ParseSess::new();
@@ -601,14 +600,11 @@ mod tests {
             let _ = matches.get("ty").unwrap().as_ty();
         });
 
-        let foo = Token::Ident(Ident::with_empty_ctxt(token::intern("foo")), IdentStyle::Plain);
-        let bar = Token::Lifetime(Ident::with_empty_ctxt(token::intern("'bar")));
-
         with_tts("~ foo 'bar", |tts| {
             let matches = parse_arguments(&tts, &[
                 Specifier::Specific(Token::Tilde),
-                Specifier::Specific(foo.clone()),
-                Specifier::Specific(bar.clone()),
+                Specifier::specific_ident("foo"),
+                Specifier::specific_lftm("'bar"),
             ]).unwrap();
 
             assert_eq!(matches.len(), 0);
@@ -618,8 +614,8 @@ mod tests {
             let matches = parse_arguments(&tts, &[
                 Specifier::Delimited(DelimToken::Bracket, vec![
                     Specifier::Specific(Token::Tilde),
-                    Specifier::Specific(foo.clone()),
-                    Specifier::Specific(bar.clone()),
+                    Specifier::specific_ident("foo"),
+                    Specifier::specific_lftm("'bar"),
                     Specifier::Ident("ident".into()),
                 ]),
             ]).unwrap();

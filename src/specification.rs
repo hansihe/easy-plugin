@@ -1,8 +1,9 @@
 use std::collections::{HashSet};
 
-use syntax::ast::{KleeneOp, TokenTree};
+use syntax::parse::token;
+use syntax::ast::{Ident, KleeneOp, TokenTree};
 use syntax::codemap::{DUMMY_SP, Span};
-use syntax::parse::token::{BinOpToken, DelimToken, Token};
+use syntax::parse::token::{BinOpToken, DelimToken, IdentStyle, Token};
 
 use super::{PluginResult};
 use super::utility::{SpanAsError, TtsIterator};
@@ -46,6 +47,20 @@ pub enum Specifier {
     Delimited(DelimToken, Vec<Specifier>),
     /// A sequence piece.
     Sequence(KleeneOp, Option<Token>, Vec<Specifier>),
+}
+
+impl Specifier {
+    /// Returns a new `Specifier` corresponding to the given identifier.
+    pub fn specific_ident(ident: &str) -> Specifier {
+        let ident = Ident::with_empty_ctxt(token::intern(ident));
+        Specifier::Specific(Token::Ident(ident, IdentStyle::Plain))
+    }
+
+    /// Returns a new `Specifier` corresponding to the given lifetime.
+    pub fn specific_lftm(lftm: &str) -> Specifier {
+        let lftm = Ident::with_empty_ctxt(token::intern(lftm));
+        Specifier::Specific(Token::Lifetime(lftm))
+    }
 }
 
 fn parse_dollar<'i, I>(
@@ -151,10 +166,9 @@ mod tests {
     use super::*;
 
     use syntax::parse;
-    use syntax::parse::token;
-    use syntax::ast::{Ident, KleeneOp, TokenTree};
+    use syntax::ast::{KleeneOp, TokenTree};
     use syntax::parse::{ParseSess};
-    use syntax::parse::token::{DelimToken, IdentStyle, Token};
+    use syntax::parse::token::{DelimToken, Token};
 
     fn with_tts<F>(source: &str, f: F) where F: Fn(Vec<TokenTree>) {
         let session = ParseSess::new();
@@ -201,13 +215,10 @@ mod tests {
         });
 
         with_tts("~ foo 'bar", |tts| {
-            let foo = Token::Ident(Ident::with_empty_ctxt(token::intern("foo")), IdentStyle::Plain);
-            let bar = Token::Lifetime(Ident::with_empty_ctxt(token::intern("'bar")));
-
             assert_eq!(parse_specification(&tts).unwrap(), vec![
                 Specifier::Specific(Token::Tilde),
-                Specifier::Specific(foo),
-                Specifier::Specific(bar),
+                Specifier::specific_ident("foo"),
+                Specifier::specific_lftm("'bar"),
             ]);
         });
     }
