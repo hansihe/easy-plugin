@@ -15,6 +15,9 @@ use syntax::ext::base::{ExtCtxt, DummyResult, MacResult};
 
 mod utility;
 
+mod arguments;
+pub use self::arguments::*;
+
 mod specification;
 pub use self::specification::*;
 

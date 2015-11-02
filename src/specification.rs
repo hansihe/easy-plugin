@@ -16,7 +16,7 @@ pub enum Specifier {
     Block(String),
     /// A delimited sequence of token trees (e.g., `()`, `[foo - "bar"]`).
     Delim(String),
-    /// An expression (e.g., `2 + 2`, `if true then { 1 } else { 2 }`, `f(42)`).
+    /// An expression (e.g., `2 + 2`, `if true { 1 } else { 2 }`, `f(42)`).
     Expr(String),
     /// An identifier (e.g., `x`, `foo`).
     Ident(String),
@@ -41,7 +41,7 @@ pub enum Specifier {
     /// A single token tree.
     Tt(String),
     /// A non-variable piece.
-    Specific(TokenTree),
+    Specific(Token),
     /// A delimited piece.
     Delimited(DelimToken, Vec<Specifier>),
     /// A sequence piece.
@@ -124,13 +124,14 @@ fn parse_specification_(
             TokenTree::TtToken(_, Token::Dollar) => {
                 specification.push(try!(parse_dollar(span, &mut tts, names)));
             },
+            TokenTree::TtToken(_, ref token) => {
+                specification.push(Specifier::Specific(token.clone()));
+            },
             TokenTree::TtDelimited(subspan, ref delimited) => {
                 let subspecification = try!(parse_specification_(subspan, &delimited.tts, names));
                 specification.push(Specifier::Delimited(delimited.delim, subspecification));
             },
-            _ => {
-                specification.push(Specifier::Specific(tt.clone()))
-            },
+            _ => unreachable!(),
         }
     }
 
@@ -149,11 +150,9 @@ pub fn parse_specification(tts: &[TokenTree]) -> PluginResult<Vec<Specifier>> {
 mod tests {
     use super::*;
 
-    use syntax::codemap;
     use syntax::parse;
     use syntax::parse::token;
     use syntax::ast::{Ident, KleeneOp, TokenTree};
-    use syntax::codemap::{BytePos};
     use syntax::parse::{ParseSess};
     use syntax::parse::token::{DelimToken, IdentStyle, Token};
 
@@ -202,19 +201,13 @@ mod tests {
         });
 
         with_tts("~ foo 'bar", |tts| {
-            let spans = &[
-                codemap::mk_sp(BytePos(0), BytePos(1)),
-                codemap::mk_sp(BytePos(2), BytePos(5)),
-                codemap::mk_sp(BytePos(6), BytePos(10)),
-            ];
-
             let foo = Token::Ident(Ident::with_empty_ctxt(token::intern("foo")), IdentStyle::Plain);
             let bar = Token::Lifetime(Ident::with_empty_ctxt(token::intern("'bar")));
 
             assert_eq!(parse_specification(&tts).unwrap(), vec![
-                Specifier::Specific(TokenTree::TtToken(spans[0], Token::Tilde)),
-                Specifier::Specific(TokenTree::TtToken(spans[1], foo)),
-                Specifier::Specific(TokenTree::TtToken(spans[2], bar)),
+                Specifier::Specific(Token::Tilde),
+                Specifier::Specific(foo),
+                Specifier::Specific(bar),
             ]);
         });
     }
