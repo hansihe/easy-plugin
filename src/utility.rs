@@ -1,8 +1,8 @@
 use std::marker::{PhantomData};
 
-use syntax::print::pprust;
 use syntax::ast::{Ident, TokenTree};
 use syntax::codemap::{Span};
+use syntax::parse::parser::{Parser};
 use syntax::parse::token::{Token};
 
 use super::{PluginResult};
@@ -48,9 +48,9 @@ impl<'i, I> TtsIterator<'i, I> where I: Iterator<Item=&'i TokenTree> {
     }
 
     pub fn expect_specific_token(&mut self, token: &Token) -> PluginResult<()> {
-        let description = get_description(token);
+        let description = Parser::token_to_string(token);
 
-        self.expect_token(&get_description(token)).and_then(|(s, t)| {
+        self.expect_token(&description).and_then(|(s, t)| {
             if t.mtwt_eq(token) {
                 Ok(())
             } else {
@@ -74,16 +74,5 @@ impl<'i, I> Iterator for TtsIterator<'i, I> where I: Iterator<Item=&'i TokenTree
 
     fn next(&mut self) -> Option<&'i TokenTree> {
         self.iterator.next()
-    }
-}
-
-fn get_description(token: &Token) -> String {
-    match *token {
-        Token::BinOp(_) |
-        Token::BinOpEq(_) => format!("binary operator (`{}`)", pprust::token_to_string(token)),
-        Token::Literal(_, _) => format!("literal (`{}`)", pprust::token_to_string(token)),
-        Token::Ident(_, _) => format!("identifier (`{}`)", pprust::token_to_string(token)),
-        Token::Lifetime(_) => format!("lifetime (`{}`)", pprust::token_to_string(token)),
-        _ => format!("`{}`", pprust::token_to_string(token)),
     }
 }
