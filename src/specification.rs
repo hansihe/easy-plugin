@@ -4,8 +4,8 @@ use syntax::ast::{KleeneOp, TokenTree};
 use syntax::codemap::{DUMMY_SP, Span};
 use syntax::parse::token::{BinOpToken, DelimToken, Token};
 
-use super::{PluginResult, SpanAsError};
-use super::utility::{TtsIterator};
+use super::{PluginResult};
+use super::utility::{SpanAsError, TtsIterator};
 
 /// A piece of a plugin argument specification.
 #[derive(Clone, Debug, PartialEq, Eq)]

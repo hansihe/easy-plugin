@@ -13,7 +13,8 @@ use syntax::parse::parser::{Parser, PathParsingMode};
 use syntax::parse::token::{BinOpToken, Token};
 use syntax::ptr::{P};
 
-use super::{PluginResult, SpanAsError, Specifier};
+use super::{PluginResult, Specifier};
+use super::utility::{SpanAsError};
 
 /// A plugin argument that has been matched with a named specifier.
 #[derive(Clone, Debug, PartialEq, Eq)]

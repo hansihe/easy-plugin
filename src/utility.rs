@@ -5,7 +5,23 @@ use syntax::ast::{Ident, TokenTree};
 use syntax::codemap::{Span};
 use syntax::parse::token::{Token};
 
-use super::{PluginResult, SpanAsError};
+use super::{PluginResult};
+
+pub trait SpanAsError<T, S> where S: AsRef<str> {
+    fn as_error(&self, message: S) -> PluginResult<T>;
+}
+
+impl<T, S> SpanAsError<T, S> for Span where S: AsRef<str> {
+    fn as_error(&self, message: S) -> PluginResult<T> {
+        Err((self.clone(), message.as_ref().into()))
+    }
+}
+
+impl<T, S> SpanAsError<T, S> for TokenTree where S: AsRef<str> {
+    fn as_error(&self, message: S) -> PluginResult<T> {
+        Err((self.get_span().clone(), message.as_ref().into()))
+    }
+}
 
 pub struct TtsIterator<'i, I> where I: Iterator<Item=&'i TokenTree> {
     pub error: (Span, String),

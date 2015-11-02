@@ -24,23 +24,6 @@ pub use self::specification::*;
 /// A result type suitable for reporting errors in plugins.
 pub type PluginResult<T> = Result<T, (Span, String)>;
 
-/// Extends `Span` and types containing `Span` to allow conversion into a `PluginResult<T>`.
-pub trait SpanAsError<T, S> where S: AsRef<str> {
-    fn as_error(&self, message: S) -> PluginResult<T>;
-}
-
-impl<T, S> SpanAsError<T, S> for Span where S: AsRef<str> {
-    fn as_error(&self, message: S) -> PluginResult<T> {
-        Err((self.clone(), message.as_ref().into()))
-    }
-}
-
-impl<T, S> SpanAsError<T, S> for TokenTree where S: AsRef<str> {
-    fn as_error(&self, message: S) -> PluginResult<T> {
-        Err((self.get_span().clone(), message.as_ref().into()))
-    }
-}
-
 #[doc(hidden)]
 pub fn easy_plugin(
     context: &mut ExtCtxt, span: Span, arguments: &[TokenTree]
