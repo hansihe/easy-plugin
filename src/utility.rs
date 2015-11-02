@@ -202,17 +202,17 @@ impl<T> AsExpr for Vec<T> where T: AsExpr {
     }
 }
 
-pub trait SpanAsError<T, S> where S: AsRef<str> {
+pub trait AsError<T, S> where S: AsRef<str> {
     fn as_error(&self, message: S) -> PluginResult<T>;
 }
 
-impl<T, S> SpanAsError<T, S> for Span where S: AsRef<str> {
+impl<T, S> AsError<T, S> for Span where S: AsRef<str> {
     fn as_error(&self, message: S) -> PluginResult<T> {
         Err((self.clone(), message.as_ref().into()))
     }
 }
 
-impl<T, S> SpanAsError<T, S> for TokenTree where S: AsRef<str> {
+impl<T, S> AsError<T, S> for TokenTree where S: AsRef<str> {
     fn as_error(&self, message: S) -> PluginResult<T> {
         Err((self.get_span().clone(), message.as_ref().into()))
     }

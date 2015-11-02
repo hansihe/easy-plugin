@@ -14,7 +14,7 @@ use syntax::parse::token::{BinOpToken, Token};
 use syntax::ptr::{P};
 
 use super::{PluginResult, Specifier};
-use super::utility::{SpanAsError};
+use super::utility::{AsError};
 
 /// A plugin argument that has been matched with a named specifier.
 #[derive(Clone, Debug, PartialEq, Eq)]

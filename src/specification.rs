@@ -9,7 +9,7 @@ use syntax::parse::token::{BinOpToken, DelimToken, IdentStyle, Token};
 use syntax::ptr::{P};
 
 use super::{PluginResult};
-use super::utility::{AsExpr, SpanAsError, TtsIterator};
+use super::utility::{AsError, AsExpr, TtsIterator};
 
 /// A piece of a plugin argument specification.
 #[derive(Clone, Debug, PartialEq, Eq)]
