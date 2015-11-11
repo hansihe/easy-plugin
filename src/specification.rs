@@ -124,7 +124,7 @@ fn parse_dollar<'i, I>(
     span: Span, tts: &mut TtsIterator<'i, I>, names: &mut HashSet<String>
 ) -> PluginResult<Specifier> where I: Iterator<Item=&'i TokenTree> {
     match try!(tts.expect()) {
-        &TokenTree::TtToken(subspan, Token::Ident(ref ident, _)) => {
+        &TokenTree::Token(subspan, Token::Ident(ref ident, _)) => {
             let name = ident.name.as_str().to_string();
 
             if !names.insert(name.clone()) {
@@ -133,7 +133,7 @@ fn parse_dollar<'i, I>(
                 parse_named_specifier(tts, name)
             }
         },
-        &TokenTree::TtDelimited(_, ref delimited) => {
+        &TokenTree::Delimited(_, ref delimited) => {
             parse_sequence(span, tts, &delimited.tts, names)
         },
         invalid => invalid.as_error("expected named specifier or sequence"),
@@ -193,13 +193,13 @@ fn parse_specification_(
 
     while let Some(tt) = tts.next() {
         match *tt {
-            TokenTree::TtToken(_, Token::Dollar) => {
+            TokenTree::Token(_, Token::Dollar) => {
                 specification.push(try!(parse_dollar(span, &mut tts, names)));
             },
-            TokenTree::TtToken(_, ref token) => {
+            TokenTree::Token(_, ref token) => {
                 specification.push(Specifier::Specific(token.clone()));
             },
-            TokenTree::TtDelimited(subspan, ref delimited) => {
+            TokenTree::Delimited(subspan, ref delimited) => {
                 let subspecification = try!(parse_specification_(subspan, &delimited.tts, names));
                 specification.push(Specifier::Delimited(delimited.delim, subspecification));
             },

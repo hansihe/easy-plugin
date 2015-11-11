@@ -236,7 +236,7 @@ impl<'i, I> TtsIterator<'i, I> where I: Iterator<Item=&'i TokenTree> {
     pub fn expect_token(&mut self, description: &str) -> PluginResult<(Span, &'i Token)> {
         self.expect().and_then(|tt| {
             match *tt {
-                TokenTree::TtToken(span, ref token) => Ok((span, token)),
+                TokenTree::Token(span, ref token) => Ok((span, token)),
                 _ => tt.as_error(format!("expected {}", description)),
             }
         })

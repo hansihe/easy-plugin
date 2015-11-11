@@ -7,7 +7,6 @@ use syntax::ast::*;
 use syntax::codemap::{DUMMY_SP, CodeMap, Span};
 use syntax::diagnostic::{Emitter, Handler, Level, RenderSpan, SpanHandler};
 use syntax::parse::{ParseSess};
-use syntax::parse::attr::{ParserAttr};
 use syntax::parse::common::{SeqSep};
 use syntax::parse::parser::{Parser, PathParsingMode};
 use syntax::parse::token::{BinOpToken, Token};
@@ -421,7 +420,7 @@ fn parse_arguments_<'a>(
                 matches.insert(name.clone(), Match::Lit(try_parse!(parse_lit)));
             },
             Specifier::Meta(ref name) => {
-                matches.insert(name.clone(), Match::Meta(parser.parse_meta_item()));
+                matches.insert(name.clone(), Match::Meta(try_parse!(parse_meta_item)));
             },
             Specifier::Pat(ref name) => {
                 matches.insert(name.clone(), Match::Pat(try_parse!(parse_pat_nopanic)));
@@ -546,18 +545,18 @@ mod tests {
             assert_eq!(delim.tts.len(), 2);
 
             match delim.tts[0] {
-                TokenTree::TtToken(_, Token::BinOp(BinOpToken::Plus)) => { },
+                TokenTree::Token(_, Token::BinOp(BinOpToken::Plus)) => { },
                 _ => assert!(false),
             }
 
             match delim.tts[1] {
-                TokenTree::TtDelimited(_, ref delim) => {
+                TokenTree::Delimited(_, ref delim) => {
                     assert_eq!(delim.delim, DelimToken::Bracket);
 
                     assert_eq!(delim.tts.len(), 1);
 
                     match delim.tts[0] {
-                        TokenTree::TtToken(_, Token::BinOp(BinOpToken::Minus)) => { },
+                        TokenTree::Token(_, Token::BinOp(BinOpToken::Minus)) => { },
                         _ => assert!(false),
                     }
                 },
