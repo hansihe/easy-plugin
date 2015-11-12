@@ -72,6 +72,7 @@ fn expand_struct_fields(
 
     for specifier in specification {
         match *specifier {
+            Specifier::Attr(ref name) => field!(name, ::syntax::ast::Attribute),
             Specifier::BinOp(ref name) => field!(name, ::syntax::parse::token::BinOpToken),
             Specifier::Block(ref name) => field!(name, ::syntax::ptr::P<::syntax::ast::Block>),
             Specifier::Delim(ref name) => field!(name, ::std::rc::Rc<::syntax::ast::Delimited>),
@@ -148,6 +149,7 @@ fn expand_fields(
 
     for specifier in specification {
         match *specifier {
+            Specifier::Attr(ref name) => field!(name, as_attr),
             Specifier::BinOp(ref name) => field!(name, as_binop),
             Specifier::Block(ref name) => field!(name, as_block),
             Specifier::Delim(ref name) => field!(name, as_delim),

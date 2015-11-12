@@ -18,6 +18,8 @@ use super::utility::{AsError};
 /// A plugin argument that has been matched with a named specifier.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Match {
+    /// An attribute (e.g., `#[cfg(target_os = "windows")]`).
+    Attr(Attribute),
     /// A binary operator (e.g., `+`, `*`).
     BinOp(BinOpToken),
     /// A brace-delimited sequence of statements (e.g., `{ log(error, "hi"); return 12; }`).
@@ -53,6 +55,18 @@ pub enum Match {
 }
 
 impl Match {
+    /// Returns this attribute match.
+    ///
+    /// # Panics
+    ///
+    /// * this match is not an attribute
+    pub fn as_attr(&self) -> Attribute {
+        match *self {
+            Match::Attr(ref attr) => attr.clone(),
+            _ => panic!("this match is not an attribute"),
+        }
+    }
+
     /// Returns this binary operator match.
     ///
     /// # Panics
@@ -276,6 +290,7 @@ fn parse_sequence<'a>(
 ) -> PluginResult<()> {
     for specifier in specification {
         match *specifier {
+            Specifier::Attr(ref name) |
             Specifier::BinOp(ref name) |
             Specifier::Block(ref name) |
             Specifier::Delim(ref name) |
@@ -368,6 +383,9 @@ fn parse_arguments_<'a>(
 
     for specifier in specification {
         match *specifier {
+            Specifier::Attr(ref name) => {
+                matches.insert(name.clone(), Match::Attr(try_parse!(parse_attribute(true))));
+            },
             Specifier::BinOp(ref name) => match expect!() {
                 Token::BinOp(binop) | Token::BinOpEq(binop) => {
                     matches.insert(name.clone(), Match::BinOp(binop));
@@ -532,6 +550,13 @@ mod tests {
             let _ = matches.get("tt").unwrap().as_tt();
         });
 
+        with_tts(r#"#[cfg(target_os="windows")]"#, |tts| {
+            let matches = parse_arguments(&tts, &[Specifier::Attr("attr".into())]).unwrap();
+            assert_eq!(matches.len(), 1);
+
+            let _ = matches.get("attr").unwrap().as_attr();
+        });
+
         with_tts("{ log(error, \"hi\"); return 12; }", |tts| {
             let matches = parse_arguments(&tts, &[Specifier::Block("block".into())]).unwrap();
             assert_eq!(matches.len(), 1);
@@ -580,6 +605,13 @@ mod tests {
             assert_eq!(matches.len(), 1);
 
             let _ = matches.get("item").unwrap().as_item();
+        });
+
+        with_tts(r#"cfg(target_os="windows")"#, |tts| {
+            let matches = parse_arguments(&tts, &[Specifier::Meta("meta".into())]).unwrap();
+            assert_eq!(matches.len(), 1);
+
+            let _ = matches.get("meta").unwrap().as_meta();
         });
 
         with_tts("(17, 'a')", |tts| {

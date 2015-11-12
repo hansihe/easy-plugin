@@ -14,6 +14,8 @@ use super::utility::{AsError, AsExpr, TtsIterator};
 /// A piece of a plugin argument specification.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Specifier {
+    /// An attribute (e.g., `#[cfg(target_os = "windows")]`).
+    Attr(String),
     /// A binary operator (e.g., `+`, `*`).
     BinOp(String),
     /// A brace-delimited sequence of statements (e.g., `{ log(error, "hi"); return 12; }`).
@@ -76,6 +78,7 @@ impl AsExpr for Specifier {
         }
 
         match *self {
+            Specifier::Attr(ref name) => expr!("Attr", string!(name)),
             Specifier::BinOp(ref name) => expr!("BinOp", string!(name)),
             Specifier::Block(ref name) => expr!("Block", string!(name)),
             Specifier::Delim(ref name) => expr!("Delim", string!(name)),
@@ -147,6 +150,7 @@ fn parse_named_specifier<'i, I>(
     let (subspan, value) = try!(tts.expect_ident());
 
     match &*value.name.as_str() {
+        "attr" => Ok(Specifier::Attr(name)),
         "binop" => Ok(Specifier::BinOp(name)),
         "block" => Ok(Specifier::Block(name)),
         "delim" => Ok(Specifier::Delim(name)),
@@ -256,9 +260,9 @@ mod tests {
             assert_eq!(parse_specification(&tts).unwrap(), vec![]);
         });
 
-        with_tts("$a:binop $b:tt", |tts| {
+        with_tts("$a:attr $b:tt", |tts| {
             assert_eq!(parse_specification(&tts).unwrap(), vec![
-                Specifier::BinOp("a".into()),
+                Specifier::Attr("a".into()),
                 Specifier::Tt("b".into()),
             ]);
         });

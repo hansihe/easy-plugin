@@ -26,6 +26,7 @@ fn test_parse_specification() {
     assert_eq!(specification, &[]);
 
     let specification: &[Specifier] = parse_specification!(
+        $attr:attr
         $binop:binop
         $block:block
         $delim:delim
@@ -53,6 +54,7 @@ fn test_parse_specification() {
     let lit = Token::Literal(Lit::Integer(token::intern("322")), Some(token::intern("u32")));
 
     assert_eq!(specification, &[
+        Specifier::Attr("attr".into()),
         Specifier::BinOp("binop".into()),
         Specifier::Block("block".into()),
         Specifier::Delim("delim".into()),
@@ -98,6 +100,7 @@ easy_plugin! {
 
 easy_plugin! {
     struct Arguments {
+        $attr:attr
         $binop:binop
         $block:block
         $delim:delim
@@ -126,6 +129,7 @@ easy_plugin! {
             });
         }
 
+        check!(attribute_to_string, arguments.attr, r#"#[cfg(target_os = "windows")]"#);
         assert_eq!(arguments.binop, BinOpToken::Plus);
         check!(block_to_string, arguments.block, "{ let a = 322; a }");
         assert_eq!(arguments.delim.delim, DelimToken::Bracket);
@@ -220,6 +224,7 @@ fn test_easy_plugin() {
     });
 
     let arguments = r#"
+        #[cfg(target_os = "windows")]
         +
         { let a = 322; a }
         [1, 2, 3]
