@@ -1,3 +1,158 @@
+//! This crate provides a compiler plugin, `easy_plugin!`, which makes it easier to write compiler
+//! plugins.
+//!
+//! `easy_plugin!` generates a wrapper function around your plugin function which handles argument
+//! parsing and error reporting for you, significantly reducing the time it takes to write a plugin.
+//! It can be used one of two ways, one which allows for only one argument specification and another
+//! that allows for multiple argument specifications.
+//!
+//! First, here is a trivial
+//! [example](https://github.com/KyleMayes/easy-plugin/blob/master/examples/struct.rs) of the first
+//! form that only allows for one argument specification.
+//!
+//! ```ignore
+//! #![feature(plugin, plugin_registrar, rustc_private)]
+//! #![plugin(easy_plugin)]
+//!
+//! #[allow(plugin_as_library)]
+//! extern crate easy_plugin;
+//!
+//! use easy_plugin::{PluginResult};
+//!
+//! // rustc and syntax imports...
+//!
+//! easy_plugin! {
+//!     struct Arguments { $a:ident }
+//!
+//!     /// My plugin.
+//!     pub fn expand_plugin(
+//!         context: &mut ExtCtxt, span: Span, arguments: Arguments
+//!     ) -> PluginResult<Box<MacResult>> {
+//!         println!("{:?}", arguments.a);
+//!         Ok(DummyResult::any(span))
+//!     }
+//! }
+//!
+//! #[plugin_registrar]
+//! pub fn plugin_registrar(registry: &mut Registry) {
+//!     registry.register_macro("plugin", expand_plugin);
+//! }
+//! ```
+//!
+//! In this example, note that the arguments of the plugin function `expand_plugin` differ from a
+//! typical plugin function in that the last argument is of type `Arguments` rather than
+//! `&[TokenTree]`. This is because the generated wrapper function handles argument parsing for you.
+//! The faux-definition of `Arguments` above `expand_plugin` provides the argument specification and
+//! the generated wrapper function parses the arguments and stores them in an instance of
+//! `Arguments`.
+//!
+//! In this example, the argument specification consists of `$a:ident`, which means that the only
+//! argument this plugin will accept is a single identifier which will be stored in a field named
+//! `a` in the `Arguments` struct. For more information on argument specifications, see the relevant
+//! section [below](#specifications).
+//!
+//! If the arguments do not match the argument specification or your plugin function returns `Err`, the
+//! wrapper function will report an error with `ExtCtxt::span_err` for you.
+//!
+//! Note that the `expand_plugin` function is public and has a documentation comment. The visibility
+//! and attributes applied to your plugin function (including documentation comments) will be
+//! applied to the wrapper function. In this example, the wrapper function will be public and have
+//! a documentation comment.
+//!
+//! Next, here is a trivial
+//! [example](https://github.com/KyleMayes/easy-plugin/blob/master/examples/enum.rs) of the second
+//! form that allows for multiple argument specifications.
+//!
+//! ```ignore
+//! #![feature(plugin, plugin_registrar, rustc_private)]
+//! #![plugin(easy_plugin)]
+//!
+//! #[allow(plugin_as_library)]
+//! extern crate easy_plugin;
+//!
+//! use easy_plugin::{PluginResult};
+//!
+//! // rustc and syntax imports...
+//!
+//! easy_plugin! {
+//!     enum Arguments {
+//!         A { },
+//!         B { $a:ident }, // <- this trailing comma is required!
+//!     }
+//!
+//!     /// My plugin.
+//!     pub fn expand_plugin(
+//!         context: &mut ExtCtxt, span: Span, arguments: Arguments
+//!     ) -> PluginResult<Box<MacResult>> {
+//!         match arguments {
+//!             Arguments::A(a) => { },
+//!             Arguments::B(b) => println!("{:?}", b.a),
+//!         }
+//!
+//!         Ok(DummyResult::any(span))
+//!     }
+//! }
+//!
+//! #[plugin_registrar]
+//! pub fn plugin_registrar(registry: &mut Registry) {
+//!     registry.register_macro("plugin", expand_plugin);
+//! }
+//! ```
+//!
+//! This form behaves much like the first, except that a parse of the arguments will be attempted
+//! with each specification in the provided order until one succeeds. If every attempt fails, the
+//! resulting error message will be from the final parse attempt. The results of a successful parse
+//! will be stored in a struct which will then be stored in an enum variant of the same name.
+//!
+//! In this example, if the arguments consist of a single identifier, the first parse attempt will
+//! fail but the second will succeed. The identifier will be stored in a field named `a` in a struct
+//! named `B`. This struct will then be stored in the enum variant `Arguments::B`.
+//!
+//! # Specifications
+//!
+//! Plugin argument specifications are mostly the same as the argument specifications you are used
+//! to writing for macros. There are two differences: no restrictions on ordering and additional
+//! types of named specifiers.
+//!
+//! | Name    | Description                           |  Storage Type                           |
+//! |:--------|:--------------------------------------|:----------------------------------------|
+//! | `attr`  | An attribute                          | `syntax::ast::Attribute`                |
+//! | `binop` | A binary operator                     | `syntax::parse::token::BinOpToken`      |
+//! | `block` | A brace-delimited statement sequence  | `syntax::ptr::P<syntax::ast::Block>`    |
+//! | `delim` | A delimited token tree sequence       | `std::rc::Rc<syntax::ast::Delimited>`   |
+//! | `expr`  | An expression                         | `syntax::ptr::P<syntax::ast::Expr>`     |
+//! | `ident` | An identifier                         | `syntax::ast::Ident`                    |
+//! | `item`  | An item                               | `syntax::ptr::P<syntax::ast::Item>`     |
+//! | `lftm`  | A lifetime                            | `syntax::ast::Name`                     |
+//! | `lit`   | A literal                             | `syntax::ast::Lit`                      |
+//! | `meta`  | A "meta" item, as found in attributes | `syntax::ptr::P<syntax::ast::MetaItem>` |
+//! | `pat`   | A pattern                             | `syntax::ptr::P<syntax::ast::Pat>`      |
+//! | `path`  | A qualified name                      | `syntax::ast::Path`                     |
+//! | `stmt`  | A single statement                    | `syntax::ptr::P<syntax::ast::Stmt>`     |
+//! | `ty`    | A type                                | `syntax::ptr::P<syntax::ast::Ty>`       |
+//! | `tok`   | A single token                        | `syntax::parse::token::Token`           |
+//! | `tt`    | A single token tree                   | `syntax::ast::TokenTree`                |
+//!
+//! There are also sequences like in macro argument specifications. For example, the following
+//! plugin argument specification matches any number of comma-separated parenthesized binary
+//! expressions.
+//!
+//! ```ignore
+//! $(($left:ident $operator:binop $right:ident)), *
+//! ```
+//!
+//! Named specifiers that occur in sequences cannot be stored as their storage type because there
+//! may be more than one or none at all. For this reason, named specifiers that occur in sequences
+//! have the storage type of `Vec<$type>` where `$type` is the original storage type.
+//!
+//! An additional level of `Vec` is added for each sequence level. For example, in the plugin
+//! argument specification below, `$b:ident` occurs two sequences deep. The storage type for `b` in
+//! this case would be `Vec<Vec<syntax::ast::Ident>>`.
+//!
+//! ```ignore
+//! $($a:ident $($b:ident)*)*
+//! ```
+
 #![feature(plugin_registrar, quote, rustc_private)]
 
 #![cfg_attr(feature="clippy", feature(plugin))]
