@@ -468,6 +468,10 @@ pub fn parse_arguments(
     let end = tts.iter().last().map_or(DUMMY_SP, |s| s.get_span());
     let span = Span { lo: start.lo, hi: end.hi, expn_id: start.expn_id };
 
+    if !tts.is_empty() && specification.is_empty() {
+        return span.as_error("too many arguments");
+    }
+
     let handler = Handler::with_emitter(false, Box::new(SaveEmitter));
     let session = ParseSess::with_span_handler(SpanHandler::new(handler, CodeMap::new()));
     let mut parser = parse::new_parser_from_tts(&session, vec![], tts.into());

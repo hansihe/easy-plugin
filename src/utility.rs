@@ -193,12 +193,19 @@ impl<T> AsExpr for Option<T> where T: AsExpr {
     }
 }
 
-#[allow(ptr_arg)]
+#[cfg_attr(feature="clippy", allow(ptr_arg))]
 impl<T> AsExpr for Vec<T> where T: AsExpr {
     fn as_expr(&self, context: &mut ExtCtxt, span: Span) -> P<Expr> {
         let exprs = self.iter().map(|i| i.as_expr(context, span)).collect();
         let slice = context.expr_vec_slice(span, exprs);
         context.expr_method_call(span, slice, context.ident_of("to_vec"), vec![])
+    }
+}
+
+impl<T> AsExpr for [T] where T: AsExpr {
+    fn as_expr(&self, context: &mut ExtCtxt, span: Span) -> P<Expr> {
+        let exprs = self.iter().map(|i| i.as_expr(context, span)).collect();
+        context.expr_vec_slice(span, exprs)
     }
 }
 
