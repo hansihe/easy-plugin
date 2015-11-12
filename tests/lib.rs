@@ -265,5 +265,5 @@ fn test_easy_plugin() {
 pub fn plugin_registrar(registry: &mut Registry) {
     registry.register_macro("struct_none", expand_struct_none);
     registry.register_macro("struct_all", expand_struct_all);
-    //registry.register_macro("enum", expand_enum);
+    registry.register_macro("enum", expand_enum);
 }
