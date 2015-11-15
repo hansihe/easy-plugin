@@ -420,12 +420,12 @@ fn parse_arguments_<'a>(
                 matches.insert(name.clone(), Match::Delim(Rc::new(delimited)));
             },
             Specifier::Expr(ref name) => {
-                matches.insert(name.clone(), Match::Expr(try_parse!(parse_expr_nopanic)));
+                matches.insert(name.clone(), Match::Expr(try_parse!(parse_expr)));
             },
             Specifier::Ident(ref name) => {
                 matches.insert(name.clone(), Match::Ident(try_parse!(parse_ident)));
             },
-            Specifier::Item(ref name) => match try_parse!(parse_item_nopanic) {
+            Specifier::Item(ref name) => match try_parse!(parse_item) {
                 Some(item) => {
                     matches.insert(name.clone(), Match::Item(item));
                 },
@@ -441,20 +441,20 @@ fn parse_arguments_<'a>(
                 matches.insert(name.clone(), Match::Meta(try_parse!(parse_meta_item)));
             },
             Specifier::Pat(ref name) => {
-                matches.insert(name.clone(), Match::Pat(try_parse!(parse_pat_nopanic)));
+                matches.insert(name.clone(), Match::Pat(try_parse!(parse_pat)));
             },
             Specifier::Path(ref name) => {
                 let path = try_parse!(parse_path(PathParsingMode::LifetimeAndTypesWithoutColons));
                 matches.insert(name.clone(), Match::Path(path));
             },
-            Specifier::Stmt(ref name) => match try_parse!(parse_stmt_nopanic) {
+            Specifier::Stmt(ref name) => match try_parse!(parse_stmt) {
                 Some(item) => {
                     matches.insert(name.clone(), Match::Stmt(item));
                 },
                 None => return parser.last_span.as_error("expected statement"),
             },
             Specifier::Ty(ref name) => {
-                matches.insert(name.clone(), Match::Ty(try_parse!(parse_ty_nopanic)));
+                matches.insert(name.clone(), Match::Ty(try_parse!(parse_ty)));
             },
             Specifier::Tok(ref name) => {
                 matches.insert(name.clone(), Match::Tok(expect!()));
