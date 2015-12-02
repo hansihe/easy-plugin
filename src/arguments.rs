@@ -273,7 +273,7 @@ impl SaveEmitter {
 impl Emitter for SaveEmitter {
     fn emit(&mut self, cs: Option<(&CodeMap, Span)>, message: &str, _: Option<&str>, level: Level) {
         if level == Level::Fatal {
-            self.emit_(cs.map(|cs| cs.1).unwrap_or(DUMMY_SP), message);
+            self.emit_(cs.map_or(DUMMY_SP, |cs| cs.1), message);
         }
     }
 

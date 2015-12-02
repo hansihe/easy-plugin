@@ -216,8 +216,8 @@ fn parse_specification_(
 
 /// Parses the given specification.
 pub fn parse_specification(tts: &[TokenTree]) -> PluginResult<Vec<Specifier>> {
-    let start = tts.iter().nth(0).map(|s| s.get_span()).unwrap_or(DUMMY_SP);
-    let end = tts.iter().last().map(|s| s.get_span()).unwrap_or(DUMMY_SP);
+    let start = tts.iter().nth(0).map_or(DUMMY_SP, |s| s.get_span());
+    let end = tts.iter().last().map_or(DUMMY_SP, |s| s.get_span());
     let span = Span { lo: start.lo, hi: end.hi, expn_id: start.expn_id };
     parse_specification_(span, tts, &mut HashSet::new())
 }
