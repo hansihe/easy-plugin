@@ -19,7 +19,7 @@
 //!
 //! use easy_plugin::{PluginResult};
 //!
-//! // rustc and syntax imports...
+//! // rustc_plugin and syntax imports...
 //!
 //! easy_plugin! {
 //!     struct Arguments { $a:ident }
@@ -72,7 +72,7 @@
 //!
 //! use easy_plugin::{PluginResult};
 //!
-//! // rustc and syntax imports...
+//! // rustc_plugin and syntax imports...
 //!
 //! easy_plugin! {
 //!     enum Arguments {
@@ -110,9 +110,9 @@
 //!
 //! # Specifications
 //!
-//! Plugin argument specifications are mostly the same as the argument specifications you are used
-//! to writing for macros. There are two differences: no restrictions on ordering and additional
-//! types of named specifiers.
+//! Plugin argument specifications are very similar to the argument specifications you are used to
+//! writing for macros. There are two primary differences: no restrictions on ordering and
+//! additional types of named specifiers.
 //!
 //! | Name    | Description                           |  Storage Type                           |
 //! |:--------|:--------------------------------------|:----------------------------------------|
@@ -133,12 +133,22 @@
 //! | `tok`   | A single token                        | `syntax::parse::token::Token`           |
 //! | `tt`    | A single token tree                   | `syntax::ast::TokenTree`                |
 //!
-//! There are also sequences like in macro argument specifications. For example, the following
-//! plugin argument specification matches any number of comma-separated parenthesized binary
-//! expressions.
+//! ## Sequences
+//!
+//! Plugin argument specifications support sequences that are very similar to the sequences in macro
+//! argument specifications. For example, the following plugin argument specification matches zero
+//! or more comma-separated parenthesized binary expressions.
 //!
 //! ```ignore
 //! $(($left:ident $operator:binop $right:ident)), *
+//! ```
+//! In addition to the `*` and `+` sequence operators, there is also a `?` operator which allows for
+//! sequences with either zero or one repetitions but does not support the use of a separator. For
+//! example, the following plugin argument specification can match either a binary expression or
+//! nothing at all.
+//!
+//! ```ignore
+//! $($left:ident $operator:binop $right:ident)?
 //! ```
 //!
 //! Named specifiers that occur in sequences cannot be stored as their storage type because there
@@ -367,10 +377,10 @@ fn expand_enum_easy_plugin(
         Specifier::specific_ident("enum"),
         Specifier::Ident("arguments".into()),
         Specifier::Delimited(DelimToken::Brace, vec![
-            Specifier::Sequence(KleeneOp::ZeroOrMore, None, vec![
+            Specifier::Sequence(Amount::ZeroOrMore, None, vec![
                 Specifier::Ident("name".into()),
                 Specifier::Delimited(DelimToken::Brace, vec![
-                    Specifier::Sequence(KleeneOp::ZeroOrMore, None, vec![
+                    Specifier::Sequence(Amount::ZeroOrMore, None, vec![
                         Specifier::Tt("tt".into()),
                     ]),
                 ]),
@@ -475,7 +485,7 @@ fn expand_struct_easy_plugin(
         Specifier::specific_ident("struct"),
         Specifier::Ident("arguments".into()),
         Specifier::Delimited(DelimToken::Brace, vec![
-            Specifier::Sequence(KleeneOp::ZeroOrMore, None, vec![
+            Specifier::Sequence(Amount::ZeroOrMore, None, vec![
                 Specifier::Tt("tt".into()),
             ]),
         ]),

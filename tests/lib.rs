@@ -7,12 +7,12 @@ extern crate easy_plugin;
 extern crate rustc_plugin;
 extern crate syntax;
 
-use easy_plugin::{PluginResult, Specifier};
+use easy_plugin::{Amount, PluginResult, Specifier};
 
 use rustc_plugin::{Registry};
 
 use syntax::parse::token;
-use syntax::ast::{KleeneOp, TokenTree};
+use syntax::ast::{TokenTree};
 use syntax::codemap::{Span, DUMMY_SP};
 use syntax::ext::base::{ExtCtxt, DummyResult, MacResult};
 use syntax::ext::expand::{ExpansionConfig};
@@ -49,6 +49,7 @@ fn test_parse_specification() {
         /// comment
         [$a:ident $b:ident]
         $($c:ident $($d:ident)*), +
+        $($e:ident)?
     );
 
     let lit = Token::Literal(Lit::Integer(token::intern("322")), Some(token::intern("u32")));
@@ -79,11 +80,14 @@ fn test_parse_specification() {
             Specifier::Ident("a".into()),
             Specifier::Ident("b".into()),
         ]),
-        Specifier::Sequence(KleeneOp::OneOrMore, Some(Token::Comma), vec![
+        Specifier::Sequence(Amount::OneOrMore, Some(Token::Comma), vec![
             Specifier::Ident("c".into()),
-            Specifier::Sequence(KleeneOp::ZeroOrMore, None, vec![
+            Specifier::Sequence(Amount::ZeroOrMore, None, vec![
                 Specifier::Ident("d".into()),
             ]),
+        ]),
+        Specifier::Sequence(Amount::ZeroOrOne, None, vec![
+            Specifier::Ident("e".into()),
         ]),
     ]);
 }
@@ -117,7 +121,8 @@ easy_plugin! {
         $tok:tok
         $tt:tt
         [$a:ident $b:ident]
-        $($c:ident $($d:ident)*), +
+        $($c:ident $($d:ident)*), +;
+        $($e:ident;)?
     }
 
     pub fn expand_struct_all(
@@ -164,6 +169,9 @@ easy_plugin! {
         assert_eq!(arguments.d[2].len(), 2);
         assert_eq!(&*arguments.d[2][0].name.as_str(), "e");
         assert_eq!(&*arguments.d[2][1].name.as_str(), "f");
+
+        assert_eq!(arguments.e.len(), 1);
+        assert_eq!(&*arguments.e[0].name.as_str(), "g");
 
         Ok(DummyResult::any(span))
     }
@@ -241,7 +249,8 @@ fn test_easy_plugin() {
         ~
         !
         [a b]
-        a, b c, d e f
+        a, b c, d e f;
+        g;
     "#;
 
     with_tts(arguments, |c, s, a| {

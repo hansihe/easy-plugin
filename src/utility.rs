@@ -1,6 +1,6 @@
 use std::marker::{PhantomData};
 
-use syntax::ast::{Expr, Ident, KleeneOp, Name, TokenTree};
+use syntax::ast::{Expr, Ident, Name, TokenTree};
 use syntax::codemap::{Span};
 use syntax::ext::base::{ExtCtxt};
 use syntax::ext::build::{AstBuilder};
@@ -62,19 +62,6 @@ impl AsExpr for IdentStyle {
             context.ident_of("parse"),
             context.ident_of("token"),
             context.ident_of("IdentStyle"),
-            context.ident_of(&format!("{:?}", self)),
-        ];
-
-        context.expr_path(context.path_global(span, path))
-    }
-}
-
-impl AsExpr for KleeneOp {
-    fn as_expr(&self, context: &mut ExtCtxt, span: Span) -> P<Expr> {
-        let path = vec![
-            context.ident_of("syntax"),
-            context.ident_of("ast"),
-            context.ident_of("KleeneOp"),
             context.ident_of(&format!("{:?}", self)),
         ];
 

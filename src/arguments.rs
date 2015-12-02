@@ -12,7 +12,7 @@ use syntax::parse::parser::{Parser, PathParsingMode};
 use syntax::parse::token::{BinOpToken, Token};
 use syntax::ptr::{P};
 
-use super::{PluginResult, Specifier};
+use super::{Amount, PluginResult, Specifier};
 use super::utility::{AsError};
 
 /// A plugin argument that has been matched with a named specifier.
@@ -283,11 +283,13 @@ impl Emitter for SaveEmitter {
 fn parse_sequence<'a>(
     span: Span,
     parser: &mut Parser<'a>,
-    required: bool,
+    amount: Amount,
     separator: &Option<Token>,
     specification: &[Specifier],
     matches: &mut HashMap<String, Match>,
 ) -> PluginResult<()> {
+    let required = amount == Amount::OneOrMore;
+
     for specifier in specification {
         match *specifier {
             Specifier::Attr(ref name) |
@@ -337,6 +339,10 @@ fn parse_sequence<'a>(
                 Match::Sequence(ref mut sequence) => sequence.push(v),
                 _ => unreachable!(),
             }
+        }
+
+        if amount == Amount::ZeroOrOne {
+            return Ok(());
         }
 
         first = false;
@@ -468,9 +474,8 @@ fn parse_arguments_<'a>(
                 try!(parse_arguments_(span, parser, &subspecification, matches));
                 expect!(&Token::CloseDelim(delimiter));
             },
-            Specifier::Sequence(kleene, ref separator, ref subspecification) => {
-                let required = kleene == KleeneOp::OneOrMore;
-                try!(parse_sequence(span, parser, required, separator, subspecification, matches));
+            Specifier::Sequence(amount, ref separator, ref subspecification) => {
+                try!(parse_sequence(span, parser, amount, separator, subspecification, matches));
             },
         }
     }
@@ -507,7 +512,7 @@ pub fn parse_arguments(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use super::super::{Specifier};
+    use super::super::{Amount, Specifier};
 
     use syntax::parse;
     use syntax::ast::*;
@@ -662,9 +667,9 @@ mod tests {
 
         with_tts("a, b c, d e f", |tts| {
             let matches = parse_arguments(&tts, &[
-                Specifier::Sequence(KleeneOp::OneOrMore, Some(Token::Comma), vec![
+                Specifier::Sequence(Amount::OneOrMore, Some(Token::Comma), vec![
                     Specifier::Ident("a".into()),
-                    Specifier::Sequence(KleeneOp::ZeroOrMore, None, vec![
+                    Specifier::Sequence(Amount::ZeroOrMore, None, vec![
                         Specifier::Ident("b".into()),
                     ]),
                 ]),

@@ -6,3 +6,6 @@
 
 ### 0.1.2 - December 1, 2015
 - Update for latest nightly
+
+### 0.2.0 - UNRELEASED
+- Add support for sequences with zero or one repetitions (`$(sequence)?`)

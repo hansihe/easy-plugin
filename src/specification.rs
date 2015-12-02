@@ -1,7 +1,7 @@
 use std::collections::{HashSet};
 
 use syntax::parse::token;
-use syntax::ast::{Expr, Ident, KleeneOp, TokenTree};
+use syntax::ast::{Expr, Ident, TokenTree};
 use syntax::ext::base::{DummyResult, ExtCtxt, MacEager, MacResult};
 use syntax::ext::build::{AstBuilder};
 use syntax::codemap::{DUMMY_SP, Span};
@@ -10,6 +10,26 @@ use syntax::ptr::{P};
 
 use super::{PluginResult};
 use super::utility::{AsError, AsExpr, TtsIterator};
+
+/// Indicates how many times a sequence is allowed to occur.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+pub enum Amount {
+    OneOrMore,
+    ZeroOrMore,
+    ZeroOrOne,
+}
+
+impl AsExpr for Amount {
+    fn as_expr(&self, context: &mut ExtCtxt, span: Span) -> P<Expr> {
+        let path = vec![
+            context.ident_of("easy_plugin"),
+            context.ident_of("Amount"),
+            context.ident_of(&format!("{:?}", self)),
+        ];
+
+        context.expr_path(context.path_global(span, path))
+    }
+}
 
 /// A piece of a plugin argument specification.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -51,7 +71,7 @@ pub enum Specifier {
     /// A delimited piece.
     Delimited(DelimToken, Vec<Specifier>),
     /// A sequence piece.
-    Sequence(KleeneOp, Option<Token>, Vec<Specifier>),
+    Sequence(Amount, Option<Token>, Vec<Specifier>),
 }
 
 impl AsExpr for Specifier {
@@ -99,11 +119,11 @@ impl AsExpr for Specifier {
                 let subspecification = subspecification.as_expr(context, span);
                 expr!("Delimited", delimiter.as_expr(context, span), subspecification)
             },
-            Specifier::Sequence(kleene, ref separator, ref subspecification) => {
-                let kleene = kleene.as_expr(context, span);
+            Specifier::Sequence(amount, ref separator, ref subspecification) => {
+                let amount = amount.as_expr(context, span);
                 let separator = separator.as_expr(context, span);
                 let subspecification = subspecification.as_expr(context, span);
-                expr!("Sequence", kleene, separator, subspecification)
+                expr!("Sequence", amount, separator, subspecification)
             },
         }
     }
@@ -175,17 +195,18 @@ fn parse_sequence<'i, I>(
 ) -> PluginResult<Specifier> where I: Iterator<Item=&'i TokenTree> {
     let subspecification = try!(parse_specification_(span, subtts, names));
 
-    let (kleene, separator) = match try!(tts.expect_token("expected separator, `*`, or `+`")) {
-        (_, &Token::BinOp(BinOpToken::Star)) => (KleeneOp::ZeroOrMore, None),
-        (_, &Token::BinOp(BinOpToken::Plus)) => (KleeneOp::OneOrMore, None),
+    let (amount, separator) = match try!(tts.expect_token("expected separator, `*`, or `+`")) {
+        (_, &Token::BinOp(BinOpToken::Plus)) => (Amount::OneOrMore, None),
+        (_, &Token::BinOp(BinOpToken::Star)) => (Amount::ZeroOrMore, None),
+        (_, &Token::Question) => (Amount::ZeroOrOne, None),
         (subspan, separator) => match try!(tts.expect_token("expected `*` or `+`")) {
-            (_, &Token::BinOp(BinOpToken::Star)) => (KleeneOp::ZeroOrMore, Some(separator.clone())),
-            (_, &Token::BinOp(BinOpToken::Plus)) => (KleeneOp::OneOrMore, Some(separator.clone())),
+            (_, &Token::BinOp(BinOpToken::Plus)) => (Amount::OneOrMore, Some(separator.clone())),
+            (_, &Token::BinOp(BinOpToken::Star)) => (Amount::ZeroOrMore, Some(separator.clone())),
             _ => return subspan.as_error("expected `*` or `+`"),
         },
     };
 
-    Ok(Specifier::Sequence(kleene, separator, subspecification))
+    Ok(Specifier::Sequence(amount, separator, subspecification))
 }
 
 fn parse_specification_(
@@ -243,7 +264,7 @@ mod tests {
     use super::*;
 
     use syntax::parse;
-    use syntax::ast::{KleeneOp, TokenTree};
+    use syntax::ast::{TokenTree};
     use syntax::parse::{ParseSess};
     use syntax::parse::token::{DelimToken, Token};
 
@@ -269,9 +290,9 @@ mod tests {
 
         with_tts("$($a:ident $($b:ident)*), +", |tts| {
             assert_eq!(parse_specification(&tts).unwrap(), vec![
-                Specifier::Sequence(KleeneOp::OneOrMore, Some(Token::Comma), vec![
+                Specifier::Sequence(Amount::OneOrMore, Some(Token::Comma), vec![
                     Specifier::Ident("a".into()),
-                    Specifier::Sequence(KleeneOp::ZeroOrMore, None, vec![
+                    Specifier::Sequence(Amount::ZeroOrMore, None, vec![
                         Specifier::Ident("b".into()),
                     ]),
                 ]),
