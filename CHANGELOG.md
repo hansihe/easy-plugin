@@ -3,3 +3,6 @@
 
 ### 0.1.1 - November 15, 2015
 - Update for latest nightly
+
+### 0.1.2 - December 1, 2015
+- Update for latest nightly
