@@ -159,10 +159,10 @@
 #![cfg_attr(feature="clippy", plugin(clippy))]
 #![cfg_attr(feature="clippy", warn(clippy))]
 
-extern crate rustc;
+extern crate rustc_plugin;
 extern crate syntax;
 
-use rustc::plugin::{Registry};
+use rustc_plugin::{Registry};
 
 use syntax::codemap;
 use syntax::ast::*;

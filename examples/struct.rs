@@ -7,10 +7,10 @@ extern crate easy_plugin;
 
 use easy_plugin::{PluginResult};
 
-extern crate rustc;
+extern crate rustc_plugin;
 extern crate syntax;
 
-use rustc::plugin::{Registry};
+use rustc_plugin::{Registry};
 
 use syntax::codemap::{Span};
 use syntax::ext::base::{ExtCtxt, DummyResult, MacResult};

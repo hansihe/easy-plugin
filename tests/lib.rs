@@ -4,12 +4,12 @@
 #[allow(plugin_as_library)]
 extern crate easy_plugin;
 
-extern crate rustc;
+extern crate rustc_plugin;
 extern crate syntax;
 
 use easy_plugin::{PluginResult, Specifier};
 
-use rustc::plugin::{Registry};
+use rustc_plugin::{Registry};
 
 use syntax::parse::token;
 use syntax::ast::{KleeneOp, TokenTree};
