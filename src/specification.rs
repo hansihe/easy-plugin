@@ -288,13 +288,16 @@ mod tests {
             ]);
         });
 
-        with_tts("$($a:ident $($b:ident)*), +", |tts| {
+        with_tts("$($a:ident $($b:ident)*), + $($c:ident)?", |tts| {
             assert_eq!(parse_specification(&tts).unwrap(), vec![
                 Specifier::Sequence(Amount::OneOrMore, Some(Token::Comma), vec![
                     Specifier::Ident("a".into()),
                     Specifier::Sequence(Amount::ZeroOrMore, None, vec![
                         Specifier::Ident("b".into()),
                     ]),
+                ]),
+                Specifier::Sequence(Amount::ZeroOrOne, None, vec![
+                    Specifier::Ident("c".into()),
                 ]),
             ]);
         });

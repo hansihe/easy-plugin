@@ -665,7 +665,7 @@ mod tests {
             let _ = matches.get("ident").unwrap().as_ident();
         });
 
-        with_tts("a, b c, d e f", |tts| {
+        with_tts("a, b c, d e f; ; g", |tts| {
             let matches = parse_arguments(&tts, &[
                 Specifier::Sequence(Amount::OneOrMore, Some(Token::Comma), vec![
                     Specifier::Ident("a".into()),
@@ -673,9 +673,17 @@ mod tests {
                         Specifier::Ident("b".into()),
                     ]),
                 ]),
+                Specifier::Specific(Token::Semi),
+                Specifier::Sequence(Amount::ZeroOrOne, None, vec![
+                    Specifier::Ident("c".into()),
+                ]),
+                Specifier::Specific(Token::Semi),
+                Specifier::Sequence(Amount::ZeroOrOne, None, vec![
+                    Specifier::Ident("d".into()),
+                ]),
             ]).unwrap();
 
-            assert_eq!(matches.len(), 2);
+            assert_eq!(matches.len(), 4);
 
             let a = matches.get("a").unwrap().as_sequence().into_iter().map(|m| {
                 m.as_ident()
@@ -701,6 +709,20 @@ mod tests {
             assert_eq!(b[2].len(), 2);
             assert_eq!(b[2][0].name.as_str(), "e");
             assert_eq!(b[2][1].name.as_str(), "f");
+
+            let c = matches.get("c").unwrap().as_sequence().into_iter().map(|m| {
+                m.as_ident()
+            }).collect::<Vec<_>>();
+
+            assert_eq!(c.len(), 0);
+
+            let d = matches.get("d").unwrap().as_sequence().into_iter().map(|m| {
+                m.as_ident()
+            }).collect::<Vec<_>>();
+
+            assert_eq!(d.len(), 1);
+
+            assert_eq!(d[0].name.as_str(), "g");
         });
     }
 }
