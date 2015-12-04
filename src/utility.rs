@@ -1,9 +1,13 @@
 use std::marker::{PhantomData};
 
+use syntax::ext::tt::transcribe;
 use syntax::ast::{Expr, Ident, Name, TokenTree};
 use syntax::codemap::{Span};
+use syntax::diagnostic::{FatalError};
 use syntax::ext::base::{ExtCtxt};
 use syntax::ext::build::{AstBuilder};
+use syntax::parse::{ParseSess};
+use syntax::parse::lexer::{Reader, TokenAndSpan};
 use syntax::parse::parser::{Parser};
 use syntax::parse::token::{BinOpToken, DelimToken, IdentStyle, Lit, Token};
 use syntax::ptr::{P};
@@ -263,5 +267,95 @@ impl<'i, I> Iterator for TtsIterator<'i, I> where I: Iterator<Item=&'i TokenTree
 
     fn next(&mut self) -> Option<&'i TokenTree> {
         self.iterator.next()
+    }
+}
+
+#[derive(Clone)]
+pub struct TokenReader<'a> {
+    session: &'a ParseSess,
+    tokens: Vec<TokenAndSpan>,
+    index: usize,
+}
+
+impl<'a> TokenReader<'a> {
+    fn new(session: &'a ParseSess, tokens: Vec<TokenAndSpan>) -> TokenReader<'a> {
+        TokenReader { session: session, tokens: tokens, index: 0 }
+    }
+}
+
+impl<'a> Reader for TokenReader<'a> {
+    fn is_eof(&self) -> bool {
+        self.index + 1 == self.tokens.len()
+    }
+
+    fn next_token(&mut self) -> TokenAndSpan {
+        let next = self.tokens[self.index].clone();
+
+        if !self.is_eof() {
+            self.index += 1;
+        }
+
+        next
+    }
+
+    fn fatal(&self, m: &str) -> FatalError {
+        self.session.span_diagnostic.span_fatal(self.peek().sp, m)
+    }
+
+    fn err(&self, m: &str) {
+        self.session.span_diagnostic.span_err(self.peek().sp, m);
+    }
+
+    fn peek(&self) -> TokenAndSpan {
+        self.tokens[self.index].clone()
+    }
+}
+
+pub struct TransactionParser<'a> {
+    session: &'a ParseSess,
+    tokens: Vec<TokenAndSpan>,
+    current: usize,
+    start: usize,
+}
+
+impl<'a> TransactionParser<'a> {
+    pub fn new(session: &'a ParseSess, tts: &[TokenTree]) -> TransactionParser<'a> {
+        let handler = &session.span_diagnostic;
+        let mut reader = transcribe::new_tt_reader(handler, None, None, tts.into());
+
+        let mut parser = TransactionParser {
+            session: session, tokens: vec![], current: 0, start: 0
+        };
+
+        loop {
+            parser.tokens.push(reader.next_token());
+
+            if reader.is_eof() {
+                parser.tokens.push(reader.next_token());
+                break;
+            }
+        }
+
+        parser
+    }
+
+    pub fn start(&mut self) {
+        self.start = self.current;
+    }
+
+    pub fn rollback(&mut self) {
+        self.current = self.start;
+    }
+
+    pub fn apply<T, F: FnOnce(&mut Parser<'a>) -> T>(&mut self, f: F) -> T {
+        let reader = Box::new(TokenReader::new(self.session, self.tokens[self.current..].into()));
+        let mut parser = Parser::new(self.session, vec![], reader);
+        let result = f(&mut parser);
+        self.current += parser.tokens_consumed;
+        result
+    }
+
+    pub fn get_last_span(&self) -> Span {
+        self.tokens[self.current].sp
     }
 }

@@ -8,4 +8,5 @@
 - Update for latest nightly
 
 ### 0.2.0 - UNRELEASED
+- Fix overeager sequence parsing
 - Add support for sequences with zero or one repetitions (`$(sequence)?`)

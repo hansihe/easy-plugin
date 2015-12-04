@@ -13,7 +13,7 @@ use syntax::parse::token::{BinOpToken, Token};
 use syntax::ptr::{P};
 
 use super::{Amount, PluginResult, Specifier};
-use super::utility::{AsError};
+use super::utility::{AsError, TransactionParser};
 
 /// A plugin argument that has been matched with a named specifier.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -282,7 +282,7 @@ impl Emitter for SaveEmitter {
 
 fn parse_sequence<'a>(
     span: Span,
-    parser: &mut Parser<'a>,
+    parser: &mut TransactionParser<'a>,
     amount: Amount,
     separator: &Option<Token>,
     specification: &[Specifier],
@@ -318,18 +318,21 @@ fn parse_sequence<'a>(
 
     loop {
         if let Some(ref separator) = *separator {
-            if !first && parser.eat(separator).ok().map_or(true, |b| !b) {
+            if !first && parser.apply(|p| p.eat(separator)).ok().map_or(true, |b| !b) {
                 return Ok(());
             }
         }
 
         let mut submatches = HashMap::new();
 
+        parser.start();
+
         match parse_arguments_(span, parser, &specification, &mut submatches) {
             Ok(()) => { },
             Err(error) => if (first && required) || (!first && separator.is_some()) {
                 return Err(error);
             } else {
+                parser.rollback();
                 return Ok(());
             },
         }
@@ -351,13 +354,13 @@ fn parse_sequence<'a>(
 
 fn parse_arguments_<'a>(
     span: Span,
-    parser: &mut Parser<'a>,
+    parser: &mut TransactionParser<'a>,
     specification: &[Specifier],
     matches: &mut HashMap<String, Match>,
 ) -> PluginResult<()> {
     macro_rules! expect {
         () => ({
-            match parser.bump_and_get() {
+            match parser.apply(|p| p.bump_and_get()) {
                 Ok(token) => token,
                 Err(_) => return span.as_error("unexpected end of arguments"),
             }
@@ -371,7 +374,7 @@ fn parse_arguments_<'a>(
                 let expected = Parser::token_to_string(expected);
                 let found = Parser::token_to_string(&found);
                 let error = format!("expected `{}`, found `{}`", expected, found);
-                return parser.last_span.as_error(error);
+                return parser.get_last_span().as_error(error);
             }
         });
     }
@@ -380,7 +383,7 @@ fn parse_arguments_<'a>(
         ($method:ident) => (try_parse!($method()));
 
         ($method:ident($($argument:expr), *)) => ({
-            match parser.$method($($argument), *) {
+            match parser.apply(|p| p.$method($($argument), *)) {
                 Ok(ok) => ok,
                 Err(_) => return Err(ERROR.with(|e| e.borrow().clone())),
             }
@@ -399,7 +402,7 @@ fn parse_arguments_<'a>(
                 invalid => {
                     let string = Parser::token_to_string(&invalid);
                     let error = format!("expected binop, found `{}`", string);
-                    return parser.last_span.as_error(error);
+                    return parser.get_last_span().as_error(error);
                 },
             },
             Specifier::Block(ref name) => {
@@ -407,11 +410,11 @@ fn parse_arguments_<'a>(
             },
             Specifier::Delim(ref name) => {
                 let (delimiter, open) = match expect!() {
-                    Token::OpenDelim(delimiter) => (delimiter, parser.last_span),
+                    Token::OpenDelim(delimiter) => (delimiter, parser.get_last_span()),
                     invalid => {
                         let string = Parser::token_to_string(&invalid);
                         let error = format!("expected opening delimiter, found `{}`", string);
-                        return parser.last_span.as_error(error);
+                        return parser.get_last_span().as_error(error);
                     },
                 };
 
@@ -420,7 +423,7 @@ fn parse_arguments_<'a>(
                 let tts = try_parse!(parse_seq_to_end(&Token::CloseDelim(delimiter), sep, f));
 
                 let delimited = Delimited {
-                    delim: delimiter, open_span: open, tts: tts, close_span: parser.last_span
+                    delim: delimiter, open_span: open, tts: tts, close_span: parser.get_last_span()
                 };
 
                 matches.insert(name.clone(), Match::Delim(Rc::new(delimited)));
@@ -435,7 +438,7 @@ fn parse_arguments_<'a>(
                 Some(item) => {
                     matches.insert(name.clone(), Match::Item(item));
                 },
-                None => return parser.last_span.as_error("expected item"),
+                None => return parser.get_last_span().as_error("expected item"),
             },
             Specifier::Lftm(ref name) => {
                 matches.insert(name.clone(), Match::Lftm(try_parse!(parse_lifetime).name));
@@ -457,7 +460,7 @@ fn parse_arguments_<'a>(
                 Some(item) => {
                     matches.insert(name.clone(), Match::Stmt(item));
                 },
-                None => return parser.last_span.as_error("expected statement"),
+                None => return parser.get_last_span().as_error("expected statement"),
             },
             Specifier::Ty(ref name) => {
                 matches.insert(name.clone(), Match::Ty(try_parse!(parse_ty)));
@@ -497,12 +500,12 @@ pub fn parse_arguments(
 
     let handler = Handler::with_emitter(false, Box::new(SaveEmitter));
     let session = ParseSess::with_span_handler(SpanHandler::new(handler, CodeMap::new()));
-    let mut parser = parse::new_parser_from_tts(&session, vec![], tts.into());
+    let mut parser = TransactionParser::new(&session, tts);
 
     let mut matches = HashMap::new();
     try!(parse_arguments_(span, &mut parser, specification, &mut matches));
 
-    if tts.iter().last().map_or(true, |tt| tt.get_span().hi == parser.last_span.hi) {
+    if tts.iter().last().map_or(true, |tt| tt.get_span().hi == parser.get_last_span().hi) {
         Ok(matches)
     } else {
         span.as_error("too many arguments")
@@ -656,6 +659,27 @@ mod tests {
             assert_eq!(d.len(), 1);
 
             assert_eq!(d[0].name.as_str(), "g");
+        });
+
+        let arguments = "1 a 2 b 3";
+        let specification = "$($a:lit $b:ident)* $c:lit";
+
+        with_matches(arguments, specification, |m| {
+            assert_eq!(m.len(), 3);
+
+            let a = get!(m, a, as_sequence, as_lit);
+            assert_eq!(a.len(), 2);
+
+            check!(lit_to_string, a[0], "1");
+            check!(lit_to_string, a[1], "2");
+
+            let b = get!(m, b, as_sequence, as_ident);
+            assert_eq!(b.len(), 2);
+
+            assert_eq!(b[0].name.as_str(), "a");
+            assert_eq!(b[1].name.as_str(), "b");
+
+            check!(lit_to_string, get!(m, c, as_lit), "3");
         });
     }
 }
