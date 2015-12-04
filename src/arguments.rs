@@ -512,193 +512,132 @@ pub fn parse_arguments(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use super::super::{Amount, Specifier};
+
+    use std::collections::{HashMap};
 
     use syntax::parse;
     use syntax::ast::*;
     use syntax::parse::{ParseSess};
-    use syntax::parse::token::{BinOpToken, DelimToken, Token};
+    use syntax::parse::token::{BinOpToken, DelimToken};
 
-    fn with_tts<F>(source: &str, f: F) where F: Fn(Vec<TokenTree>) {
+    fn parse_token_trees(source: &str) -> Vec<TokenTree> {
         let session = ParseSess::new();
         let source = source.into();
         let mut parser = parse::new_parser_from_source_str(&session, vec![], "".into(), source);
-        f(parser.parse_all_token_trees().unwrap());
+        parser.parse_all_token_trees().unwrap()
+    }
+
+    fn with_matches<F>(
+        arguments: &str, specification: &str, f: F
+    ) where F: Fn(HashMap<String, Match>) {
+        let arguments = parse_token_trees(arguments);
+        let specification = super::super::parse_specification(&parse_token_trees(specification));
+        f(parse_arguments(&arguments, specification.as_ref().unwrap()).unwrap());
     }
 
     #[test]
     fn test_parse_arguments() {
-        with_tts("", |tts| {
-            let matches = parse_arguments(&tts, &[]).unwrap();
-            assert_eq!(matches.len(), 0);
-        });
+        macro_rules! check {
+            ($print:ident, $actual:expr, $expected:expr) => ({
+                assert_eq!(::syntax::print::pprust::$print(&$actual), $expected);
+            });
+        }
 
-        with_tts("+ foo 'bar 322i32 ::std::vec::Vec<i32> ~ !", |tts| {
-            let matches = parse_arguments(&tts, &[
-                Specifier::BinOp("binop".into()),
-                Specifier::Ident("ident".into()),
-                Specifier::Lftm("lftm".into()),
-                Specifier::Lit("lit".into()),
-                Specifier::Path("path".into()),
-                Specifier::Tok("tok".into()),
-                Specifier::Tt("tt".into()),
-            ]).unwrap();
+        macro_rules! get {
+            ($matches:expr, $name:ident, $as_:ident) => ({
+                $matches.get(stringify!($name)).unwrap().$as_()
+            });
 
-            assert_eq!(matches.len(), 7);
+            ($matches:expr, $name:ident, as_sequence, $as_:ident) => ({
+                get!($matches, $name, as_sequence).into_iter().map(|m| m.$as_()).collect::<Vec<_>>()
+            });
 
-            assert_eq!(matches.get("binop").unwrap().as_binop(), BinOpToken::Plus);
-            let _ = matches.get("ident").unwrap().as_ident();
-            let _ = matches.get("lftm").unwrap().as_lftm();
-            let _ = matches.get("lit").unwrap().as_lit();
-            let _ = matches.get("path").unwrap().as_path();
-            let _ = matches.get("tok").unwrap().as_tok();
-            let _ = matches.get("tt").unwrap().as_tt();
-        });
+            ($matches:expr, $name:ident, as_sequence, as_sequence, $as_:ident) => ({
+                get!($matches, $name, as_sequence).into_iter().map(|m| {
+                    m.as_sequence().into_iter().map(|m| m.$as_()).collect::<Vec<_>>()
+                }).collect::<Vec<_>>()
+            });
+        }
 
-        with_tts(r#"#[cfg(target_os="windows")]"#, |tts| {
-            let matches = parse_arguments(&tts, &[Specifier::Attr("attr".into())]).unwrap();
-            assert_eq!(matches.len(), 1);
+        with_matches("", "", |m| assert_eq!(m.len(), 0));
 
-            let _ = matches.get("attr").unwrap().as_attr();
-        });
+        let arguments = r#"
+            #[cfg(target_os = "windows")]
+            +
+            { let a = 322; a }
+            [1, 2, 3]
+            2 + 2
+            foo
+            struct Bar;
+            'baz
+            322
+            cfg(target_os="windows")
+            (foo, "bar")
+            ::std::vec::Vec<i32>
+            let a = 322
+            i32
+            ~
+            !
+        "#;
 
-        with_tts("{ log(error, \"hi\"); return 12; }", |tts| {
-            let matches = parse_arguments(&tts, &[Specifier::Block("block".into())]).unwrap();
-            assert_eq!(matches.len(), 1);
+        let specification = "
+            $attr:attr
+            $binop:binop
+            $block:block
+            $delim:delim
+            $expr:expr
+            $ident:ident
+            $item:item
+            $lftm:lftm
+            $lit:lit
+            $meta:meta
+            $pat:pat
+            $path:path
+            $stmt:stmt
+            $ty:ty
+            $tok:tok
+            $tt:tt
+        ";
 
-            let _ = matches.get("block").unwrap().as_block();
-        });
+        with_matches(arguments, specification, |m| {
+            assert_eq!(m.len(), 16);
 
-        with_tts("[+ [-]]", |tts| {
-            let matches = parse_arguments(&tts, &[Specifier::Delim("delim".into())]).unwrap();
-            assert_eq!(matches.len(), 1);
+            check!(attribute_to_string, get!(m, attr, as_attr), "#[cfg(target_os = \"windows\")]");
+            assert_eq!(m.get("binop").unwrap().as_binop(), BinOpToken::Plus);
+            check!(block_to_string, &get!(m, block, as_block), "{ let a = 322; a }");
 
-            let delim = matches.get("delim").unwrap().as_delim();
+            let delim = get!(m, delim, as_delim);
             assert_eq!(delim.delim, DelimToken::Bracket);
+            check!(tts_to_string, delim.tts, "1 , 2 , 3");
 
-            assert_eq!(delim.tts.len(), 2);
-
-            match delim.tts[0] {
-                TokenTree::Token(_, Token::BinOp(BinOpToken::Plus)) => { },
-                _ => assert!(false),
-            }
-
-            match delim.tts[1] {
-                TokenTree::Delimited(_, ref delim) => {
-                    assert_eq!(delim.delim, DelimToken::Bracket);
-
-                    assert_eq!(delim.tts.len(), 1);
-
-                    match delim.tts[0] {
-                        TokenTree::Token(_, Token::BinOp(BinOpToken::Minus)) => { },
-                        _ => assert!(false),
-                    }
-                },
-                _ => assert!(false),
-            }
+            check!(expr_to_string, &get!(m, expr, as_expr), "2 + 2");
+            assert_eq!(&*get!(m, ident, as_ident).name.as_str(), "foo");
+            check!(item_to_string, &get!(m, item, as_item), "struct Bar;");
+            assert_eq!(&*get!(m, lftm, as_lftm).as_str(), "'baz");
+            check!(lit_to_string, get!(m, lit, as_lit), "322");
+            check!(meta_item_to_string, &get!(m, meta, as_meta), r#"cfg(target_os = "windows")"#);
+            check!(pat_to_string, &get!(m, pat, as_pat), r#"(foo, "bar")"#);
+            check!(path_to_string, get!(m, path, as_path), "::std::vec::Vec<i32>");
+            check!(stmt_to_string, &get!(m, stmt, as_stmt), "let a = 322;");
+            check!(ty_to_string, &get!(m, ty, as_ty), "i32");
+            check!(token_to_string, get!(m, tok, as_tok), "~");
+            check!(tt_to_string, get!(m, tt, as_tt), "!");
         });
 
-        with_tts("if true { 1 } else { 0 }", |tts| {
-            let matches = parse_arguments(&tts, &[Specifier::Expr("expr".into())]).unwrap();
-            assert_eq!(matches.len(), 1);
+        let arguments = "a, b c, d e f; ; g";
+        let specification = "$($a:ident $($b:ident)*), +; $($c:ident)?; $($d:ident)?";
 
-            let _ = matches.get("expr").unwrap().as_expr();
-        });
+        with_matches(arguments, specification, |m| {
+            assert_eq!(m.len(), 4);
 
-        with_tts("fn foo() { }", |tts| {
-            let matches = parse_arguments(&tts, &[Specifier::Item("item".into())]).unwrap();
-            assert_eq!(matches.len(), 1);
-
-            let _ = matches.get("item").unwrap().as_item();
-        });
-
-        with_tts(r#"cfg(target_os="windows")"#, |tts| {
-            let matches = parse_arguments(&tts, &[Specifier::Meta("meta".into())]).unwrap();
-            assert_eq!(matches.len(), 1);
-
-            let _ = matches.get("meta").unwrap().as_meta();
-        });
-
-        with_tts("(17, 'a')", |tts| {
-            let matches = parse_arguments(&tts, &[Specifier::Pat("pat".into())]).unwrap();
-            assert_eq!(matches.len(), 1);
-
-            let _ = matches.get("pat").unwrap().as_pat();
-        });
-
-        with_tts("let x = 3", |tts| {
-            let matches = parse_arguments(&tts, &[Specifier::Stmt("stmt".into())]).unwrap();
-            assert_eq!(matches.len(), 1);
-
-            let _ = matches.get("stmt").unwrap().as_stmt();
-        });
-
-        with_tts("Vec<(char, String)>", |tts| {
-            let matches = parse_arguments(&tts, &[Specifier::Ty("ty".into())]).unwrap();
-            assert_eq!(matches.len(), 1);
-
-            let _ = matches.get("ty").unwrap().as_ty();
-        });
-
-        with_tts("~ foo 'bar", |tts| {
-            let matches = parse_arguments(&tts, &[
-                Specifier::Specific(Token::Tilde),
-                Specifier::specific_ident("foo"),
-                Specifier::specific_lftm("'bar"),
-            ]).unwrap();
-
-            assert_eq!(matches.len(), 0);
-        });
-
-        with_tts("[~ foo 'bar baz]", |tts| {
-            let matches = parse_arguments(&tts, &[
-                Specifier::Delimited(DelimToken::Bracket, vec![
-                    Specifier::Specific(Token::Tilde),
-                    Specifier::specific_ident("foo"),
-                    Specifier::specific_lftm("'bar"),
-                    Specifier::Ident("ident".into()),
-                ]),
-            ]).unwrap();
-
-            assert_eq!(matches.len(), 1);
-
-            let _ = matches.get("ident").unwrap().as_ident();
-        });
-
-        with_tts("a, b c, d e f; ; g", |tts| {
-            let matches = parse_arguments(&tts, &[
-                Specifier::Sequence(Amount::OneOrMore, Some(Token::Comma), vec![
-                    Specifier::Ident("a".into()),
-                    Specifier::Sequence(Amount::ZeroOrMore, None, vec![
-                        Specifier::Ident("b".into()),
-                    ]),
-                ]),
-                Specifier::Specific(Token::Semi),
-                Specifier::Sequence(Amount::ZeroOrOne, None, vec![
-                    Specifier::Ident("c".into()),
-                ]),
-                Specifier::Specific(Token::Semi),
-                Specifier::Sequence(Amount::ZeroOrOne, None, vec![
-                    Specifier::Ident("d".into()),
-                ]),
-            ]).unwrap();
-
-            assert_eq!(matches.len(), 4);
-
-            let a = matches.get("a").unwrap().as_sequence().into_iter().map(|m| {
-                m.as_ident()
-            }).collect::<Vec<_>>();
-
+            let a = get!(m, a, as_sequence, as_ident);
             assert_eq!(a.len(), 3);
 
             assert_eq!(a[0].name.as_str(), "a");
             assert_eq!(a[1].name.as_str(), "b");
             assert_eq!(a[2].name.as_str(), "d");
 
-            let b = matches.get("b").unwrap().as_sequence().into_iter().map(|m| {
-                m.as_sequence().into_iter().map(|m| m.as_ident()).collect::<Vec<_>>()
-            }).collect::<Vec<_>>();
-
+            let b = get!(m, b, as_sequence, as_sequence, as_ident);
             assert_eq!(b.len(), 3);
 
             assert_eq!(b[0].len(), 0);
@@ -710,16 +649,10 @@ mod tests {
             assert_eq!(b[2][0].name.as_str(), "e");
             assert_eq!(b[2][1].name.as_str(), "f");
 
-            let c = matches.get("c").unwrap().as_sequence().into_iter().map(|m| {
-                m.as_ident()
-            }).collect::<Vec<_>>();
-
+            let c = get!(m, c, as_sequence, as_ident);
             assert_eq!(c.len(), 0);
 
-            let d = matches.get("d").unwrap().as_sequence().into_iter().map(|m| {
-                m.as_ident()
-            }).collect::<Vec<_>>();
-
+            let d = get!(m, d, as_sequence, as_ident);
             assert_eq!(d.len(), 1);
 
             assert_eq!(d[0].name.as_str(), "g");
