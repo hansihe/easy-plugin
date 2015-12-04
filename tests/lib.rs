@@ -122,11 +122,12 @@ easy_plugin! {
         $tt:tt
         [$a:ident $b:ident]
         $($c:ident $($d:ident)*), +;
-        $($e:ident;)?
+        $($e:ident)?; $($f:ident)?;
+        $($($g:ident)? $($h:ident)?), +;
     }
 
     pub fn expand_struct_all(
-        _: &mut ExtCtxt, span: Span, arguments: Arguments
+        context: &mut ExtCtxt, span: Span, arguments: Arguments
     ) -> PluginResult<Box<MacResult>> {
         macro_rules! check {
             ($print:ident, $actual:expr, $expected:expr) => ({
@@ -140,9 +141,9 @@ easy_plugin! {
         assert_eq!(arguments.delim.delim, DelimToken::Bracket);
         check!(tts_to_string, arguments.delim.tts, "1 , 2 , 3");
         check!(expr_to_string, arguments.expr, "2 + 2");
-        assert_eq!(&*arguments.ident.name.as_str(), "foo");
+        assert_eq!(arguments.ident, context.ident_of("foo"));
         check!(item_to_string, arguments.item, "struct Bar;");
-        assert_eq!(&*arguments.lftm.as_str(), "'baz");
+        assert_eq!(arguments.lftm, context.name_of("'baz"));
         check!(lit_to_string, arguments.lit, "322");
         check!(meta_item_to_string, arguments.meta, r#"cfg(target_os = "windows")"#);
         check!(pat_to_string, arguments.pat, r#"(foo, "bar")"#);
@@ -151,27 +152,36 @@ easy_plugin! {
         check!(ty_to_string, arguments.ty, "i32");
         check!(token_to_string, arguments.tok, "~");
         check!(tt_to_string, arguments.tt, "!");
-        assert_eq!(&*arguments.a.name.as_str(), "a");
-        assert_eq!(&*arguments.b.name.as_str(), "b");
 
-        assert_eq!(arguments.c.len(), 3);
-        assert_eq!(&*arguments.c[0].name.as_str(), "a");
-        assert_eq!(&*arguments.c[1].name.as_str(), "b");
-        assert_eq!(&*arguments.c[2].name.as_str(), "d");
+        assert_eq!(arguments.a, context.ident_of("a"));
+        assert_eq!(arguments.b, context.ident_of("b"));
 
-        assert_eq!(arguments.d.len(), 3);
+        assert_eq!(arguments.c, &[
+            context.ident_of("a"),
+            context.ident_of("b"),
+            context.ident_of("d"),
+        ]);
 
-        assert_eq!(arguments.d[0].len(), 0);
+        assert_eq!(arguments.d, &[
+            vec![],
+            vec![context.ident_of("c")],
+            vec![context.ident_of("e"), context.ident_of("f")],
+        ]);
 
-        assert_eq!(arguments.d[1].len(), 1);
-        assert_eq!(&*arguments.d[1][0].name.as_str(), "c");
+        assert_eq!(arguments.e, None);
+        assert_eq!(arguments.f, Some(context.ident_of("g")));
 
-        assert_eq!(arguments.d[2].len(), 2);
-        assert_eq!(&*arguments.d[2][0].name.as_str(), "e");
-        assert_eq!(&*arguments.d[2][1].name.as_str(), "f");
+        assert_eq!(arguments.g, &[
+            None,
+            Some(context.ident_of("h")),
+            Some(context.ident_of("i")),
+        ]);
 
-        assert_eq!(arguments.e.len(), 1);
-        assert_eq!(&*arguments.e[0].name.as_str(), "g");
+        assert_eq!(arguments.h, &[
+            None,
+            None,
+            Some(context.ident_of("j")),
+        ]);
 
         Ok(DummyResult::any(span))
     }
@@ -185,30 +195,26 @@ easy_plugin! {
     }
 
     pub fn expand_enum(
-        _: &mut ExtCtxt, span: Span, arguments: Arguments
+        context: &mut ExtCtxt, span: Span, arguments: Arguments
     ) -> PluginResult<Box<MacResult>> {
         match arguments {
             Arguments::A(_) => { },
             Arguments::B(b) => {
-                assert_eq!(&*b.a.name.as_str(), "a");
-                assert_eq!(&*b.b.name.as_str(), "b");
+                assert_eq!(b.a, context.ident_of("a"));
+                assert_eq!(b.b, context.ident_of("b"));
             },
             Arguments::C(c) => {
-                assert_eq!(c.a.len(), 3);
-                assert_eq!(&*c.a[0].name.as_str(), "a");
-                assert_eq!(&*c.a[1].name.as_str(), "b");
-                assert_eq!(&*c.a[2].name.as_str(), "d");
+                assert_eq!(c.a, &[
+                    context.ident_of("a"),
+                    context.ident_of("b"),
+                    context.ident_of("d"),
+                ]);
 
-                assert_eq!(c.b.len(), 3);
-
-                assert_eq!(c.b[0].len(), 0);
-
-                assert_eq!(c.b[1].len(), 1);
-                assert_eq!(&*c.b[1][0].name.as_str(), "c");
-
-                assert_eq!(c.b[2].len(), 2);
-                assert_eq!(&*c.b[2][0].name.as_str(), "e");
-                assert_eq!(&*c.b[2][1].name.as_str(), "f");
+                assert_eq!(c.b, &[
+                    vec![],
+                    vec![context.ident_of("c")],
+                    vec![context.ident_of("e"), context.ident_of("f")],
+                ]);
             },
         }
 
@@ -250,7 +256,9 @@ fn test_easy_plugin() {
         !
         [a b]
         a, b c, d e f;
+        ;
         g;
+        , h, i j;
     "#;
 
     with_tts(arguments, |c, s, a| {

@@ -51,8 +51,8 @@
 //! `a` in the `Arguments` struct. For more information on argument specifications, see the relevant
 //! section [below](#specifications).
 //!
-//! If the arguments do not match the argument specification or your plugin function returns `Err`, the
-//! wrapper function will report an error with `ExtCtxt::span_err` for you.
+//! If the arguments do not match the argument specification or your plugin function returns `Err`,
+//! the wrapper function will report an error with `ExtCtxt::span_err` for you.
 //!
 //! Note that the `expand_plugin` function is public and has a documentation comment. The visibility
 //! and attributes applied to your plugin function (including documentation comments) will be
@@ -143,7 +143,7 @@
 //! $(($left:ident $operator:binop $right:ident)), *
 //! ```
 //! In addition to the `*` and `+` sequence operators, there is also a `?` operator which allows for
-//! sequences with either zero or one repetitions but does not support the use of a separator. For
+//! sequences with either zero or one repetitions. This operator does not support separators.  For
 //! example, the following plugin argument specification can match either a binary expression or
 //! nothing at all.
 //!
@@ -151,9 +151,11 @@
 //! $($left:ident $operator:binop $right:ident)?
 //! ```
 //!
-//! Named specifiers that occur in sequences cannot be stored as their storage type because there
-//! may be more than one or none at all. For this reason, named specifiers that occur in sequences
-//! have the storage type of `Vec<$type>` where `$type` is the original storage type.
+//! Named specifiers that occur in sequences cannot be stored directly as their storage type because
+//! there may be more than one or none at all. For this reason, named specifiers that occur in
+//! sequences have the storage type of either `Vec<$type>` or `Option<$type>` where `$type` is the
+//! base storage type. `Vec<$type>` is used for `*` and `+` sequences and `Option<$type>` is used
+//! for `?` sequences.
 //!
 //! An additional level of `Vec` is added for each sequence level. For example, in the plugin
 //! argument specification below, `$b:ident` occurs two sequences deep. The storage type for `b` in
@@ -256,12 +258,17 @@ fn expand_struct_fields(
             Specifier::Delimited(_, ref subspecification) => {
                 fields.extend(expand_struct_fields(context, span, &subspecification));
             },
-            Specifier::Sequence(_, _, ref subspecification) => {
+            Specifier::Sequence(amount, _, ref subspecification) => {
                 let mut subfields = expand_struct_fields(context, span, &subspecification);
 
                 for subfield in &mut subfields {
                     let ty = subfield.node.ty.clone();
-                    subfield.node.ty = quote_ty!(context, ::std::vec::Vec<$ty>);
+
+                    if amount == Amount::ZeroOrOne {
+                        subfield.node.ty = quote_ty!(context, ::std::option::Option<$ty>);
+                    } else {
+                        subfield.node.ty = quote_ty!(context, ::std::vec::Vec<$ty>);
+                    }
                 }
 
                 fields.extend(subfields);
@@ -285,30 +292,41 @@ fn expand_struct(
     }
 }
 
-fn expand_field(context: &mut ExtCtxt, span: Span, name: &str, get: &str, depth: u32) -> Field {
+fn expand_field(
+    context: &mut ExtCtxt, span: Span, name: &str, get: &str, stack: &[Amount]
+) -> Field {
     let get = context.ident_of(get);
     let mut expr = quote_expr!(context, _m.get($name).unwrap());
 
-    if depth == 0 {
+    if stack.is_empty() {
         context.field_imm(span, context.ident_of(name), quote_expr!(context, $expr.$get()))
     } else {
-        let f = (1..depth).fold(quote_expr!(context, |s| s.$get()), |f, _| {
-            quote_expr!(context, |s| s.as_sequence().iter().map($f).collect())
+        let f = stack.iter().skip(1).fold(quote_expr!(context, |s| s.$get()), |f, a| {
+            if *a == Amount::ZeroOrOne {
+                quote_expr!(context, |s| s.as_sequence().iter().map($f).next())
+            } else {
+                quote_expr!(context, |s| s.as_sequence().iter().map($f).collect())
+            }
         });
 
-        expr = quote_expr!(context, $expr.as_sequence().iter().map($f).collect());
+        if stack[0] == Amount::ZeroOrOne {
+            expr = quote_expr!(context, $expr.as_sequence().iter().map($f).next());
+        } else {
+            expr = quote_expr!(context, $expr.as_sequence().iter().map($f).collect());
+        }
+
         context.field_imm(span, context.ident_of(name), expr)
     }
 }
 
 fn expand_fields(
-    context: &mut ExtCtxt, span: Span, specification: &[Specifier], depth: u32
+    context: &mut ExtCtxt, span: Span, specification: &[Specifier], stack: &[Amount]
 ) -> Vec<Field> {
     let mut fields = vec![];
 
     macro_rules! field {
         ($name:expr, $get:ident) => ({
-            fields.push(expand_field(context, span, $name, stringify!($get), depth));
+            fields.push(expand_field(context, span, $name, stringify!($get), stack));
         });
     }
 
@@ -331,10 +349,12 @@ fn expand_fields(
             Specifier::Tok(ref name) => field!(name, as_tok),
             Specifier::Tt(ref name) => field!(name, as_tt),
             Specifier::Delimited(_, ref subspecification) => {
-                fields.extend(expand_fields(context, span, &subspecification, depth));
+                fields.extend(expand_fields(context, span, &subspecification, stack));
             },
-            Specifier::Sequence(_, _, ref subspecification) => {
-                fields.extend(expand_fields(context, span, &subspecification, depth + 1));
+            Specifier::Sequence(amount, _, ref subspecification) => {
+                let mut stack = stack.to_vec();
+                stack.push(amount);
+                fields.extend(expand_fields(context, span, &subspecification, &stack));
             },
             _ => { },
         }
@@ -352,7 +372,7 @@ fn expand_parse(
         context.ident_of("parse")
     };
 
-    let fields = expand_fields(context, span, specification, 0);
+    let fields = expand_fields(context, span, specification, &[]);
     let specification = specification.as_expr(context, span);
 
     let result = if fields.is_empty() {
