@@ -50,6 +50,8 @@ fn test_parse_specification() {
         [$a:ident $b:ident]
         $($c:ident $($d:ident)*), +
         $($e:ident)?
+        $kappa:(Kappa)*
+        $keepo:(Keepo), +
     );
 
     let lit = Token::Literal(Lit::Integer(token::intern("322")), Some(token::intern("u32")));
@@ -89,6 +91,12 @@ fn test_parse_specification() {
         Specifier::Sequence(Amount::ZeroOrOne, None, vec![
             Specifier::Ident("e".into()),
         ]),
+        Specifier::NamedSequence("kappa".into(), Amount::ZeroOrMore, None, vec![
+            Specifier::specific_ident("Kappa"),
+        ]),
+        Specifier::NamedSequence("keepo".into(), Amount::OneOrMore, Some(Token::Comma), vec![
+            Specifier::specific_ident("Keepo"),
+        ]),
     ]);
 }
 
@@ -124,6 +132,8 @@ easy_plugin! {
         $($c:ident $($d:ident)*), +;
         $($e:ident)?; $($f:ident)?;
         $($($g:ident)? $($h:ident)?), +;
+        $kappa:(Kappa), +;
+        $($keepo:(Keepo)?), +;
     }
 
     pub fn expand_struct_all(
@@ -182,6 +192,9 @@ easy_plugin! {
             None,
             Some(context.ident_of("j")),
         ]);
+
+        assert_eq!(arguments.kappa, 3);
+        assert_eq!(arguments.keepo, vec![false, true, false, true]);
 
         Ok(DummyResult::any(span))
     }
@@ -259,6 +272,8 @@ fn test_easy_plugin() {
         ;
         g;
         , h, i j;
+        Kappa, Kappa, Kappa;
+        , Keepo, , Keepo;
     "#;
 
     with_tts(arguments, |c, s, a| {

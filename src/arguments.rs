@@ -2,7 +2,6 @@ use std::cell::{RefCell};
 use std::collections::{HashMap};
 use std::rc::{Rc};
 
-use syntax::parse;
 use syntax::ast::*;
 use syntax::codemap::{DUMMY_SP, CodeMap, Span};
 use syntax::diagnostic::{Emitter, Handler, Level, RenderSpan, SpanHandler};
@@ -52,6 +51,8 @@ pub enum Match {
     Tt(TokenTree),
     /// A sequence which may either contain sequence matches or subsequences.
     Sequence(Vec<Match>),
+    /// A count of named sequence repetitions.
+    NamedSequence(usize),
 }
 
 impl Match {
@@ -258,6 +259,30 @@ impl Match {
             _ => panic!("this match is not a collection of sequence matches or subsequences"),
         }
     }
+
+    /// Returns this count of named sequence repetitions.
+    ///
+    /// # Panics
+    ///
+    /// * this match is not a count of named sequence reptitions
+    pub fn as_named_sequence(&self) -> usize {
+        match *self {
+            Match::NamedSequence(count) => count,
+            _ => panic!("this match is not a count of named sequence reptitions"),
+        }
+    }
+
+    /// Returns whether this count of named sequence repetitions is non-zero.
+    ///
+    /// # Panics
+    ///
+    /// * this match is not a count of named sequence reptitions
+    pub fn as_named_sequence_bool(&self) -> bool {
+        match *self {
+            Match::NamedSequence(count) => count != 0,
+            _ => panic!("this match is not a count of named sequence reptitions"),
+        }
+    }
 }
 
 thread_local!(static ERROR: RefCell<(Span, String)> = RefCell::new((DUMMY_SP, "no error".into())));
@@ -287,7 +312,7 @@ fn parse_sequence<'a>(
     separator: &Option<Token>,
     specification: &[Specifier],
     matches: &mut HashMap<String, Match>,
-) -> PluginResult<()> {
+) -> PluginResult<usize> {
     let required = amount == Amount::OneOrMore;
 
     for specifier in specification {
@@ -314,12 +339,12 @@ fn parse_sequence<'a>(
         }
     }
 
-    let mut first = true;
+    let mut count = 0;
 
     loop {
         if let Some(ref separator) = *separator {
-            if !first && parser.apply(|p| p.eat(separator)).ok().map_or(true, |b| !b) {
-                return Ok(());
+            if count != 0 && parser.apply(|p| p.eat(separator)).ok().map_or(true, |b| !b) {
+                return Ok(count);
             }
         }
 
@@ -329,11 +354,11 @@ fn parse_sequence<'a>(
 
         match parse_arguments_(span, parser, &specification, &mut submatches) {
             Ok(()) => { },
-            Err(error) => if (first && required) || (!first && separator.is_some()) {
+            Err(error) => if (count == 0 && required) || (count != 0 && separator.is_some()) {
                 return Err(error);
             } else {
                 parser.rollback();
-                return Ok(());
+                return Ok(count);
             },
         }
 
@@ -344,11 +369,11 @@ fn parse_sequence<'a>(
             }
         }
 
-        if amount == Amount::ZeroOrOne {
-            return Ok(());
-        }
+        count += 1;
 
-        first = false;
+        if amount == Amount::ZeroOrOne {
+            return Ok(count);
+        }
     }
 }
 
@@ -480,6 +505,13 @@ fn parse_arguments_<'a>(
             Specifier::Sequence(amount, ref separator, ref subspecification) => {
                 try!(parse_sequence(span, parser, amount, separator, subspecification, matches));
             },
+            Specifier::NamedSequence(ref name, amount, ref separator, ref subspecification) => {
+                let count = parse_sequence(
+                    span, parser, amount, separator, subspecification, matches
+                );
+
+                matches.insert(name.clone(), Match::NamedSequence(try!(count)));
+            }
         }
     }
 
@@ -680,6 +712,24 @@ mod tests {
             assert_eq!(b[1].name.as_str(), "b");
 
             check!(lit_to_string, get!(m, c, as_lit), "3");
+        });
+
+        let arguments = ", A, A A B, B, B D";
+        let specification = "$($a:(A)*), + $b:(B), + $c:(C)? $d:(D)?";
+
+        with_matches(arguments, specification, |m| {
+            assert_eq!(m.len(), 4);
+
+            let a = get!(m, a, as_sequence, as_named_sequence);
+            assert_eq!(a.len(), 3);
+
+            assert_eq!(a[0], 0);
+            assert_eq!(a[1], 1);
+            assert_eq!(a[2], 2);
+
+            assert_eq!(get!(m, b, as_named_sequence), 3);
+            assert_eq!(get!(m, c, as_named_sequence), 0);
+            assert_eq!(get!(m, d, as_named_sequence), 1);
         });
     }
 }

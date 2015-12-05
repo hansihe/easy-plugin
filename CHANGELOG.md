@@ -10,3 +10,4 @@
 ### 0.2.0 - UNRELEASED
 - Fix overeager sequence parsing
 - Add support for sequences with zero or one repetitions (`$(sequence)?`)
+- Add support for named sequences

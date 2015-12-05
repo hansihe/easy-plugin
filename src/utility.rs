@@ -251,15 +251,6 @@ impl<'i, I> TtsIterator<'i, I> where I: Iterator<Item=&'i TokenTree> {
             }
         })
     }
-
-    pub fn expect_ident(&mut self) -> PluginResult<(Span, Ident)> {
-        self.expect_token("identifier").and_then(|(s, t)| {
-            match *t {
-                Token::Ident(ref ident, _) => Ok((s, ident.clone())),
-                _ => s.as_error("expected identifier"),
-            }
-        })
-    }
 }
 
 impl<'i, I> Iterator for TtsIterator<'i, I> where I: Iterator<Item=&'i TokenTree> {
@@ -356,6 +347,10 @@ impl<'a> TransactionParser<'a> {
     }
 
     pub fn get_last_span(&self) -> Span {
-        self.tokens[self.current].sp
+        if self.current == self.tokens.len() {
+            self.tokens[self.tokens.len() - 1].sp
+        } else {
+            self.tokens[self.current].sp
+        }
     }
 }

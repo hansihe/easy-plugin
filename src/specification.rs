@@ -72,6 +72,8 @@ pub enum Specifier {
     Delimited(DelimToken, Vec<Specifier>),
     /// A sequence piece.
     Sequence(Amount, Option<Token>, Vec<Specifier>),
+    /// A named sequence piece.
+    NamedSequence(String, Amount, Option<Token>, Vec<Specifier>),
 }
 
 impl AsExpr for Specifier {
@@ -125,6 +127,12 @@ impl AsExpr for Specifier {
                 let subspecification = subspecification.as_expr(context, span);
                 expr!("Sequence", amount, separator, subspecification)
             },
+            Specifier::NamedSequence(ref name, amount, ref separator, ref subspecification) => {
+                let amount = amount.as_expr(context, span);
+                let separator = separator.as_expr(context, span);
+                let subspecification = subspecification.as_expr(context, span);
+                expr!("NamedSequence", string!(name), amount, separator, subspecification)
+            },
         }
     }
 }
@@ -167,26 +175,54 @@ fn parse_named_specifier<'i, I>(
     tts: &mut TtsIterator<'i, I>, name: String
 ) -> PluginResult<Specifier> where I: Iterator<Item=&'i TokenTree> {
     try!(tts.expect_specific_token(&Token::Colon));
-    let (subspan, value) = try!(tts.expect_ident());
 
-    match &*value.name.as_str() {
-        "attr" => Ok(Specifier::Attr(name)),
-        "binop" => Ok(Specifier::BinOp(name)),
-        "block" => Ok(Specifier::Block(name)),
-        "delim" => Ok(Specifier::Delim(name)),
-        "expr" => Ok(Specifier::Expr(name)),
-        "ident" => Ok(Specifier::Ident(name)),
-        "item" => Ok(Specifier::Item(name)),
-        "lftm" => Ok(Specifier::Lftm(name)),
-        "lit" => Ok(Specifier::Lit(name)),
-        "meta" => Ok(Specifier::Meta(name)),
-        "pat" => Ok(Specifier::Pat(name)),
-        "path" => Ok(Specifier::Path(name)),
-        "stmt" => Ok(Specifier::Stmt(name)),
-        "ty" => Ok(Specifier::Ty(name)),
-        "tok" => Ok(Specifier::Tok(name)),
-        "tt" => Ok(Specifier::Tt(name)),
-        _ => subspan.as_error("invalid named specifier type"),
+    match try!(tts.expect()) {
+        &TokenTree::Delimited(subspan, ref delimited) => {
+            let mut names = HashSet::new();
+            let subspecification = try!(parse_specification_(subspan, &delimited.tts, &mut names));
+
+            if !names.is_empty() {
+                return subspan.as_error("named specifiers not allowed in named sequences");
+            }
+
+            let (amount, separator) = try!(parse_sequence_suffix(tts));
+            Ok(Specifier::NamedSequence(name, amount, separator, subspecification))
+        },
+        &TokenTree::Token(subspan, Token::Ident(ref ident, _)) => match &*ident.name.as_str() {
+            "attr" => Ok(Specifier::Attr(name)),
+            "binop" => Ok(Specifier::BinOp(name)),
+            "block" => Ok(Specifier::Block(name)),
+            "delim" => Ok(Specifier::Delim(name)),
+            "expr" => Ok(Specifier::Expr(name)),
+            "ident" => Ok(Specifier::Ident(name)),
+            "item" => Ok(Specifier::Item(name)),
+            "lftm" => Ok(Specifier::Lftm(name)),
+            "lit" => Ok(Specifier::Lit(name)),
+            "meta" => Ok(Specifier::Meta(name)),
+            "pat" => Ok(Specifier::Pat(name)),
+            "path" => Ok(Specifier::Path(name)),
+            "stmt" => Ok(Specifier::Stmt(name)),
+            "ty" => Ok(Specifier::Ty(name)),
+            "tok" => Ok(Specifier::Tok(name)),
+            "tt" => Ok(Specifier::Tt(name)),
+            _ => subspan.as_error("invalid named specifier type"),
+        },
+        invalid => invalid.as_error("expected named specifier type or sequence"),
+    }
+}
+
+fn parse_sequence_suffix<'i, I>(
+    tts: &mut TtsIterator<'i, I>
+) -> PluginResult<(Amount, Option<Token>)> where I: Iterator<Item=&'i TokenTree> {
+    match try!(tts.expect_token("expected separator, `*`, or `+`")) {
+        (_, &Token::BinOp(BinOpToken::Plus)) => Ok((Amount::OneOrMore, None)),
+        (_, &Token::BinOp(BinOpToken::Star)) => Ok((Amount::ZeroOrMore, None)),
+        (_, &Token::Question) => Ok((Amount::ZeroOrOne, None)),
+        (subspan, separator) => match try!(tts.expect_token("expected `*` or `+`")) {
+            (_, &Token::BinOp(BinOpToken::Plus)) => Ok((Amount::OneOrMore, Some(separator.clone()))),
+            (_, &Token::BinOp(BinOpToken::Star)) => Ok((Amount::ZeroOrMore, Some(separator.clone()))),
+            _ => subspan.as_error("expected `*` or `+`"),
+        },
     }
 }
 
@@ -194,18 +230,7 @@ fn parse_sequence<'i, I>(
     span: Span, tts: &mut TtsIterator<'i, I>, subtts: &[TokenTree], names: &mut HashSet<String>
 ) -> PluginResult<Specifier> where I: Iterator<Item=&'i TokenTree> {
     let subspecification = try!(parse_specification_(span, subtts, names));
-
-    let (amount, separator) = match try!(tts.expect_token("expected separator, `*`, or `+`")) {
-        (_, &Token::BinOp(BinOpToken::Plus)) => (Amount::OneOrMore, None),
-        (_, &Token::BinOp(BinOpToken::Star)) => (Amount::ZeroOrMore, None),
-        (_, &Token::Question) => (Amount::ZeroOrOne, None),
-        (subspan, separator) => match try!(tts.expect_token("expected `*` or `+`")) {
-            (_, &Token::BinOp(BinOpToken::Plus)) => (Amount::OneOrMore, Some(separator.clone())),
-            (_, &Token::BinOp(BinOpToken::Star)) => (Amount::ZeroOrMore, Some(separator.clone())),
-            _ => return subspan.as_error("expected `*` or `+`"),
-        },
-    };
-
+    let (amount, separator) = try!(parse_sequence_suffix(tts));
     Ok(Specifier::Sequence(amount, separator, subspecification))
 }
 
@@ -298,6 +323,20 @@ mod tests {
                 ]),
                 Specifier::Sequence(Amount::ZeroOrOne, None, vec![
                     Specifier::Ident("c".into()),
+                ]),
+            ]);
+        });
+
+        with_tts("$a:(A)* $b:(B), + $c:(C)?", |tts| {
+            assert_eq!(parse_specification(&tts).unwrap(), vec![
+                Specifier::NamedSequence("a".into(), Amount::ZeroOrMore, None, vec![
+                    Specifier::specific_ident("A"),
+                ]),
+                Specifier::NamedSequence("b".into(), Amount::OneOrMore, Some(Token::Comma), vec![
+                    Specifier::specific_ident("B"),
+                ]),
+                Specifier::NamedSequence("c".into(), Amount::ZeroOrOne, None, vec![
+                    Specifier::specific_ident("C"),
                 ]),
             ]);
         });

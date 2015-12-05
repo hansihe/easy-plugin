@@ -142,6 +142,7 @@
 //! ```ignore
 //! $(($left:ident $operator:binop $right:ident)), *
 //! ```
+//!
 //! In addition to the `*` and `+` sequence operators, there is also a `?` operator which allows for
 //! sequences with either zero or one repetitions. This operator does not support separators.  For
 //! example, the following plugin argument specification can match either a binary expression or
@@ -164,6 +165,28 @@
 //! ```ignore
 //! $($a:ident $($b:ident)*)*
 //! ```
+//!
+//! ## Named Sequences
+//!
+//! There are also named sequences, which behave rather differently than regular sequences. Named
+//! sequences cannot contain named specifiers and instead consist of specific token trees that you
+//! wish to be counted. For example, the following plugin argument specification will match
+//! either `pub struct { }` or just `struct { }`.
+//!
+//! ```ignore
+//! $public:(pub)? struct { }
+//! ```
+//!
+//! These named sequences allow the usage of the same suffixes as regular sequences. The `*`, `+`,
+//! and `?` operators are supported and separators are supported for the `*` and `+` operators. For
+//! example, the following plugin argument specification matches any number of comma-separated `A`s.
+//!
+//! ```ignore
+//! $a:(A), *
+//! ```
+//!
+//! Because named sequences are counted, the storage types are simply `usize` for `*` and `+` named
+//! sequences and `bool` for `?`named sequences.
 
 #![feature(plugin_registrar, quote, rustc_private)]
 
@@ -273,6 +296,11 @@ fn expand_struct_fields(
 
                 fields.extend(subfields);
             },
+            Specifier::NamedSequence(ref name, amount, _, _) => if amount == Amount::ZeroOrOne {
+                field!(name, bool);
+            } else {
+                field!(name, usize);
+            },
             _ => { },
         }
     }
@@ -355,6 +383,11 @@ fn expand_fields(
                 let mut stack = stack.to_vec();
                 stack.push(amount);
                 fields.extend(expand_fields(context, span, &subspecification, &stack));
+            },
+            Specifier::NamedSequence(ref name, amount, _, _) => if amount == Amount::ZeroOrOne {
+                fields.push(expand_field(context, span, name, "as_named_sequence_bool", &stack));
+            } else {
+                fields.push(expand_field(context, span, name, "as_named_sequence", &stack));
             },
             _ => { },
         }
