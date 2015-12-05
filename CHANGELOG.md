@@ -1,13 +1,16 @@
-### 0.1.0 - November 12, 2015
-- Initial release
+## [0.1.0] - 2015-11-12
 
-### 0.1.1 - November 15, 2015
-- Update for latest nightly
+## [0.1.1] - 2015-11-15
+### Fixed
+- Updated for latest nightly
 
-### 0.1.2 - December 1, 2015
-- Update for latest nightly
+## [0.1.2] - 2015-12-01
+### Fixed
+- Updated for latest nightly
 
-### 0.2.0 - UNRELEASED
-- Fix overeager sequence parsing
-- Add support for sequences with zero or one repetitions (`$(sequence)?`)
-- Add support for named sequences
+## [0.2.0] - UNRELEASED
+### Fixed
+- Fixed overeager sequence parsing
+### Added
+- Added support for sequences with zero or one repetitions (`$(sequence)?`)
+- Added support for named sequences
