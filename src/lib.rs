@@ -497,7 +497,13 @@ fn expand_enum_easy_plugin(
                     $inner(context, span, $arguments::$constructor(a))
                 }) {
                     Ok(result) => result,
-                    Err((span, message)) => {
+                    Err((subspan, message)) => {
+                        let span = if subspan == ::syntax::codemap::DUMMY_SP {
+                            span
+                        } else {
+                            subspan
+                        };
+
                         context.span_err(span, &message);
                         ::syntax::ext::base::DummyResult::any(span)
                     }
@@ -572,7 +578,13 @@ fn expand_struct_easy_plugin(
             $function
             match parse(arguments).and_then(|a| $inner(context, span, a)) {
                 Ok(result) => result,
-                Err((span, message)) => {
+                Err((subspan, message)) => {
+                    let span = if subspan == ::syntax::codemap::DUMMY_SP {
+                        span
+                    } else {
+                        subspan
+                    };
+
                     context.span_err(span, &message);
                     ::syntax::ext::base::DummyResult::any(span)
                 },

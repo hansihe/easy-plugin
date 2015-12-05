@@ -19,3 +19,8 @@
 ### Added
 - Added support for sequences with zero or one repetitions (`$(sequence)?`)
 - Added support for named sequences
+
+## [0.2.1] - UNRELEASED
+
+### Fixed
+- Fixed error spans for plugins supplied with zero arguments
