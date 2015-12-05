@@ -1,7 +1,7 @@
 ## [0.1.0] - 2015-11-12
+- Initial release
 
 ## [0.1.1] - 2015-11-15
-- Initial release
 
 ### Fixed
 - Updated for latest nightly
