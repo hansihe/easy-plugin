@@ -11,7 +11,7 @@
 ### Fixed
 - Updated for latest nightly
 
-## [0.2.0] - UNRELEASED
+## [0.2.0] - 2015-12-04
 
 ### Fixed
 - Fixed overeager sequence parsing
