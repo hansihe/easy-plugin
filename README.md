@@ -1,6 +1,7 @@
 easy-plugin
 ===========
 
+[![crates.io](  https://img.shields.io/crates/v/easy-plugin.svg)](https://crates.io/crates/easy-plugin)
 [![Travis CI](https://travis-ci.org/KyleMayes/easy-plugin.svg?branch=master)](https://travis-ci.org/KyleMayes/easy-plugin)
 
 [Documentation](https://kylemayes.github.io/easy-plugin/easy_plugin)
