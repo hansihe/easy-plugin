@@ -25,7 +25,7 @@
 ### Fixed
 - Fixed error spans for plugins supplied with zero arguments
 
-## [0.2.2] - UNRELEASED
+## [0.2.2] - 2015-12-21
 
 ### Fixed
 - Updated for latest nightly
