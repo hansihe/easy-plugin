@@ -4,7 +4,8 @@ use std::rc::{Rc};
 
 use syntax::ast::*;
 use syntax::codemap::{DUMMY_SP, CodeMap, Span};
-use syntax::diagnostic::{Emitter, Handler, Level, RenderSpan, SpanHandler};
+use syntax::errors::{Handler, Level, RenderSpan};
+use syntax::errors::emitter::{Emitter};
 use syntax::parse::{ParseSess};
 use syntax::parse::common::{SeqSep};
 use syntax::parse::parser::{Parser, PathParsingMode};
@@ -296,13 +297,13 @@ impl SaveEmitter {
 }
 
 impl Emitter for SaveEmitter {
-    fn emit(&mut self, cs: Option<(&CodeMap, Span)>, message: &str, _: Option<&str>, level: Level) {
+    fn emit(&mut self, cs: Option<Span>, message: &str, _: Option<&str>, level: Level) {
         if level == Level::Fatal {
-            self.emit_(cs.map_or(DUMMY_SP, |cs| cs.1), message);
+            self.emit_(cs.unwrap_or(DUMMY_SP), message);
         }
     }
 
-    fn custom_emit(&mut self, _: &CodeMap, _: RenderSpan, _: &str, _: Level) { }
+    fn custom_emit(&mut self, _: RenderSpan, _: &str, _: Level) { }
 }
 
 fn parse_sequence<'a>(
@@ -530,8 +531,8 @@ pub fn parse_arguments(
         return span.as_error("too many arguments");
     }
 
-    let handler = Handler::with_emitter(false, Box::new(SaveEmitter));
-    let session = ParseSess::with_span_handler(SpanHandler::new(handler, CodeMap::new()));
+    let handler = Handler::with_emitter(false, false, Box::new(SaveEmitter));
+    let session = ParseSess::with_span_handler(handler, Rc::new(CodeMap::new()));
     let mut parser = TransactionParser::new(&session, tts);
 
     let mut matches = HashMap::new();

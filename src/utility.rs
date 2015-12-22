@@ -3,7 +3,7 @@ use std::marker::{PhantomData};
 use syntax::ext::tt::transcribe;
 use syntax::ast::{Expr, Ident, Name, TokenTree};
 use syntax::codemap::{Span};
-use syntax::diagnostic::{FatalError};
+use syntax::errors::{FatalError};
 use syntax::ext::base::{ExtCtxt};
 use syntax::ext::build::{AstBuilder};
 use syntax::parse::{ParseSess};
