@@ -194,6 +194,8 @@
 #![cfg_attr(feature="clippy", plugin(clippy))]
 #![cfg_attr(feature="clippy", warn(clippy))]
 
+#![cfg_attr(feature="clippy", allow(cyclomatic_complexity, used_underscore_binding))]
+
 extern crate rustc_plugin;
 extern crate syntax;
 
