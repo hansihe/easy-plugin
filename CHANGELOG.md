@@ -30,7 +30,7 @@
 ### Fixed
 - Updated for latest nightly
 
-## [0.2.3] - UNRELEASED
+## [0.2.3] - 2016-1-2
 
 ### Fixed
 - Updated for latest nightly
