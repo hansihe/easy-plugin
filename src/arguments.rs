@@ -411,7 +411,10 @@ fn parse_arguments_<'a>(
         ($method:ident($($argument:expr), *)) => ({
             match parser.apply(|p| p.$method($($argument), *)) {
                 Ok(ok) => ok,
-                Err(_) => return Err(ERROR.with(|e| e.borrow().clone())),
+                Err(mut db) => {
+                    db.cancel();
+                    return Err(ERROR.with(|e| e.borrow().clone()))
+                },
             }
         });
     }
@@ -445,7 +448,7 @@ fn parse_arguments_<'a>(
                 };
 
                 let sep = SeqSep { sep: None, trailing_sep_allowed: false };
-                let f = |p: &mut Parser| { p.parse_token_tree() };
+                let f = |p: &mut Parser<'a>| { p.parse_token_tree() };
                 let tts = try_parse!(parse_seq_to_end(&Token::CloseDelim(delimiter), sep, f));
 
                 let delimited = Delimited {
@@ -556,11 +559,13 @@ mod tests {
     use syntax::parse::{ParseSess};
     use syntax::parse::token::{BinOpToken, DelimToken};
 
+    #[cfg_attr(feature="clippy", allow(let_and_return))]
     fn parse_token_trees(source: &str) -> Vec<TokenTree> {
         let session = ParseSess::new();
         let source = source.into();
         let mut parser = parse::new_parser_from_source_str(&session, vec![], "".into(), source);
-        parser.parse_all_token_trees().unwrap()
+        let tts = parser.parse_all_token_trees().unwrap();
+        tts
     }
 
     fn with_matches<F>(

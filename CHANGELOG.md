@@ -29,3 +29,8 @@
 
 ### Fixed
 - Updated for latest nightly
+
+## [0.2.3] - UNRELEASED
+
+### Fixed
+- Updated for latest nightly
