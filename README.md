@@ -10,8 +10,6 @@ A compiler plugin that makes it easier to write compiler plugins.
 
 Released under the MIT license.
 
-If you encounter any problems or would like a named specifier type to be added, please open an issue!
-
 ### Example
 
 ```rust
