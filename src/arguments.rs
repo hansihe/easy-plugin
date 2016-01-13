@@ -344,7 +344,7 @@ fn parse_sequence<'a>(
 
     loop {
         if let Some(ref separator) = *separator {
-            if count != 0 && parser.apply(|p| p.eat(separator)).ok().map_or(true, |b| !b) {
+            if count != 0 && !parser.apply(|p| p.eat(separator)) {
                 return Ok(count);
             }
         }
@@ -387,8 +387,8 @@ fn parse_arguments_<'a>(
     macro_rules! expect {
         () => ({
             match parser.apply(|p| p.bump_and_get()) {
-                Ok(token) => token,
-                Err(_) => return span.as_error("unexpected end of arguments"),
+                Token::Eof => return span.as_error("unexpected end of arguments"),
+                token => token,
             }
         });
 
