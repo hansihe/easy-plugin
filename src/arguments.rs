@@ -3,7 +3,7 @@ use std::collections::{HashMap};
 use std::rc::{Rc};
 
 use syntax::ast::*;
-use syntax::codemap::{DUMMY_SP, CodeMap, Span};
+use syntax::codemap::{DUMMY_SP, CodeMap, MultiSpan, Span};
 use syntax::errors::{Handler, Level, RenderSpan};
 use syntax::errors::emitter::{Emitter};
 use syntax::parse::{ParseSess};
@@ -297,13 +297,13 @@ impl SaveEmitter {
 }
 
 impl Emitter for SaveEmitter {
-    fn emit(&mut self, cs: Option<Span>, message: &str, _: Option<&str>, level: Level) {
+    fn emit(&mut self, cs: Option<&MultiSpan>, message: &str, _: Option<&str>, level: Level) {
         if level == Level::Fatal {
-            self.emit_(cs.unwrap_or(DUMMY_SP), message);
+            self.emit_(cs.map_or(DUMMY_SP, |ms| ms.to_span_bounds()), message);
         }
     }
 
-    fn custom_emit(&mut self, _: RenderSpan, _: &str, _: Level) { }
+    fn custom_emit(&mut self, _: &RenderSpan, _: &str, _: Level) { }
 }
 
 fn parse_sequence<'a>(
