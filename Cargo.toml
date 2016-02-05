@@ -3,7 +3,7 @@
 name = "easy-plugin"
 authors = ["Kyle Mayes <kyle@mayeses.com>"]
 
-version = "0.2.4"
+version = "0.2.5"
 
 readme = "README.md"
 license = "MIT"
