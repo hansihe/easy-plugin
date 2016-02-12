@@ -206,13 +206,13 @@ pub trait AsError<T, S> where S: AsRef<str> {
 
 impl<T, S> AsError<T, S> for Span where S: AsRef<str> {
     fn as_error(&self, message: S) -> PluginResult<T> {
-        Err((self.clone(), message.as_ref().into()))
+        Err((*self, message.as_ref().into()))
     }
 }
 
 impl<T, S> AsError<T, S> for TokenTree where S: AsRef<str> {
     fn as_error(&self, message: S) -> PluginResult<T> {
-        Err((self.get_span().clone(), message.as_ref().into()))
+        Err((self.get_span(), message.as_ref().into()))
     }
 }
 

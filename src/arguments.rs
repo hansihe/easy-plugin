@@ -124,7 +124,7 @@ impl Match {
     /// * this match is not an identifier
     pub fn as_ident(&self) -> Ident {
         match *self {
-            Match::Ident(ident) => ident.clone(),
+            Match::Ident(ident) => ident,
             _ => panic!("this match is not an identifier"),
         }
     }
