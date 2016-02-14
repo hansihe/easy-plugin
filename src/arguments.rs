@@ -43,7 +43,7 @@ pub enum Match {
     /// A qualified name (e.g., `T::SpecialA`).
     Path(Path),
     /// A single statement (e.g., `let x = 3`).
-    Stmt(P<Stmt>),
+    Stmt(Stmt),
     /// A type (e.g., `i32`, `Vec<(char, String)>`, `&T`).
     Ty(P<Ty>),
     /// A single token.
@@ -206,7 +206,7 @@ impl Match {
     /// # Panics
     ///
     /// * this match is not a statement
-    pub fn as_stmt(&self) -> P<Stmt> {
+    pub fn as_stmt(&self) -> Stmt {
         match *self {
             Match::Stmt(ref stmt) => stmt.clone(),
             _ => panic!("this match is not a statement"),

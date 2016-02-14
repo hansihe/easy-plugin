@@ -241,10 +241,10 @@ fn alter_function(
 
 fn expand_variants(
     context: &mut ExtCtxt, span: Span, variants: &[(Ident, Vec<Specifier>)]
-) -> Vec<P<Variant>> {
+) -> Vec<Variant> {
     variants.iter().map(|v| {
         let name = v.0;
-        P(context.variant(span, name, vec![quote_ty!(context, $name)]))
+        context.variant(span, name, vec![quote_ty!(context, $name)])
     }).collect()
 }
 
@@ -276,7 +276,7 @@ fn expand_struct_fields(
             Specifier::Meta(ref name) => field!(name, ::syntax::ptr::P<::syntax::ast::MetaItem>),
             Specifier::Pat(ref name) => field!(name, ::syntax::ptr::P<::syntax::ast::Pat>),
             Specifier::Path(ref name) => field!(name, ::syntax::ast::Path),
-            Specifier::Stmt(ref name) => field!(name, ::syntax::ptr::P<::syntax::ast::Stmt>),
+            Specifier::Stmt(ref name) => field!(name, ::syntax::ast::Stmt),
             Specifier::Ty(ref name) => field!(name, ::syntax::ptr::P<::syntax::ast::Ty>),
             Specifier::Tok(ref name) => field!(name, ::syntax::parse::token::Token),
             Specifier::Tt(ref name) => field!(name, ::syntax::ast::TokenTree),
