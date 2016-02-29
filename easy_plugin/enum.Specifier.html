@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="generator" content="rustdoc">
+    <meta name="description" content="API documentation for the Rust `Specifier` enum in crate `easy_plugin`.">
+    <meta name="keywords" content="rust, rustlang, rust-lang, Specifier">
+
+    <title>easy_plugin::Specifier - Rust</title>
+
+    <link rel="stylesheet" type="text/css" href="../rustdoc.css">
+    <link rel="stylesheet" type="text/css" href="../main.css">
+
+    
+    
+</head>
+<body class="rustdoc">
+    <!--[if lte IE 8]>
+    <div class="warning">
+        This old browser is unsupported and will most likely display funky
+        things.
+    </div>
+    <![endif]-->
+
+    
+
+    <nav class="sidebar">
+        
+        <p class='location'><a href='index.html'>easy_plugin</a></p><script>window.sidebarCurrent = {name: 'Specifier', ty: 'enum', relpath: ''};</script><script defer src="sidebar-items.js"></script>
+    </nav>
+
+    <nav class="sub">
+        <form class="search-form js-only">
+            <div class="search-container">
+                <input class="search-input" name="search"
+                       autocomplete="off"
+                       placeholder="Click or press ‘S’ to search, ‘?’ for more options…"
+                       type="search">
+            </div>
+        </form>
+    </nav>
+
+    <section id='main' class="content enum">
+<h1 class='fqn'><span class='in-band'>Enum <a href='index.html'>easy_plugin</a>::<wbr><a class='enum' href=''>Specifier</a></span><span class='out-of-band'><span id='render-detail'>
+            <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
+                [<span class='inner'>&#x2212;</span>]
+            </a>
+        </span><a id='src-904' class='srclink' href='../src/easy_plugin/src/specification.rs.html#36-77' title='goto source code'>[src]</a></span></h1>
+<pre class='rust enum'>pub enum Specifier {
+    Attr(<a class='struct' href='https://doc.rust-lang.org/nightly/collections/string/struct.String.html' title='collections::string::String'>String</a>),
+    BinOp(<a class='struct' href='https://doc.rust-lang.org/nightly/collections/string/struct.String.html' title='collections::string::String'>String</a>),
+    Block(<a class='struct' href='https://doc.rust-lang.org/nightly/collections/string/struct.String.html' title='collections::string::String'>String</a>),
+    Delim(<a class='struct' href='https://doc.rust-lang.org/nightly/collections/string/struct.String.html' title='collections::string::String'>String</a>),
+    Expr(<a class='struct' href='https://doc.rust-lang.org/nightly/collections/string/struct.String.html' title='collections::string::String'>String</a>),
+    Ident(<a class='struct' href='https://doc.rust-lang.org/nightly/collections/string/struct.String.html' title='collections::string::String'>String</a>),
+    Item(<a class='struct' href='https://doc.rust-lang.org/nightly/collections/string/struct.String.html' title='collections::string::String'>String</a>),
+    Lftm(<a class='struct' href='https://doc.rust-lang.org/nightly/collections/string/struct.String.html' title='collections::string::String'>String</a>),
+    Lit(<a class='struct' href='https://doc.rust-lang.org/nightly/collections/string/struct.String.html' title='collections::string::String'>String</a>),
+    Meta(<a class='struct' href='https://doc.rust-lang.org/nightly/collections/string/struct.String.html' title='collections::string::String'>String</a>),
+    Pat(<a class='struct' href='https://doc.rust-lang.org/nightly/collections/string/struct.String.html' title='collections::string::String'>String</a>),
+    Path(<a class='struct' href='https://doc.rust-lang.org/nightly/collections/string/struct.String.html' title='collections::string::String'>String</a>),
+    Stmt(<a class='struct' href='https://doc.rust-lang.org/nightly/collections/string/struct.String.html' title='collections::string::String'>String</a>),
+    Ty(<a class='struct' href='https://doc.rust-lang.org/nightly/collections/string/struct.String.html' title='collections::string::String'>String</a>),
+    Tok(<a class='struct' href='https://doc.rust-lang.org/nightly/collections/string/struct.String.html' title='collections::string::String'>String</a>),
+    Tt(<a class='struct' href='https://doc.rust-lang.org/nightly/collections/string/struct.String.html' title='collections::string::String'>String</a>),
+    Specific(<a class='enum' href='https://doc.rust-lang.org/nightly/syntax/parse/token/enum.Token.html' title='syntax::parse::token::Token'>Token</a>),
+    Delimited(<a class='enum' href='https://doc.rust-lang.org/nightly/syntax/parse/token/enum.DelimToken.html' title='syntax::parse::token::DelimToken'>DelimToken</a>, <a class='struct' href='https://doc.rust-lang.org/nightly/collections/vec/struct.Vec.html' title='collections::vec::Vec'>Vec</a>&lt;<a class='enum' href='../easy_plugin/enum.Specifier.html' title='easy_plugin::Specifier'>Specifier</a>&gt;),
+    Sequence(<a class='enum' href='../easy_plugin/enum.Amount.html' title='easy_plugin::Amount'>Amount</a>, <a class='enum' href='https://doc.rust-lang.org/nightly/core/option/enum.Option.html' title='core::option::Option'>Option</a>&lt;<a class='enum' href='https://doc.rust-lang.org/nightly/syntax/parse/token/enum.Token.html' title='syntax::parse::token::Token'>Token</a>&gt;, <a class='struct' href='https://doc.rust-lang.org/nightly/collections/vec/struct.Vec.html' title='collections::vec::Vec'>Vec</a>&lt;<a class='enum' href='../easy_plugin/enum.Specifier.html' title='easy_plugin::Specifier'>Specifier</a>&gt;),
+    NamedSequence(<a class='struct' href='https://doc.rust-lang.org/nightly/collections/string/struct.String.html' title='collections::string::String'>String</a>, <a class='enum' href='../easy_plugin/enum.Amount.html' title='easy_plugin::Amount'>Amount</a>, <a class='enum' href='https://doc.rust-lang.org/nightly/core/option/enum.Option.html' title='core::option::Option'>Option</a>&lt;<a class='enum' href='https://doc.rust-lang.org/nightly/syntax/parse/token/enum.Token.html' title='syntax::parse::token::Token'>Token</a>&gt;, <a class='struct' href='https://doc.rust-lang.org/nightly/collections/vec/struct.Vec.html' title='collections::vec::Vec'>Vec</a>&lt;<a class='enum' href='../easy_plugin/enum.Specifier.html' title='easy_plugin::Specifier'>Specifier</a>&gt;),
+}</pre><div class='docblock'><p>A piece of a plugin argument specification.</p>
+</div><h2 class='variants'>Variants</h2>
+<table class='variants_table'><tr><td id='variant.Attr'><code>Attr</code></td><td><div class='docblock'><p>An attribute (e.g., <code>#[cfg(target_os = &quot;windows&quot;)]</code>).</p>
+</div></td><td></td></tr><tr><td id='variant.BinOp'><code>BinOp</code></td><td><div class='docblock'><p>A binary operator (e.g., <code>+</code>, <code>*</code>).</p>
+</div></td><td></td></tr><tr><td id='variant.Block'><code>Block</code></td><td><div class='docblock'><p>A brace-delimited sequence of statements (e.g., <code>{ log(error, &quot;hi&quot;); return 12; }</code>).</p>
+</div></td><td></td></tr><tr><td id='variant.Delim'><code>Delim</code></td><td><div class='docblock'><p>A delimited sequence of token trees (e.g., <code>()</code>, <code>[foo - &quot;bar&quot;]</code>).</p>
+</div></td><td></td></tr><tr><td id='variant.Expr'><code>Expr</code></td><td><div class='docblock'><p>An expression (e.g., <code>2 + 2</code>, <code>if true { 1 } else { 2 }</code>, <code>f(42)</code>).</p>
+</div></td><td></td></tr><tr><td id='variant.Ident'><code>Ident</code></td><td><div class='docblock'><p>An identifier (e.g., <code>x</code>, <code>foo</code>).</p>
+</div></td><td></td></tr><tr><td id='variant.Item'><code>Item</code></td><td><div class='docblock'><p>An item (e.g., <code>fn foo() { }</code>, <code>struct Bar;</code>).</p>
+</div></td><td></td></tr><tr><td id='variant.Lftm'><code>Lftm</code></td><td><div class='docblock'><p>A lifetime (e.g., <code>&#39;a</code>).</p>
+</div></td><td></td></tr><tr><td id='variant.Lit'><code>Lit</code></td><td><div class='docblock'><p>A literal (e.g., <code>322</code>, <code>&#39;a&#39;</code>, <code>&quot;foo&quot;</code>).</p>
+</div></td><td></td></tr><tr><td id='variant.Meta'><code>Meta</code></td><td><div class='docblock'><p>A &quot;meta&quot; item, as found in attributes (e.g., <code>cfg(target_os = &quot;windows&quot;)</code>).</p>
+</div></td><td></td></tr><tr><td id='variant.Pat'><code>Pat</code></td><td><div class='docblock'><p>A pattern (e.g., <code>Some(t)</code>, <code>(17, &#39;a&#39;)</code>, <code>_</code>).</p>
+</div></td><td></td></tr><tr><td id='variant.Path'><code>Path</code></td><td><div class='docblock'><p>A qualified name (e.g., <code>T::SpecialA</code>).</p>
+</div></td><td></td></tr><tr><td id='variant.Stmt'><code>Stmt</code></td><td><div class='docblock'><p>A single statement (e.g., <code>let x = 3</code>).</p>
+</div></td><td></td></tr><tr><td id='variant.Ty'><code>Ty</code></td><td><div class='docblock'><p>A type (e.g., <code>i32</code>, <code>Vec&lt;(char, String)&gt;</code>, <code>&amp;T</code>).</p>
+</div></td><td></td></tr><tr><td id='variant.Tok'><code>Tok</code></td><td><div class='docblock'><p>A single token.</p>
+</div></td><td></td></tr><tr><td id='variant.Tt'><code>Tt</code></td><td><div class='docblock'><p>A single token tree.</p>
+</div></td><td></td></tr><tr><td id='variant.Specific'><code>Specific</code></td><td><div class='docblock'><p>A non-variable piece.</p>
+</div></td><td></td></tr><tr><td id='variant.Delimited'><code>Delimited</code></td><td><div class='docblock'><p>A delimited piece.</p>
+</div></td><td></td></tr><tr><td id='variant.Sequence'><code>Sequence</code></td><td><div class='docblock'><p>A sequence piece.</p>
+</div></td><td></td></tr><tr><td id='variant.NamedSequence'><code>NamedSequence</code></td><td><div class='docblock'><p>A named sequence piece.</p>
+</div></td><td></td></tr></table><h2 id='methods'>Methods</h2><h3 class='impl'><code>impl <a class='enum' href='../easy_plugin/enum.Specifier.html' title='easy_plugin::Specifier'>Specifier</a></code></h3><div class='impl-items'><h4 id='method.specific_ident' class='method'><code>fn <a href='#method.specific_ident' class='fnname'>specific_ident</a>(ident: &amp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.str.html'>str</a>) -&gt; <a class='enum' href='../easy_plugin/enum.Specifier.html' title='easy_plugin::Specifier'>Specifier</a></code></h4>
+<div class='docblock'><p>Returns a new <code>Specifier</code> corresponding to the given identifier.</p>
+</div><h4 id='method.specific_lftm' class='method'><code>fn <a href='#method.specific_lftm' class='fnname'>specific_lftm</a>(lftm: &amp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.str.html'>str</a>) -&gt; <a class='enum' href='../easy_plugin/enum.Specifier.html' title='easy_plugin::Specifier'>Specifier</a></code></h4>
+<div class='docblock'><p>Returns a new <code>Specifier</code> corresponding to the given lifetime.</p>
+</div></div><h2 id='implementations'>Trait Implementations</h2><h3 id='derived_implementations'>Derived Implementations </h3><h3 class='impl'><code>impl <a class='trait' href='https://doc.rust-lang.org/nightly/core/cmp/trait.Eq.html' title='core::cmp::Eq'>Eq</a> for <a class='enum' href='../easy_plugin/enum.Specifier.html' title='easy_plugin::Specifier'>Specifier</a></code></h3><div class='impl-items'></div><h3 class='impl'><code>impl <a class='trait' href='https://doc.rust-lang.org/nightly/core/cmp/trait.PartialEq.html' title='core::cmp::PartialEq'>PartialEq</a> for <a class='enum' href='../easy_plugin/enum.Specifier.html' title='easy_plugin::Specifier'>Specifier</a></code></h3><div class='impl-items'><h4 id='method.eq' class='method'><code>fn <a href='https://doc.rust-lang.org/nightly/core/cmp/trait.PartialEq.html#method.eq' class='fnname'>eq</a>(&amp;self, __arg_0: &amp;<a class='enum' href='../easy_plugin/enum.Specifier.html' title='easy_plugin::Specifier'>Specifier</a>) -&gt; <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.bool.html'>bool</a></code></h4>
+<h4 id='method.ne' class='method'><code>fn <a href='https://doc.rust-lang.org/nightly/core/cmp/trait.PartialEq.html#method.ne' class='fnname'>ne</a>(&amp;self, __arg_0: &amp;<a class='enum' href='../easy_plugin/enum.Specifier.html' title='easy_plugin::Specifier'>Specifier</a>) -&gt; <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.bool.html'>bool</a></code></h4>
+</div><h3 class='impl'><code>impl <a class='trait' href='https://doc.rust-lang.org/nightly/core/fmt/trait.Debug.html' title='core::fmt::Debug'>Debug</a> for <a class='enum' href='../easy_plugin/enum.Specifier.html' title='easy_plugin::Specifier'>Specifier</a></code></h3><div class='impl-items'><h4 id='method.fmt' class='method'><code>fn <a href='https://doc.rust-lang.org/nightly/core/fmt/trait.Debug.html#method.fmt' class='fnname'>fmt</a>(&amp;self, __arg_0: &amp;mut <a class='struct' href='https://doc.rust-lang.org/nightly/core/fmt/struct.Formatter.html' title='core::fmt::Formatter'>Formatter</a>) -&gt; <a class='type' href='https://doc.rust-lang.org/nightly/core/fmt/type.Result.html' title='core::fmt::Result'>Result</a></code></h4>
+</div><h3 class='impl'><code>impl <a class='trait' href='https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html' title='core::clone::Clone'>Clone</a> for <a class='enum' href='../easy_plugin/enum.Specifier.html' title='easy_plugin::Specifier'>Specifier</a></code></h3><div class='impl-items'><h4 id='method.clone' class='method'><code>fn <a href='https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html#method.clone' class='fnname'>clone</a>(&amp;self) -&gt; <a class='enum' href='../easy_plugin/enum.Specifier.html' title='easy_plugin::Specifier'>Specifier</a></code></h4>
+<h4 id='method.clone_from' class='method'><span class="since">1.0.0</span><code>fn <a href='https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html#method.clone_from' class='fnname'>clone_from</a>(&amp;mut self, source: &amp;Self)</code></h4>
+</div></section>
+    <section id='search' class="content hidden"></section>
+
+    <section class="footer"></section>
+
+    <aside id="help" class="hidden">
+        <div>
+            <h1 class="hidden">Help</h1>
+
+            <div class="shortcuts">
+                <h2>Keyboard Shortcuts</h2>
+
+                <dl>
+                    <dt>?</dt>
+                    <dd>Show this help dialog</dd>
+                    <dt>S</dt>
+                    <dd>Focus the search field</dd>
+                    <dt>&larrb;</dt>
+                    <dd>Move up in search results</dd>
+                    <dt>&rarrb;</dt>
+                    <dd>Move down in search results</dd>
+                    <dt>&#9166;</dt>
+                    <dd>Go to active search result</dd>
+                </dl>
+            </div>
+
+            <div class="infos">
+                <h2>Search Tricks</h2>
+
+                <p>
+                    Prefix searches with a type followed by a colon (e.g.
+                    <code>fn:</code>) to restrict the search to a given type.
+                </p>
+
+                <p>
+                    Accepted types are: <code>fn</code>, <code>mod</code>,
+                    <code>struct</code>, <code>enum</code>,
+                    <code>trait</code>, <code>type</code>, <code>macro</code>,
+                    and <code>const</code>.
+                </p>
+
+                <p>
+                    Search functions by type signature (e.g.
+                    <code>vec -> usize</code> or <code>* -> vec</code>)
+                </p>
+            </div>
+        </div>
+    </aside>
+
+    
+
+    <script>
+        window.rootPath = "../";
+        window.currentCrate = "easy_plugin";
+        window.playgroundUrl = "";
+    </script>
+    <script src="../jquery.js"></script>
+    <script src="../main.js"></script>
+    
+    <script defer src="../search-index.js"></script>
+</body>
+</html>

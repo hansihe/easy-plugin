@@ -1,0 +1,1 @@
+initSidebarItems({"enum":[["Amount","Indicates how many times a sequence is allowed to occur."],["Specifier","A piece of a plugin argument specification."]],"fn":[["parse_specification","Parses the given specification."]]});
