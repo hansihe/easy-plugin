@@ -419,8 +419,10 @@ fn expand_parse(
 
     quote_item!(context,
         #[allow(non_snake_case)]
-        fn $function(arguments: &[::syntax::ast::TokenTree]) -> ::easy_plugin::PluginResult<$name> {
-            ::easy_plugin::parse_arguments(arguments, $specification).map(|_m| $result)
+        fn $function(
+            session: &::syntax::parse::ParseSess, arguments: &[::syntax::ast::TokenTree]
+        ) -> ::easy_plugin::PluginResult<$name> {
+            ::easy_plugin::parse_arguments(session, arguments, $specification).map(|_m| $result)
         }
     ).unwrap()
 }
@@ -445,7 +447,7 @@ fn expand_enum_easy_plugin(
         Specifier::Item("function".into()),
     ];
 
-    let matches = try!(parse_arguments(arguments, specification));
+    let matches = try!(parse_arguments(context.parse_sess, arguments, specification));
 
     let arguments = matches.get("arguments").unwrap().as_ident();
 
@@ -487,7 +489,7 @@ fn expand_enum_easy_plugin(
 
         let stmt = if variants.peek().is_some() {
             quote_stmt!(context,
-                if let Ok(result) = $parse(arguments).and_then(|a| {
+                if let Ok(result) = $parse(context.parse_sess, arguments).and_then(|a| {
                     $inner(context, span, $arguments::$constructor(a))
                 }) {
                     return result;
@@ -495,7 +497,7 @@ fn expand_enum_easy_plugin(
             )
         } else {
             quote_stmt!(context,
-                return match $parse(arguments).and_then(|a| {
+                return match $parse(context.parse_sess, arguments).and_then(|a| {
                     $inner(context, span, $arguments::$constructor(a))
                 }) {
                     Ok(result) => result,
@@ -553,7 +555,7 @@ fn expand_struct_easy_plugin(
         Specifier::Item("function".into()),
     ];
 
-    let matches = try!(parse_arguments(arguments, specification));
+    let matches = try!(parse_arguments(context.parse_sess, arguments, specification));
 
     let arguments = matches.get("arguments").unwrap().as_ident();
 
@@ -578,7 +580,7 @@ fn expand_struct_easy_plugin(
             $struct_
             $parse
             $function
-            match parse(arguments).and_then(|a| $inner(context, span, a)) {
+            match parse(context.parse_sess, arguments).and_then(|a| $inner(context, span, a)) {
                 Ok(result) => result,
                 Err((subspan, message)) => {
                     let span = if subspan == ::syntax::codemap::DUMMY_SP {

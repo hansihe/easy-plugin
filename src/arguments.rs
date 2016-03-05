@@ -524,7 +524,7 @@ fn parse_arguments_<'a>(
 
 /// Parses the given arguments with the given specification.
 pub fn parse_arguments(
-    tts: &[TokenTree], specification: &[Specifier]
+    session: &ParseSess, tts: &[TokenTree], specification: &[Specifier]
 ) -> PluginResult<HashMap<String, Match>> {
     let start = tts.iter().nth(0).map_or(DUMMY_SP, |s| s.get_span());
     let end = tts.iter().last().map_or(DUMMY_SP, |s| s.get_span());
@@ -535,7 +535,9 @@ pub fn parse_arguments(
     }
 
     let handler = Handler::with_emitter(false, false, Box::new(SaveEmitter));
-    let session = ParseSess::with_span_handler(handler, Rc::new(CodeMap::new()));
+    let mut codemap = CodeMap::new();
+    codemap.files = session.codemap().files.clone();
+    let session = ParseSess::with_span_handler(handler, Rc::new(codemap));
     let mut parser = TransactionParser::new(&session, tts);
 
     let mut matches = HashMap::new();
@@ -560,20 +562,24 @@ mod tests {
     use syntax::parse::token::{BinOpToken, DelimToken};
 
     #[cfg_attr(feature="clippy", allow(let_and_return))]
-    fn parse_token_trees(source: &str) -> Vec<TokenTree> {
+    fn parse_token_trees(source: &str) -> (ParseSess, Vec<TokenTree>) {
         let session = ParseSess::new();
         let source = source.into();
-        let mut parser = parse::new_parser_from_source_str(&session, vec![], "".into(), source);
-        let tts = parser.parse_all_token_trees().unwrap();
-        tts
+
+        let tts = {
+            let mut parser = parse::new_parser_from_source_str(&session, vec![], "".into(), source);
+            parser.parse_all_token_trees().unwrap()
+        };
+
+        (session, tts)
     }
 
     fn with_matches<F>(
         arguments: &str, specification: &str, f: F
     ) where F: Fn(HashMap<String, Match>) {
-        let arguments = parse_token_trees(arguments);
-        let specification = super::super::parse_specification(&parse_token_trees(specification));
-        f(parse_arguments(&arguments, specification.as_ref().unwrap()).unwrap());
+        let (session, arguments) = parse_token_trees(arguments);
+        let specification = super::super::parse_specification(&parse_token_trees(specification).1);
+        f(parse_arguments(&session, &arguments, specification.as_ref().unwrap()).unwrap());
     }
 
     #[test]
