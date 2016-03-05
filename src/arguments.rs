@@ -561,7 +561,6 @@ mod tests {
     use syntax::parse::{ParseSess};
     use syntax::parse::token::{BinOpToken, DelimToken};
 
-    #[cfg_attr(feature="clippy", allow(let_and_return))]
     fn parse_token_trees(source: &str) -> (ParseSess, Vec<TokenTree>) {
         let session = ParseSess::new();
         let source = source.into();

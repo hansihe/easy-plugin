@@ -158,10 +158,10 @@ fn parse_dollar<'i, I>(
         &TokenTree::Token(subspan, Token::Ident(ref ident, _)) => {
             let name = ident.name.as_str().to_string();
 
-            if !names.insert(name.clone()) {
-                subspan.as_error("duplicate named specifier")
-            } else {
+            if names.insert(name.clone()) {
                 parse_named_specifier(tts, name)
+            } else {
+                subspan.as_error("duplicate named specifier")
             }
         },
         &TokenTree::Delimited(_, ref delimited) => {
