@@ -11,6 +11,12 @@ use syntax::ptr::{P};
 use super::{PluginResult};
 use super::utility::{AsError, AsExpr, TtsIterator};
 
+//================================================
+// Enums
+//================================================
+
+// Amount ________________________________________
+
 /// Indicates how many times a sequence is allowed to occur.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Amount {
@@ -30,6 +36,8 @@ impl AsExpr for Amount {
         context.expr_path(context.path_global(span, path))
     }
 }
+
+// Specifier _____________________________________
 
 /// A piece of a plugin argument specification.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -150,6 +158,10 @@ impl Specifier {
         Specifier::Specific(Token::Lifetime(lftm))
     }
 }
+
+//================================================
+// Functions
+//================================================
 
 fn parse_dollar<'i, I>(
     span: Span, tts: &mut TtsIterator<'i, I>, names: &mut HashSet<String>
@@ -283,6 +295,10 @@ pub fn expand_parse_specification(
         },
     }
 }
+
+//================================================
+// Tests
+//================================================
 
 #[cfg(test)]
 mod tests {

@@ -15,6 +15,12 @@ use syntax::ptr::{P};
 use super::{Amount, PluginResult, Specifier};
 use super::utility::{AsError, TransactionParser};
 
+//================================================
+// Enums
+//================================================
+
+// Match _________________________________________
+
 /// A plugin argument that has been matched with a named specifier.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Match {
@@ -286,6 +292,12 @@ impl Match {
     }
 }
 
+//================================================
+// Structs
+//================================================
+
+// SaveEmitter ___________________________________
+
 thread_local!(static ERROR: RefCell<(Span, String)> = RefCell::new((DUMMY_SP, "no error".into())));
 
 struct SaveEmitter;
@@ -305,6 +317,10 @@ impl Emitter for SaveEmitter {
 
     fn custom_emit(&mut self, _: &RenderSpan, _: &str, _: Level) { }
 }
+
+//================================================
+// Functions
+//================================================
 
 fn parse_sequence<'a>(
     span: Span,
@@ -549,6 +565,10 @@ pub fn parse_arguments(
         span.as_error("too many arguments")
     }
 }
+
+//================================================
+// Tests
+//================================================
 
 #[cfg(test)]
 mod tests {
