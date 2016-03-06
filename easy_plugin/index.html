@@ -46,7 +46,7 @@
             <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
                 [<span class='inner'>&#x2212;</span>]
             </a>
-        </span><a id='src-0' class='srclink' href='../src/easy_plugin/src/lib.rs.html#1-641' title='goto source code'>[src]</a></span></h1>
+        </span><a id='src-0' class='srclink' href='../src/easy_plugin/src/lib.rs.html#1-643' title='goto source code'>[src]</a></span></h1>
 <div class='docblock'><p>This crate provides a compiler plugin, <code>easy_plugin!</code>, which makes it easier to write compiler
 plugins.</p>
 
@@ -58,6 +58,7 @@ that allows for multiple argument specifications.</p>
 <p>First, here is a trivial
 <a href="https://github.com/KyleMayes/easy-plugin/blob/master/examples/struct.rs">example</a> of the first
 form that only allows for one argument specification.</p>
+
 <pre class='rust rust-example-rendered'>
 <span class='attribute'>#<span class='op'>!</span>[<span class='ident'>feature</span>(<span class='ident'>plugin</span>, <span class='ident'>plugin_registrar</span>, <span class='ident'>rustc_private</span>)]</span>
 <span class='attribute'>#<span class='op'>!</span>[<span class='ident'>plugin</span>(<span class='ident'>easy_plugin</span>)]</span>
@@ -109,6 +110,7 @@ a documentation comment.</p>
 <p>Next, here is a trivial
 <a href="https://github.com/KyleMayes/easy-plugin/blob/master/examples/enum.rs">example</a> of the second
 form that allows for multiple argument specifications.</p>
+
 <pre class='rust rust-example-rendered'>
 <span class='attribute'>#<span class='op'>!</span>[<span class='ident'>feature</span>(<span class='ident'>plugin</span>, <span class='ident'>plugin_registrar</span>, <span class='ident'>rustc_private</span>)]</span>
 <span class='attribute'>#<span class='op'>!</span>[<span class='ident'>plugin</span>(<span class='ident'>easy_plugin</span>)]</span>
@@ -255,6 +257,7 @@ additional types of named specifiers.</p>
 <p>Plugin argument specifications support sequences that are very similar to the sequences in macro
 argument specifications. For example, the following plugin argument specification matches zero
 or more comma-separated parenthesized binary expressions.</p>
+
 <pre class='rust rust-example-rendered'>
 $((<span class='macro-nonterminal'>$</span><span class='macro-nonterminal'>left</span>:<span class='ident'>ident</span> <span class='macro-nonterminal'>$</span><span class='macro-nonterminal'>operator</span>:<span class='ident'>binop</span> <span class='macro-nonterminal'>$</span><span class='macro-nonterminal'>right</span>:<span class='ident'>ident</span>)), <span class='op'>*</span></pre>
 
@@ -262,6 +265,7 @@ $((<span class='macro-nonterminal'>$</span><span class='macro-nonterminal'>left<
 sequences with either zero or one repetitions. This operator does not support separators.  For
 example, the following plugin argument specification can match either a binary expression or
 nothing at all.</p>
+
 <pre class='rust rust-example-rendered'>
 $(<span class='macro-nonterminal'>$</span><span class='macro-nonterminal'>left</span>:<span class='ident'>ident</span> <span class='macro-nonterminal'>$</span><span class='macro-nonterminal'>operator</span>:<span class='ident'>binop</span> <span class='macro-nonterminal'>$</span><span class='macro-nonterminal'>right</span>:<span class='ident'>ident</span>)?</pre>
 
@@ -274,6 +278,7 @@ for <code>?</code> sequences.</p>
 <p>An additional level of <code>Vec</code> is added for each sequence level. For example, in the plugin
 argument specification below, <code>$b:ident</code> occurs two sequences deep. The storage type for <code>b</code> in
 this case would be <code>Vec&lt;Vec&lt;syntax::ast::Ident&gt;&gt;</code>.</p>
+
 <pre class='rust rust-example-rendered'>
 $(<span class='macro-nonterminal'>$</span><span class='macro-nonterminal'>a</span>:<span class='ident'>ident</span> $(<span class='macro-nonterminal'>$</span><span class='macro-nonterminal'>b</span>:<span class='ident'>ident</span>)<span class='op'>*</span>)<span class='op'>*</span></pre>
 
@@ -282,12 +287,14 @@ $(<span class='macro-nonterminal'>$</span><span class='macro-nonterminal'>a</spa
 sequences cannot contain named specifiers and instead consist of specific token trees that you
 wish to be counted. For example, the following plugin argument specification will match
 either <code>pub struct { }</code> or just <code>struct { }</code>.</p>
+
 <pre class='rust rust-example-rendered'>
 <span class='macro-nonterminal'>$</span><span class='macro-nonterminal'>public</span>:(<span class='kw'>pub</span>)? <span class='kw'>struct</span> { }</pre>
 
 <p>These named sequences allow the usage of the same suffixes as regular sequences. The <code>*</code>, <code>+</code>,
 and <code>?</code> operators are supported and separators are supported for the <code>*</code> and <code>+</code> operators. For
 example, the following plugin argument specification matches any number of comma-separated <code>A</code>s.</p>
+
 <pre class='rust rust-example-rendered'>
 <span class='macro-nonterminal'>$</span><span class='macro-nonterminal'>a</span>:(<span class='ident'>A</span>), <span class='op'>*</span></pre>
 

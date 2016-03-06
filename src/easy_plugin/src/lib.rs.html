@@ -682,6 +682,8 @@
 <span id="639">639</span>
 <span id="640">640</span>
 <span id="641">641</span>
+<span id="642">642</span>
+<span id="643">643</span>
 </pre><pre class='rust '>
 <span class='doccomment'>//! This crate provides a compiler plugin, `easy_plugin!`, which makes it easier to write compiler</span>
 <span class='doccomment'>//! plugins.</span>
@@ -896,7 +898,7 @@
 <span class='kw'>use</span> <span class='ident'>syntax</span>::<span class='ident'>util</span>::<span class='ident'>small_vector</span>::{<span class='ident'>SmallVector</span>};
 
 <span class='kw'>mod</span> <span class='ident'>utility</span>;
-<span class='kw'>use</span> <span class='ident'>utility</span>::{<span class='ident'>AsError</span>, <span class='ident'>AsExpr</span>};
+<span class='kw'>use</span> <span class='ident'>utility</span>::{<span class='ident'>ToError</span>, <span class='ident'>ToExpr</span>};
 
 <span class='kw'>mod</span> <span class='ident'>arguments</span>;
 <span class='kw'>pub</span> <span class='kw'>use</span> <span class='self'>self</span>::<span class='ident'>arguments</span>::<span class='op'>*</span>;
@@ -1093,7 +1095,7 @@
     };
 
     <span class='kw'>let</span> <span class='ident'>fields</span> <span class='op'>=</span> <span class='ident'>expand_fields</span>(<span class='ident'>context</span>, <span class='ident'>span</span>, <span class='ident'>specification</span>, <span class='kw-2'>&amp;</span>[]);
-    <span class='kw'>let</span> <span class='ident'>specification</span> <span class='op'>=</span> <span class='ident'>specification</span>.<span class='ident'>as_expr</span>(<span class='ident'>context</span>, <span class='ident'>span</span>);
+    <span class='kw'>let</span> <span class='ident'>specification</span> <span class='op'>=</span> <span class='ident'>specification</span>.<span class='ident'>to_expr</span>(<span class='ident'>context</span>, <span class='ident'>span</span>);
 
     <span class='kw'>let</span> <span class='ident'>result</span> <span class='op'>=</span> <span class='kw'>if</span> <span class='ident'>fields</span>.<span class='ident'>is_empty</span>() {
         <span class='macro'>quote_expr</span><span class='macro'>!</span>(<span class='ident'>context</span>, <span class='macro-nonterminal'>$</span><span class='macro-nonterminal'>name</span>)
@@ -1104,8 +1106,10 @@
 
     <span class='macro'>quote_item</span><span class='macro'>!</span>(<span class='ident'>context</span>,
         <span class='attribute'>#[<span class='ident'>allow</span>(<span class='ident'>non_snake_case</span>)]</span>
-        <span class='kw'>fn</span> <span class='macro-nonterminal'>$</span><span class='macro-nonterminal'>function</span>(<span class='ident'>arguments</span>: <span class='kw-2'>&amp;</span>[::<span class='ident'>syntax</span>::<span class='ident'>ast</span>::<span class='ident'>TokenTree</span>]) <span class='op'>-&gt;</span> ::<span class='ident'>easy_plugin</span>::<span class='ident'>PluginResult</span><span class='op'>&lt;</span><span class='macro-nonterminal'>$</span><span class='macro-nonterminal'>name</span><span class='op'>&gt;</span> {
-            ::<span class='ident'>easy_plugin</span>::<span class='ident'>parse_arguments</span>(<span class='ident'>arguments</span>, <span class='macro-nonterminal'>$</span><span class='macro-nonterminal'>specification</span>).<span class='ident'>map</span>(<span class='op'>|</span><span class='ident'>_m</span><span class='op'>|</span> <span class='macro-nonterminal'>$</span><span class='macro-nonterminal'>result</span>)
+        <span class='kw'>fn</span> <span class='macro-nonterminal'>$</span><span class='macro-nonterminal'>function</span>(
+            <span class='ident'>session</span>: <span class='kw-2'>&amp;</span>::<span class='ident'>syntax</span>::<span class='ident'>parse</span>::<span class='ident'>ParseSess</span>, <span class='ident'>arguments</span>: <span class='kw-2'>&amp;</span>[::<span class='ident'>syntax</span>::<span class='ident'>ast</span>::<span class='ident'>TokenTree</span>]
+        ) <span class='op'>-&gt;</span> ::<span class='ident'>easy_plugin</span>::<span class='ident'>PluginResult</span><span class='op'>&lt;</span><span class='macro-nonterminal'>$</span><span class='macro-nonterminal'>name</span><span class='op'>&gt;</span> {
+            ::<span class='ident'>easy_plugin</span>::<span class='ident'>parse_arguments</span>(<span class='ident'>session</span>, <span class='ident'>arguments</span>, <span class='macro-nonterminal'>$</span><span class='macro-nonterminal'>specification</span>).<span class='ident'>map</span>(<span class='op'>|</span><span class='ident'>_m</span><span class='op'>|</span> <span class='macro-nonterminal'>$</span><span class='macro-nonterminal'>result</span>)
         }
     ).<span class='ident'>unwrap</span>()
 }
@@ -1130,7 +1134,7 @@
         <span class='ident'>Specifier</span>::<span class='ident'>Item</span>(<span class='string'>&quot;function&quot;</span>.<span class='ident'>into</span>()),
     ];
 
-    <span class='kw'>let</span> <span class='ident'>matches</span> <span class='op'>=</span> <span class='macro'>try</span><span class='macro'>!</span>(<span class='ident'>parse_arguments</span>(<span class='ident'>arguments</span>, <span class='ident'>specification</span>));
+    <span class='kw'>let</span> <span class='ident'>matches</span> <span class='op'>=</span> <span class='macro'>try</span><span class='macro'>!</span>(<span class='ident'>parse_arguments</span>(<span class='ident'>context</span>.<span class='ident'>parse_sess</span>, <span class='ident'>arguments</span>, <span class='ident'>specification</span>));
 
     <span class='kw'>let</span> <span class='ident'>arguments</span> <span class='op'>=</span> <span class='ident'>matches</span>.<span class='ident'>get</span>(<span class='string'>&quot;arguments&quot;</span>).<span class='ident'>unwrap</span>().<span class='ident'>as_ident</span>();
 
@@ -1172,7 +1176,7 @@
 
         <span class='kw'>let</span> <span class='ident'>stmt</span> <span class='op'>=</span> <span class='kw'>if</span> <span class='ident'>variants</span>.<span class='ident'>peek</span>().<span class='ident'>is_some</span>() {
             <span class='macro'>quote_stmt</span><span class='macro'>!</span>(<span class='ident'>context</span>,
-                <span class='kw'>if</span> <span class='kw'>let</span> <span class='prelude-val'>Ok</span>(<span class='ident'>result</span>) <span class='op'>=</span> <span class='macro-nonterminal'>$</span><span class='macro-nonterminal'>parse</span>(<span class='ident'>arguments</span>).<span class='ident'>and_then</span>(<span class='op'>|</span><span class='ident'>a</span><span class='op'>|</span> {
+                <span class='kw'>if</span> <span class='kw'>let</span> <span class='prelude-val'>Ok</span>(<span class='ident'>result</span>) <span class='op'>=</span> <span class='macro-nonterminal'>$</span><span class='macro-nonterminal'>parse</span>(<span class='ident'>context</span>.<span class='ident'>parse_sess</span>, <span class='ident'>arguments</span>).<span class='ident'>and_then</span>(<span class='op'>|</span><span class='ident'>a</span><span class='op'>|</span> {
                     <span class='macro-nonterminal'>$</span><span class='macro-nonterminal'>inner</span>(<span class='ident'>context</span>, <span class='ident'>span</span>, <span class='macro-nonterminal'>$</span><span class='macro-nonterminal'>arguments</span>::<span class='macro-nonterminal'>$</span><span class='macro-nonterminal'>constructor</span>(<span class='ident'>a</span>))
                 }) {
                     <span class='kw'>return</span> <span class='ident'>result</span>;
@@ -1180,7 +1184,7 @@
             )
         } <span class='kw'>else</span> {
             <span class='macro'>quote_stmt</span><span class='macro'>!</span>(<span class='ident'>context</span>,
-                <span class='kw'>return</span> <span class='kw'>match</span> <span class='macro-nonterminal'>$</span><span class='macro-nonterminal'>parse</span>(<span class='ident'>arguments</span>).<span class='ident'>and_then</span>(<span class='op'>|</span><span class='ident'>a</span><span class='op'>|</span> {
+                <span class='kw'>return</span> <span class='kw'>match</span> <span class='macro-nonterminal'>$</span><span class='macro-nonterminal'>parse</span>(<span class='ident'>context</span>.<span class='ident'>parse_sess</span>, <span class='ident'>arguments</span>).<span class='ident'>and_then</span>(<span class='op'>|</span><span class='ident'>a</span><span class='op'>|</span> {
                     <span class='macro-nonterminal'>$</span><span class='macro-nonterminal'>inner</span>(<span class='ident'>context</span>, <span class='ident'>span</span>, <span class='macro-nonterminal'>$</span><span class='macro-nonterminal'>arguments</span>::<span class='macro-nonterminal'>$</span><span class='macro-nonterminal'>constructor</span>(<span class='ident'>a</span>))
                 }) {
                     <span class='prelude-val'>Ok</span>(<span class='ident'>result</span>) <span class='op'>=&gt;</span> <span class='ident'>result</span>,
@@ -1238,7 +1242,7 @@
         <span class='ident'>Specifier</span>::<span class='ident'>Item</span>(<span class='string'>&quot;function&quot;</span>.<span class='ident'>into</span>()),
     ];
 
-    <span class='kw'>let</span> <span class='ident'>matches</span> <span class='op'>=</span> <span class='macro'>try</span><span class='macro'>!</span>(<span class='ident'>parse_arguments</span>(<span class='ident'>arguments</span>, <span class='ident'>specification</span>));
+    <span class='kw'>let</span> <span class='ident'>matches</span> <span class='op'>=</span> <span class='macro'>try</span><span class='macro'>!</span>(<span class='ident'>parse_arguments</span>(<span class='ident'>context</span>.<span class='ident'>parse_sess</span>, <span class='ident'>arguments</span>, <span class='ident'>specification</span>));
 
     <span class='kw'>let</span> <span class='ident'>arguments</span> <span class='op'>=</span> <span class='ident'>matches</span>.<span class='ident'>get</span>(<span class='string'>&quot;arguments&quot;</span>).<span class='ident'>unwrap</span>().<span class='ident'>as_ident</span>();
 
@@ -1263,7 +1267,7 @@
             <span class='macro-nonterminal'>$</span><span class='macro-nonterminal'>struct_</span>
             <span class='macro-nonterminal'>$</span><span class='macro-nonterminal'>parse</span>
             <span class='macro-nonterminal'>$</span><span class='macro-nonterminal'>function</span>
-            <span class='kw'>match</span> <span class='ident'>parse</span>(<span class='ident'>arguments</span>).<span class='ident'>and_then</span>(<span class='op'>|</span><span class='ident'>a</span><span class='op'>|</span> <span class='macro-nonterminal'>$</span><span class='macro-nonterminal'>inner</span>(<span class='ident'>context</span>, <span class='ident'>span</span>, <span class='ident'>a</span>)) {
+            <span class='kw'>match</span> <span class='ident'>parse</span>(<span class='ident'>context</span>.<span class='ident'>parse_sess</span>, <span class='ident'>arguments</span>).<span class='ident'>and_then</span>(<span class='op'>|</span><span class='ident'>a</span><span class='op'>|</span> <span class='macro-nonterminal'>$</span><span class='macro-nonterminal'>inner</span>(<span class='ident'>context</span>, <span class='ident'>span</span>, <span class='ident'>a</span>)) {
                 <span class='prelude-val'>Ok</span>(<span class='ident'>result</span>) <span class='op'>=&gt;</span> <span class='ident'>result</span>,
                 <span class='prelude-val'>Err</span>((<span class='ident'>subspan</span>, <span class='ident'>message</span>)) <span class='op'>=&gt;</span> {
                     <span class='kw'>let</span> <span class='ident'>span</span> <span class='op'>=</span> <span class='kw'>if</span> <span class='ident'>subspan</span> <span class='op'>==</span> ::<span class='ident'>syntax</span>::<span class='ident'>codemap</span>::<span class='ident'>DUMMY_SP</span> {
@@ -1292,16 +1296,16 @@
     <span class='ident'>context</span>: <span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='ident'>ExtCtxt</span>, <span class='ident'>span</span>: <span class='ident'>Span</span>, <span class='ident'>arguments</span>: <span class='kw-2'>&amp;</span>[<span class='ident'>TokenTree</span>]
 ) <span class='op'>-&gt;</span> <span class='ident'>PluginResult</span><span class='op'>&lt;</span><span class='ident'>Box</span><span class='op'>&lt;</span><span class='ident'>MacResult</span> <span class='op'>+</span> <span class='lifetime'>&#39;static</span><span class='op'>&gt;&gt;</span> {
     <span class='kw'>if</span> <span class='ident'>arguments</span>.<span class='ident'>is_empty</span>() {
-        <span class='kw'>return</span> <span class='ident'>span</span>.<span class='ident'>as_error</span>(<span class='string'>&quot;unexpected end of arguments&quot;</span>);
+        <span class='kw'>return</span> <span class='ident'>span</span>.<span class='ident'>to_error</span>(<span class='string'>&quot;unexpected end of arguments&quot;</span>);
     }
 
     <span class='kw'>match</span> <span class='ident'>arguments</span>[<span class='number'>0</span>] {
         <span class='ident'>TokenTree</span>::<span class='ident'>Token</span>(_, <span class='ident'>Token</span>::<span class='ident'>Ident</span>(<span class='kw-2'>ref</span> <span class='ident'>ident</span>, _)) <span class='op'>=&gt;</span> <span class='kw'>match</span> <span class='kw-2'>&amp;</span><span class='op'>*</span><span class='ident'>ident</span>.<span class='ident'>name</span>.<span class='ident'>as_str</span>() {
             <span class='string'>&quot;enum&quot;</span> <span class='op'>=&gt;</span> <span class='ident'>expand_enum_easy_plugin</span>(<span class='ident'>context</span>, <span class='ident'>span</span>, <span class='ident'>arguments</span>),
             <span class='string'>&quot;struct&quot;</span> <span class='op'>=&gt;</span> <span class='ident'>expand_struct_easy_plugin</span>(<span class='ident'>context</span>, <span class='ident'>span</span>, <span class='ident'>arguments</span>),
-            _ <span class='op'>=&gt;</span> <span class='ident'>arguments</span>[<span class='number'>0</span>].<span class='ident'>as_error</span>(<span class='string'>&quot;expected `enum` or `struct`&quot;</span>),
+            _ <span class='op'>=&gt;</span> <span class='ident'>arguments</span>[<span class='number'>0</span>].<span class='ident'>to_error</span>(<span class='string'>&quot;expected `enum` or `struct`&quot;</span>),
         },
-        _ <span class='op'>=&gt;</span> <span class='ident'>arguments</span>[<span class='number'>0</span>].<span class='ident'>as_error</span>(<span class='string'>&quot;expected `enum` or `struct`&quot;</span>),
+        _ <span class='op'>=&gt;</span> <span class='ident'>arguments</span>[<span class='number'>0</span>].<span class='ident'>to_error</span>(<span class='string'>&quot;expected `enum` or `struct`&quot;</span>),
     }
 }
 

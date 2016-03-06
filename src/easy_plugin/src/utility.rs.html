@@ -368,35 +368,6 @@
 <span id="325">325</span>
 <span id="326">326</span>
 <span id="327">327</span>
-<span id="328">328</span>
-<span id="329">329</span>
-<span id="330">330</span>
-<span id="331">331</span>
-<span id="332">332</span>
-<span id="333">333</span>
-<span id="334">334</span>
-<span id="335">335</span>
-<span id="336">336</span>
-<span id="337">337</span>
-<span id="338">338</span>
-<span id="339">339</span>
-<span id="340">340</span>
-<span id="341">341</span>
-<span id="342">342</span>
-<span id="343">343</span>
-<span id="344">344</span>
-<span id="345">345</span>
-<span id="346">346</span>
-<span id="347">347</span>
-<span id="348">348</span>
-<span id="349">349</span>
-<span id="350">350</span>
-<span id="351">351</span>
-<span id="352">352</span>
-<span id="353">353</span>
-<span id="354">354</span>
-<span id="355">355</span>
-<span id="356">356</span>
 </pre><pre class='rust '>
 <span class='kw'>use</span> <span class='ident'>std</span>::<span class='ident'>marker</span>::{<span class='ident'>PhantomData</span>};
 
@@ -414,152 +385,113 @@
 
 <span class='kw'>use</span> <span class='ident'>super</span>::{<span class='ident'>PluginResult</span>};
 
-<span class='kw'>pub</span> <span class='kw'>trait</span> <span class='ident'>AsExpr</span> {
-    <span class='kw'>fn</span> <span class='ident'>as_expr</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>, <span class='ident'>context</span>: <span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='ident'>ExtCtxt</span>, <span class='ident'>span</span>: <span class='ident'>Span</span>) <span class='op'>-&gt;</span> <span class='ident'>P</span><span class='op'>&lt;</span><span class='ident'>Expr</span><span class='op'>&gt;</span>;
+<span class='comment'>//================================================</span>
+<span class='comment'>// Traits</span>
+<span class='comment'>//================================================</span>
+
+<span class='comment'>// ToError _______________________________________</span>
+
+<span class='doccomment'>/// A type that can be extended into a `PluginResult&lt;T&gt;`.</span>
+<span class='kw'>pub</span> <span class='kw'>trait</span> <span class='ident'>ToError</span><span class='op'>&lt;</span><span class='ident'>T</span>, <span class='ident'>S</span><span class='op'>&gt;</span> <span class='kw'>where</span> <span class='ident'>S</span>: <span class='ident'>AsRef</span><span class='op'>&lt;</span><span class='ident'>str</span><span class='op'>&gt;</span> {
+    <span class='doccomment'>/// Returns an `Err` value with the span of this value and the supplied message.</span>
+    <span class='kw'>fn</span> <span class='ident'>to_error</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>, <span class='ident'>message</span>: <span class='ident'>S</span>) <span class='op'>-&gt;</span> <span class='ident'>PluginResult</span><span class='op'>&lt;</span><span class='ident'>T</span><span class='op'>&gt;</span>;
 }
 
-<span class='kw'>impl</span> <span class='ident'>AsExpr</span> <span class='kw'>for</span> <span class='ident'>BinOpToken</span> {
-    <span class='kw'>fn</span> <span class='ident'>as_expr</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>, <span class='ident'>context</span>: <span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='ident'>ExtCtxt</span>, <span class='ident'>span</span>: <span class='ident'>Span</span>) <span class='op'>-&gt;</span> <span class='ident'>P</span><span class='op'>&lt;</span><span class='ident'>Expr</span><span class='op'>&gt;</span> {
-        <span class='kw'>let</span> <span class='ident'>path</span> <span class='op'>=</span> <span class='macro'>vec</span><span class='macro'>!</span>[
-            <span class='ident'>context</span>.<span class='ident'>ident_of</span>(<span class='string'>&quot;syntax&quot;</span>),
-            <span class='ident'>context</span>.<span class='ident'>ident_of</span>(<span class='string'>&quot;parse&quot;</span>),
-            <span class='ident'>context</span>.<span class='ident'>ident_of</span>(<span class='string'>&quot;token&quot;</span>),
-            <span class='ident'>context</span>.<span class='ident'>ident_of</span>(<span class='string'>&quot;BinOpToken&quot;</span>),
-            <span class='ident'>context</span>.<span class='ident'>ident_of</span>(<span class='kw-2'>&amp;</span><span class='macro'>format</span><span class='macro'>!</span>(<span class='string'>&quot;{:?}&quot;</span>, <span class='self'>self</span>)),
-        ];
-
-        <span class='ident'>context</span>.<span class='ident'>expr_path</span>(<span class='ident'>context</span>.<span class='ident'>path_global</span>(<span class='ident'>span</span>, <span class='ident'>path</span>))
+<span class='kw'>impl</span><span class='op'>&lt;</span><span class='ident'>T</span>, <span class='ident'>S</span><span class='op'>&gt;</span> <span class='ident'>ToError</span><span class='op'>&lt;</span><span class='ident'>T</span>, <span class='ident'>S</span><span class='op'>&gt;</span> <span class='kw'>for</span> <span class='ident'>Span</span> <span class='kw'>where</span> <span class='ident'>S</span>: <span class='ident'>AsRef</span><span class='op'>&lt;</span><span class='ident'>str</span><span class='op'>&gt;</span> {
+    <span class='kw'>fn</span> <span class='ident'>to_error</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>, <span class='ident'>message</span>: <span class='ident'>S</span>) <span class='op'>-&gt;</span> <span class='ident'>PluginResult</span><span class='op'>&lt;</span><span class='ident'>T</span><span class='op'>&gt;</span> {
+        <span class='prelude-val'>Err</span>((<span class='op'>*</span><span class='self'>self</span>, <span class='ident'>message</span>.<span class='ident'>as_ref</span>().<span class='ident'>into</span>()))
     }
 }
 
-<span class='kw'>impl</span> <span class='ident'>AsExpr</span> <span class='kw'>for</span> <span class='ident'>DelimToken</span> {
-    <span class='kw'>fn</span> <span class='ident'>as_expr</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>, <span class='ident'>context</span>: <span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='ident'>ExtCtxt</span>, <span class='ident'>span</span>: <span class='ident'>Span</span>) <span class='op'>-&gt;</span> <span class='ident'>P</span><span class='op'>&lt;</span><span class='ident'>Expr</span><span class='op'>&gt;</span> {
-        <span class='kw'>let</span> <span class='ident'>path</span> <span class='op'>=</span> <span class='macro'>vec</span><span class='macro'>!</span>[
-            <span class='ident'>context</span>.<span class='ident'>ident_of</span>(<span class='string'>&quot;syntax&quot;</span>),
-            <span class='ident'>context</span>.<span class='ident'>ident_of</span>(<span class='string'>&quot;parse&quot;</span>),
-            <span class='ident'>context</span>.<span class='ident'>ident_of</span>(<span class='string'>&quot;token&quot;</span>),
-            <span class='ident'>context</span>.<span class='ident'>ident_of</span>(<span class='string'>&quot;DelimToken&quot;</span>),
-            <span class='ident'>context</span>.<span class='ident'>ident_of</span>(<span class='kw-2'>&amp;</span><span class='macro'>format</span><span class='macro'>!</span>(<span class='string'>&quot;{:?}&quot;</span>, <span class='self'>self</span>)),
-        ];
-
-        <span class='ident'>context</span>.<span class='ident'>expr_path</span>(<span class='ident'>context</span>.<span class='ident'>path_global</span>(<span class='ident'>span</span>, <span class='ident'>path</span>))
+<span class='kw'>impl</span><span class='op'>&lt;</span><span class='ident'>T</span>, <span class='ident'>S</span><span class='op'>&gt;</span> <span class='ident'>ToError</span><span class='op'>&lt;</span><span class='ident'>T</span>, <span class='ident'>S</span><span class='op'>&gt;</span> <span class='kw'>for</span> <span class='ident'>TokenTree</span> <span class='kw'>where</span> <span class='ident'>S</span>: <span class='ident'>AsRef</span><span class='op'>&lt;</span><span class='ident'>str</span><span class='op'>&gt;</span> {
+    <span class='kw'>fn</span> <span class='ident'>to_error</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>, <span class='ident'>message</span>: <span class='ident'>S</span>) <span class='op'>-&gt;</span> <span class='ident'>PluginResult</span><span class='op'>&lt;</span><span class='ident'>T</span><span class='op'>&gt;</span> {
+        <span class='prelude-val'>Err</span>((<span class='self'>self</span>.<span class='ident'>get_span</span>(), <span class='ident'>message</span>.<span class='ident'>as_ref</span>().<span class='ident'>into</span>()))
     }
 }
 
-<span class='kw'>impl</span> <span class='ident'>AsExpr</span> <span class='kw'>for</span> <span class='ident'>Ident</span> {
-    <span class='kw'>fn</span> <span class='ident'>as_expr</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>, <span class='ident'>context</span>: <span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='ident'>ExtCtxt</span>, <span class='ident'>span</span>: <span class='ident'>Span</span>) <span class='op'>-&gt;</span> <span class='ident'>P</span><span class='op'>&lt;</span><span class='ident'>Expr</span><span class='op'>&gt;</span> {
-        <span class='kw'>let</span> <span class='ident'>path</span> <span class='op'>=</span> <span class='macro'>vec</span><span class='macro'>!</span>[
-            <span class='ident'>context</span>.<span class='ident'>ident_of</span>(<span class='string'>&quot;syntax&quot;</span>),
-            <span class='ident'>context</span>.<span class='ident'>ident_of</span>(<span class='string'>&quot;parse&quot;</span>),
-            <span class='ident'>context</span>.<span class='ident'>ident_of</span>(<span class='string'>&quot;token&quot;</span>),
-            <span class='ident'>context</span>.<span class='ident'>ident_of</span>(<span class='string'>&quot;str_to_ident&quot;</span>),
-        ];
+<span class='comment'>// ToExpr ________________________________________</span>
 
+<span class='doccomment'>/// A type that can be converted into a `P&lt;Expr&gt;`.</span>
+<span class='kw'>pub</span> <span class='kw'>trait</span> <span class='ident'>ToExpr</span> {
+    <span class='doccomment'>/// Returns a `P&lt;Expr&gt;` which would produce this value if executed.</span>
+    <span class='kw'>fn</span> <span class='ident'>to_expr</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>, <span class='ident'>context</span>: <span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='ident'>ExtCtxt</span>, <span class='ident'>span</span>: <span class='ident'>Span</span>) <span class='op'>-&gt;</span> <span class='ident'>P</span><span class='op'>&lt;</span><span class='ident'>Expr</span><span class='op'>&gt;</span>;
+}
+
+<span class='kw'>impl</span> <span class='ident'>ToExpr</span> <span class='kw'>for</span> <span class='ident'>BinOpToken</span> {
+    <span class='kw'>fn</span> <span class='ident'>to_expr</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>, <span class='ident'>context</span>: <span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='ident'>ExtCtxt</span>, <span class='ident'>span</span>: <span class='ident'>Span</span>) <span class='op'>-&gt;</span> <span class='ident'>P</span><span class='op'>&lt;</span><span class='ident'>Expr</span><span class='op'>&gt;</span> {
+        <span class='ident'>mk_expr_path</span>(<span class='ident'>context</span>, <span class='ident'>span</span>, <span class='kw-2'>&amp;</span>[<span class='string'>&quot;BinOpToken&quot;</span>, <span class='kw-2'>&amp;</span><span class='macro'>format</span><span class='macro'>!</span>(<span class='string'>&quot;{:?}&quot;</span>, <span class='self'>self</span>)])
+    }
+}
+
+<span class='kw'>impl</span> <span class='ident'>ToExpr</span> <span class='kw'>for</span> <span class='ident'>DelimToken</span> {
+    <span class='kw'>fn</span> <span class='ident'>to_expr</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>, <span class='ident'>context</span>: <span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='ident'>ExtCtxt</span>, <span class='ident'>span</span>: <span class='ident'>Span</span>) <span class='op'>-&gt;</span> <span class='ident'>P</span><span class='op'>&lt;</span><span class='ident'>Expr</span><span class='op'>&gt;</span> {
+        <span class='ident'>mk_expr_path</span>(<span class='ident'>context</span>, <span class='ident'>span</span>, <span class='kw-2'>&amp;</span>[<span class='string'>&quot;DelimToken&quot;</span>, <span class='kw-2'>&amp;</span><span class='macro'>format</span><span class='macro'>!</span>(<span class='string'>&quot;{:?}&quot;</span>, <span class='self'>self</span>)])
+    }
+}
+
+<span class='kw'>impl</span> <span class='ident'>ToExpr</span> <span class='kw'>for</span> <span class='ident'>Ident</span> {
+    <span class='kw'>fn</span> <span class='ident'>to_expr</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>, <span class='ident'>context</span>: <span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='ident'>ExtCtxt</span>, <span class='ident'>span</span>: <span class='ident'>Span</span>) <span class='op'>-&gt;</span> <span class='ident'>P</span><span class='op'>&lt;</span><span class='ident'>Expr</span><span class='op'>&gt;</span> {
+        <span class='kw'>let</span> <span class='ident'>path</span> <span class='op'>=</span> <span class='ident'>mk_path</span>(<span class='ident'>context</span>, <span class='kw-2'>&amp;</span>[<span class='string'>&quot;str_to_ident&quot;</span>]);
         <span class='ident'>context</span>.<span class='ident'>expr_call_global</span>(<span class='ident'>span</span>, <span class='ident'>path</span>, <span class='macro'>vec</span><span class='macro'>!</span>[<span class='ident'>context</span>.<span class='ident'>expr_str</span>(<span class='ident'>span</span>, <span class='self'>self</span>.<span class='ident'>name</span>.<span class='ident'>as_str</span>())])
     }
 }
 
-<span class='kw'>impl</span> <span class='ident'>AsExpr</span> <span class='kw'>for</span> <span class='ident'>IdentStyle</span> {
-    <span class='kw'>fn</span> <span class='ident'>as_expr</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>, <span class='ident'>context</span>: <span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='ident'>ExtCtxt</span>, <span class='ident'>span</span>: <span class='ident'>Span</span>) <span class='op'>-&gt;</span> <span class='ident'>P</span><span class='op'>&lt;</span><span class='ident'>Expr</span><span class='op'>&gt;</span> {
-        <span class='kw'>let</span> <span class='ident'>path</span> <span class='op'>=</span> <span class='macro'>vec</span><span class='macro'>!</span>[
-            <span class='ident'>context</span>.<span class='ident'>ident_of</span>(<span class='string'>&quot;syntax&quot;</span>),
-            <span class='ident'>context</span>.<span class='ident'>ident_of</span>(<span class='string'>&quot;parse&quot;</span>),
-            <span class='ident'>context</span>.<span class='ident'>ident_of</span>(<span class='string'>&quot;token&quot;</span>),
-            <span class='ident'>context</span>.<span class='ident'>ident_of</span>(<span class='string'>&quot;IdentStyle&quot;</span>),
-            <span class='ident'>context</span>.<span class='ident'>ident_of</span>(<span class='kw-2'>&amp;</span><span class='macro'>format</span><span class='macro'>!</span>(<span class='string'>&quot;{:?}&quot;</span>, <span class='self'>self</span>)),
-        ];
-
-        <span class='ident'>context</span>.<span class='ident'>expr_path</span>(<span class='ident'>context</span>.<span class='ident'>path_global</span>(<span class='ident'>span</span>, <span class='ident'>path</span>))
+<span class='kw'>impl</span> <span class='ident'>ToExpr</span> <span class='kw'>for</span> <span class='ident'>IdentStyle</span> {
+    <span class='kw'>fn</span> <span class='ident'>to_expr</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>, <span class='ident'>context</span>: <span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='ident'>ExtCtxt</span>, <span class='ident'>span</span>: <span class='ident'>Span</span>) <span class='op'>-&gt;</span> <span class='ident'>P</span><span class='op'>&lt;</span><span class='ident'>Expr</span><span class='op'>&gt;</span> {
+        <span class='ident'>mk_expr_path</span>(<span class='ident'>context</span>, <span class='ident'>span</span>, <span class='kw-2'>&amp;</span>[<span class='string'>&quot;IdentStyle&quot;</span>, <span class='kw-2'>&amp;</span><span class='macro'>format</span><span class='macro'>!</span>(<span class='string'>&quot;{:?}&quot;</span>, <span class='self'>self</span>)])
     }
 }
 
-<span class='kw'>impl</span> <span class='ident'>AsExpr</span> <span class='kw'>for</span> <span class='ident'>Lit</span> {
-    <span class='kw'>fn</span> <span class='ident'>as_expr</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>, <span class='ident'>context</span>: <span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='ident'>ExtCtxt</span>, <span class='ident'>span</span>: <span class='ident'>Span</span>) <span class='op'>-&gt;</span> <span class='ident'>P</span><span class='op'>&lt;</span><span class='ident'>Expr</span><span class='op'>&gt;</span> {
+<span class='kw'>impl</span> <span class='ident'>ToExpr</span> <span class='kw'>for</span> <span class='ident'>Lit</span> {
+    <span class='kw'>fn</span> <span class='ident'>to_expr</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>, <span class='ident'>context</span>: <span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='ident'>ExtCtxt</span>, <span class='ident'>span</span>: <span class='ident'>Span</span>) <span class='op'>-&gt;</span> <span class='ident'>P</span><span class='op'>&lt;</span><span class='ident'>Expr</span><span class='op'>&gt;</span> {
         <span class='macro'>macro_rules</span><span class='macro'>!</span> <span class='ident'>expr</span> {
-            (<span class='macro-nonterminal'>$</span><span class='macro-nonterminal'>variant</span>:<span class='ident'>expr</span>, $(<span class='macro-nonterminal'>$</span><span class='macro-nonterminal'>argument</span>:<span class='ident'>expr</span>), <span class='op'>*</span>) <span class='op'>=&gt;</span> ({
-                <span class='kw'>let</span> <span class='ident'>path</span> <span class='op'>=</span> <span class='macro'>vec</span><span class='macro'>!</span>[
-                    <span class='ident'>context</span>.<span class='ident'>ident_of</span>(<span class='string'>&quot;syntax&quot;</span>),
-                    <span class='ident'>context</span>.<span class='ident'>ident_of</span>(<span class='string'>&quot;parse&quot;</span>),
-                    <span class='ident'>context</span>.<span class='ident'>ident_of</span>(<span class='string'>&quot;token&quot;</span>),
-                    <span class='ident'>context</span>.<span class='ident'>ident_of</span>(<span class='string'>&quot;Lit&quot;</span>),
-                    <span class='ident'>context</span>.<span class='ident'>ident_of</span>(<span class='macro-nonterminal'>$</span><span class='macro-nonterminal'>variant</span>),
-                ];
+            (<span class='macro-nonterminal'>$</span><span class='macro-nonterminal'>variant</span>:<span class='ident'>expr</span>, <span class='macro-nonterminal'>$</span><span class='macro-nonterminal'>name</span>:<span class='ident'>expr</span>) <span class='op'>=&gt;</span> ({
+                <span class='kw'>let</span> <span class='ident'>arguments</span> <span class='op'>=</span> <span class='macro'>vec</span><span class='macro'>!</span>[<span class='macro-nonterminal'>$</span><span class='macro-nonterminal'>name</span>.<span class='ident'>to_expr</span>(<span class='ident'>context</span>, <span class='ident'>span</span>)];
+                <span class='ident'>context</span>.<span class='ident'>expr_call_global</span>(<span class='ident'>span</span>, <span class='ident'>mk_path</span>(<span class='ident'>context</span>, <span class='kw-2'>&amp;</span>[<span class='string'>&quot;Lit&quot;</span>, <span class='macro-nonterminal'>$</span><span class='macro-nonterminal'>variant</span>]), <span class='ident'>arguments</span>)
+            });
 
-                <span class='kw'>let</span> <span class='ident'>arguments</span> <span class='op'>=</span> <span class='macro'>vec</span><span class='macro'>!</span>[$(<span class='macro-nonterminal'>$</span><span class='macro-nonterminal'>argument</span>), <span class='op'>*</span>];
-                <span class='ident'>context</span>.<span class='ident'>expr_call_global</span>(<span class='ident'>span</span>, <span class='ident'>path</span>, <span class='ident'>arguments</span>)
+            (<span class='macro-nonterminal'>$</span><span class='macro-nonterminal'>variant</span>:<span class='ident'>expr</span>, <span class='macro-nonterminal'>$</span><span class='macro-nonterminal'>name</span>:<span class='ident'>expr</span>, <span class='macro-nonterminal'>$</span><span class='macro-nonterminal'>size</span>:<span class='ident'>expr</span>) <span class='op'>=&gt;</span> ({
+                <span class='kw'>let</span> <span class='ident'>arguments</span> <span class='op'>=</span> <span class='macro'>vec</span><span class='macro'>!</span>[<span class='macro-nonterminal'>$</span><span class='macro-nonterminal'>name</span>.<span class='ident'>to_expr</span>(<span class='ident'>context</span>, <span class='ident'>span</span>), <span class='ident'>context</span>.<span class='ident'>expr_usize</span>(<span class='ident'>span</span>, <span class='macro-nonterminal'>$</span><span class='macro-nonterminal'>size</span>)];
+                <span class='ident'>context</span>.<span class='ident'>expr_call_global</span>(<span class='ident'>span</span>, <span class='ident'>mk_path</span>(<span class='ident'>context</span>, <span class='kw-2'>&amp;</span>[<span class='string'>&quot;Lit&quot;</span>, <span class='macro-nonterminal'>$</span><span class='macro-nonterminal'>variant</span>]), <span class='ident'>arguments</span>)
             });
         }
 
         <span class='kw'>match</span> <span class='op'>*</span><span class='self'>self</span> {
-            <span class='ident'>Lit</span>::<span class='ident'>Byte</span>(<span class='ident'>name</span>) <span class='op'>=&gt;</span> <span class='macro'>expr</span><span class='macro'>!</span>(<span class='string'>&quot;Byte&quot;</span>, <span class='ident'>name</span>.<span class='ident'>as_expr</span>(<span class='ident'>context</span>, <span class='ident'>span</span>)),
-            <span class='ident'>Lit</span>::<span class='ident'>Char</span>(<span class='ident'>name</span>) <span class='op'>=&gt;</span> <span class='macro'>expr</span><span class='macro'>!</span>(<span class='string'>&quot;Char&quot;</span>, <span class='ident'>name</span>.<span class='ident'>as_expr</span>(<span class='ident'>context</span>, <span class='ident'>span</span>)),
-            <span class='ident'>Lit</span>::<span class='ident'>Integer</span>(<span class='ident'>name</span>) <span class='op'>=&gt;</span> <span class='macro'>expr</span><span class='macro'>!</span>(<span class='string'>&quot;Integer&quot;</span>, <span class='ident'>name</span>.<span class='ident'>as_expr</span>(<span class='ident'>context</span>, <span class='ident'>span</span>)),
-            <span class='ident'>Lit</span>::<span class='ident'>Float</span>(<span class='ident'>name</span>) <span class='op'>=&gt;</span> <span class='macro'>expr</span><span class='macro'>!</span>(<span class='string'>&quot;Float&quot;</span>, <span class='ident'>name</span>.<span class='ident'>as_expr</span>(<span class='ident'>context</span>, <span class='ident'>span</span>)),
-            <span class='ident'>Lit</span>::<span class='ident'>Str_</span>(<span class='ident'>name</span>) <span class='op'>=&gt;</span> <span class='macro'>expr</span><span class='macro'>!</span>(<span class='string'>&quot;Str_&quot;</span>, <span class='ident'>name</span>.<span class='ident'>as_expr</span>(<span class='ident'>context</span>, <span class='ident'>span</span>)),
-            <span class='ident'>Lit</span>::<span class='ident'>StrRaw</span>(<span class='ident'>name</span>, <span class='ident'>size</span>) <span class='op'>=&gt;</span> {
-                <span class='macro'>expr</span><span class='macro'>!</span>(<span class='string'>&quot;StrRaw&quot;</span>, <span class='ident'>name</span>.<span class='ident'>as_expr</span>(<span class='ident'>context</span>, <span class='ident'>span</span>), <span class='ident'>context</span>.<span class='ident'>expr_usize</span>(<span class='ident'>span</span>, <span class='ident'>size</span>))
-            },
-            <span class='ident'>Lit</span>::<span class='ident'>ByteStr</span>(<span class='ident'>name</span>) <span class='op'>=&gt;</span> <span class='macro'>expr</span><span class='macro'>!</span>(<span class='string'>&quot;ByteStr&quot;</span>, <span class='ident'>name</span>.<span class='ident'>as_expr</span>(<span class='ident'>context</span>, <span class='ident'>span</span>)),
-            <span class='ident'>Lit</span>::<span class='ident'>ByteStrRaw</span>(<span class='ident'>name</span>, <span class='ident'>size</span>) <span class='op'>=&gt;</span> {
-                <span class='macro'>expr</span><span class='macro'>!</span>(<span class='string'>&quot;ByteStrRaw&quot;</span>, <span class='ident'>name</span>.<span class='ident'>as_expr</span>(<span class='ident'>context</span>, <span class='ident'>span</span>), <span class='ident'>context</span>.<span class='ident'>expr_usize</span>(<span class='ident'>span</span>, <span class='ident'>size</span>))
-            },
+            <span class='ident'>Lit</span>::<span class='ident'>Byte</span>(<span class='ident'>name</span>) <span class='op'>=&gt;</span> <span class='macro'>expr</span><span class='macro'>!</span>(<span class='string'>&quot;Byte&quot;</span>, <span class='ident'>name</span>),
+            <span class='ident'>Lit</span>::<span class='ident'>Char</span>(<span class='ident'>name</span>) <span class='op'>=&gt;</span> <span class='macro'>expr</span><span class='macro'>!</span>(<span class='string'>&quot;Char&quot;</span>, <span class='ident'>name</span>),
+            <span class='ident'>Lit</span>::<span class='ident'>Integer</span>(<span class='ident'>name</span>) <span class='op'>=&gt;</span> <span class='macro'>expr</span><span class='macro'>!</span>(<span class='string'>&quot;Integer&quot;</span>, <span class='ident'>name</span>),
+            <span class='ident'>Lit</span>::<span class='ident'>Float</span>(<span class='ident'>name</span>) <span class='op'>=&gt;</span> <span class='macro'>expr</span><span class='macro'>!</span>(<span class='string'>&quot;Float&quot;</span>, <span class='ident'>name</span>),
+            <span class='ident'>Lit</span>::<span class='ident'>Str_</span>(<span class='ident'>name</span>) <span class='op'>=&gt;</span> <span class='macro'>expr</span><span class='macro'>!</span>(<span class='string'>&quot;Str_&quot;</span>, <span class='ident'>name</span>),
+            <span class='ident'>Lit</span>::<span class='ident'>StrRaw</span>(<span class='ident'>name</span>, <span class='ident'>size</span>) <span class='op'>=&gt;</span> <span class='macro'>expr</span><span class='macro'>!</span>(<span class='string'>&quot;StrRaw&quot;</span>, <span class='ident'>name</span>, <span class='ident'>size</span>),
+            <span class='ident'>Lit</span>::<span class='ident'>ByteStr</span>(<span class='ident'>name</span>) <span class='op'>=&gt;</span> <span class='macro'>expr</span><span class='macro'>!</span>(<span class='string'>&quot;ByteStr&quot;</span>, <span class='ident'>name</span>),
+            <span class='ident'>Lit</span>::<span class='ident'>ByteStrRaw</span>(<span class='ident'>name</span>, <span class='ident'>size</span>) <span class='op'>=&gt;</span> <span class='macro'>expr</span><span class='macro'>!</span>(<span class='string'>&quot;ByteStrRaw&quot;</span>, <span class='ident'>name</span>, <span class='ident'>size</span>),
         }
     }
 }
 
-<span class='kw'>impl</span> <span class='ident'>AsExpr</span> <span class='kw'>for</span> <span class='ident'>Name</span> {
-    <span class='kw'>fn</span> <span class='ident'>as_expr</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>, <span class='ident'>context</span>: <span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='ident'>ExtCtxt</span>, <span class='ident'>span</span>: <span class='ident'>Span</span>) <span class='op'>-&gt;</span> <span class='ident'>P</span><span class='op'>&lt;</span><span class='ident'>Expr</span><span class='op'>&gt;</span> {
-        <span class='kw'>let</span> <span class='ident'>path</span> <span class='op'>=</span> <span class='macro'>vec</span><span class='macro'>!</span>[
-            <span class='ident'>context</span>.<span class='ident'>ident_of</span>(<span class='string'>&quot;syntax&quot;</span>),
-            <span class='ident'>context</span>.<span class='ident'>ident_of</span>(<span class='string'>&quot;parse&quot;</span>),
-            <span class='ident'>context</span>.<span class='ident'>ident_of</span>(<span class='string'>&quot;token&quot;</span>),
-            <span class='ident'>context</span>.<span class='ident'>ident_of</span>(<span class='string'>&quot;intern&quot;</span>),
-        ];
-
+<span class='kw'>impl</span> <span class='ident'>ToExpr</span> <span class='kw'>for</span> <span class='ident'>Name</span> {
+    <span class='kw'>fn</span> <span class='ident'>to_expr</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>, <span class='ident'>context</span>: <span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='ident'>ExtCtxt</span>, <span class='ident'>span</span>: <span class='ident'>Span</span>) <span class='op'>-&gt;</span> <span class='ident'>P</span><span class='op'>&lt;</span><span class='ident'>Expr</span><span class='op'>&gt;</span> {
+        <span class='kw'>let</span> <span class='ident'>path</span> <span class='op'>=</span> <span class='ident'>mk_path</span>(<span class='ident'>context</span>, <span class='kw-2'>&amp;</span>[<span class='string'>&quot;intern&quot;</span>]);
         <span class='ident'>context</span>.<span class='ident'>expr_call_global</span>(<span class='ident'>span</span>, <span class='ident'>path</span>, <span class='macro'>vec</span><span class='macro'>!</span>[<span class='ident'>context</span>.<span class='ident'>expr_str</span>(<span class='ident'>span</span>, <span class='self'>self</span>.<span class='ident'>as_str</span>())])
     }
 }
 
-<span class='kw'>impl</span> <span class='ident'>AsExpr</span> <span class='kw'>for</span> <span class='ident'>Token</span> {
-    <span class='kw'>fn</span> <span class='ident'>as_expr</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>, <span class='ident'>context</span>: <span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='ident'>ExtCtxt</span>, <span class='ident'>span</span>: <span class='ident'>Span</span>) <span class='op'>-&gt;</span> <span class='ident'>P</span><span class='op'>&lt;</span><span class='ident'>Expr</span><span class='op'>&gt;</span> {
+<span class='kw'>impl</span> <span class='ident'>ToExpr</span> <span class='kw'>for</span> <span class='ident'>Token</span> {
+    <span class='kw'>fn</span> <span class='ident'>to_expr</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>, <span class='ident'>context</span>: <span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='ident'>ExtCtxt</span>, <span class='ident'>span</span>: <span class='ident'>Span</span>) <span class='op'>-&gt;</span> <span class='ident'>P</span><span class='op'>&lt;</span><span class='ident'>Expr</span><span class='op'>&gt;</span> {
         <span class='macro'>macro_rules</span><span class='macro'>!</span> <span class='ident'>expr</span> {
-            (<span class='macro-nonterminal'>$</span><span class='macro-nonterminal'>variant</span>:<span class='ident'>expr</span>) <span class='op'>=&gt;</span> ({
-                <span class='kw'>let</span> <span class='ident'>path</span> <span class='op'>=</span> <span class='macro'>vec</span><span class='macro'>!</span>[
-                    <span class='ident'>context</span>.<span class='ident'>ident_of</span>(<span class='string'>&quot;syntax&quot;</span>),
-                    <span class='ident'>context</span>.<span class='ident'>ident_of</span>(<span class='string'>&quot;parse&quot;</span>),
-                    <span class='ident'>context</span>.<span class='ident'>ident_of</span>(<span class='string'>&quot;token&quot;</span>),
-                    <span class='ident'>context</span>.<span class='ident'>ident_of</span>(<span class='string'>&quot;Token&quot;</span>),
-                    <span class='ident'>context</span>.<span class='ident'>ident_of</span>(<span class='macro-nonterminal'>$</span><span class='macro-nonterminal'>variant</span>),
-                ];
-
-                <span class='ident'>context</span>.<span class='ident'>expr_path</span>(<span class='ident'>context</span>.<span class='ident'>path_global</span>(<span class='ident'>span</span>, <span class='ident'>path</span>))
-            });
-
             (<span class='macro-nonterminal'>$</span><span class='macro-nonterminal'>variant</span>:<span class='ident'>expr</span>, $(<span class='macro-nonterminal'>$</span><span class='macro-nonterminal'>argument</span>:<span class='ident'>expr</span>), <span class='op'>*</span>) <span class='op'>=&gt;</span> ({
-                <span class='kw'>let</span> <span class='ident'>path</span> <span class='op'>=</span> <span class='macro'>vec</span><span class='macro'>!</span>[
-                    <span class='ident'>context</span>.<span class='ident'>ident_of</span>(<span class='string'>&quot;syntax&quot;</span>),
-                    <span class='ident'>context</span>.<span class='ident'>ident_of</span>(<span class='string'>&quot;parse&quot;</span>),
-                    <span class='ident'>context</span>.<span class='ident'>ident_of</span>(<span class='string'>&quot;token&quot;</span>),
-                    <span class='ident'>context</span>.<span class='ident'>ident_of</span>(<span class='string'>&quot;Token&quot;</span>),
-                    <span class='ident'>context</span>.<span class='ident'>ident_of</span>(<span class='macro-nonterminal'>$</span><span class='macro-nonterminal'>variant</span>),
-                ];
-
-                <span class='kw'>let</span> <span class='ident'>arguments</span> <span class='op'>=</span> <span class='macro'>vec</span><span class='macro'>!</span>[$(<span class='macro-nonterminal'>$</span><span class='macro-nonterminal'>argument</span>), <span class='op'>*</span>];
-                <span class='ident'>context</span>.<span class='ident'>expr_call_global</span>(<span class='ident'>span</span>, <span class='ident'>path</span>, <span class='ident'>arguments</span>)
+                <span class='kw'>let</span> <span class='ident'>arguments</span> <span class='op'>=</span> <span class='macro'>vec</span><span class='macro'>!</span>[$(<span class='macro-nonterminal'>$</span><span class='macro-nonterminal'>argument</span>.<span class='ident'>to_expr</span>(<span class='ident'>context</span>, <span class='ident'>span</span>)), <span class='op'>*</span>];
+                <span class='ident'>context</span>.<span class='ident'>expr_call_global</span>(<span class='ident'>span</span>, <span class='ident'>mk_path</span>(<span class='ident'>context</span>, <span class='kw-2'>&amp;</span>[<span class='string'>&quot;Token&quot;</span>, <span class='macro-nonterminal'>$</span><span class='macro-nonterminal'>variant</span>]), <span class='ident'>arguments</span>)
             });
         }
 
         <span class='kw'>match</span> <span class='op'>*</span><span class='self'>self</span> {
-            <span class='ident'>Token</span>::<span class='ident'>BinOp</span>(<span class='ident'>binop</span>) <span class='op'>=&gt;</span> <span class='macro'>expr</span><span class='macro'>!</span>(<span class='string'>&quot;BinOp&quot;</span>, <span class='ident'>binop</span>.<span class='ident'>as_expr</span>(<span class='ident'>context</span>, <span class='ident'>span</span>)),
-            <span class='ident'>Token</span>::<span class='ident'>BinOpEq</span>(<span class='ident'>binop</span>) <span class='op'>=&gt;</span> <span class='macro'>expr</span><span class='macro'>!</span>(<span class='string'>&quot;BinOpEq&quot;</span>, <span class='ident'>binop</span>.<span class='ident'>as_expr</span>(<span class='ident'>context</span>, <span class='ident'>span</span>)),
-            <span class='ident'>Token</span>::<span class='ident'>Literal</span>(<span class='ident'>lit</span>, <span class='ident'>suffix</span>) <span class='op'>=&gt;</span> {
-                <span class='macro'>expr</span><span class='macro'>!</span>(<span class='string'>&quot;Literal&quot;</span>, <span class='ident'>lit</span>.<span class='ident'>as_expr</span>(<span class='ident'>context</span>, <span class='ident'>span</span>), <span class='ident'>suffix</span>.<span class='ident'>as_expr</span>(<span class='ident'>context</span>, <span class='ident'>span</span>))
-            },
-            <span class='ident'>Token</span>::<span class='ident'>Ident</span>(<span class='kw-2'>ref</span> <span class='ident'>ident</span>, <span class='ident'>style</span>) <span class='op'>=&gt;</span> {
-                <span class='macro'>expr</span><span class='macro'>!</span>(<span class='string'>&quot;Ident&quot;</span>, <span class='ident'>ident</span>.<span class='ident'>as_expr</span>(<span class='ident'>context</span>, <span class='ident'>span</span>), <span class='ident'>style</span>.<span class='ident'>as_expr</span>(<span class='ident'>context</span>, <span class='ident'>span</span>))
-            },
-            <span class='ident'>Token</span>::<span class='ident'>Lifetime</span>(<span class='kw-2'>ref</span> <span class='ident'>lifetime</span>) <span class='op'>=&gt;</span> <span class='macro'>expr</span><span class='macro'>!</span>(<span class='string'>&quot;Lifetime&quot;</span>, <span class='ident'>lifetime</span>.<span class='ident'>as_expr</span>(<span class='ident'>context</span>, <span class='ident'>span</span>)),
-            <span class='ident'>Token</span>::<span class='ident'>DocComment</span>(<span class='ident'>comment</span>) <span class='op'>=&gt;</span> <span class='macro'>expr</span><span class='macro'>!</span>(<span class='string'>&quot;DocComment&quot;</span>, <span class='ident'>comment</span>.<span class='ident'>as_expr</span>(<span class='ident'>context</span>, <span class='ident'>span</span>)),
+            <span class='ident'>Token</span>::<span class='ident'>BinOp</span>(<span class='ident'>binop</span>) <span class='op'>=&gt;</span> <span class='macro'>expr</span><span class='macro'>!</span>(<span class='string'>&quot;BinOp&quot;</span>, <span class='ident'>binop</span>),
+            <span class='ident'>Token</span>::<span class='ident'>BinOpEq</span>(<span class='ident'>binop</span>) <span class='op'>=&gt;</span> <span class='macro'>expr</span><span class='macro'>!</span>(<span class='string'>&quot;BinOpEq&quot;</span>, <span class='ident'>binop</span>),
+            <span class='ident'>Token</span>::<span class='ident'>Literal</span>(<span class='ident'>lit</span>, <span class='ident'>suffix</span>) <span class='op'>=&gt;</span> <span class='macro'>expr</span><span class='macro'>!</span>(<span class='string'>&quot;Literal&quot;</span>, <span class='ident'>lit</span>, <span class='ident'>suffix</span>),
+            <span class='ident'>Token</span>::<span class='ident'>Ident</span>(<span class='kw-2'>ref</span> <span class='ident'>ident</span>, <span class='ident'>style</span>) <span class='op'>=&gt;</span> <span class='macro'>expr</span><span class='macro'>!</span>(<span class='string'>&quot;Ident&quot;</span>, <span class='ident'>ident</span>, <span class='ident'>style</span>),
+            <span class='ident'>Token</span>::<span class='ident'>Lifetime</span>(<span class='kw-2'>ref</span> <span class='ident'>lifetime</span>) <span class='op'>=&gt;</span> <span class='macro'>expr</span><span class='macro'>!</span>(<span class='string'>&quot;Lifetime&quot;</span>, <span class='ident'>lifetime</span>),
+            <span class='ident'>Token</span>::<span class='ident'>DocComment</span>(<span class='ident'>comment</span>) <span class='op'>=&gt;</span> <span class='macro'>expr</span><span class='macro'>!</span>(<span class='string'>&quot;DocComment&quot;</span>, <span class='ident'>comment</span>),
             <span class='ident'>Token</span>::<span class='ident'>OpenDelim</span>(_) <span class='op'>|</span>
             <span class='ident'>Token</span>::<span class='ident'>CloseDelim</span>(_) <span class='op'>|</span>
             <span class='ident'>Token</span>::<span class='ident'>Shebang</span>(_) <span class='op'>|</span>
@@ -567,16 +499,16 @@
             <span class='ident'>Token</span>::<span class='ident'>MatchNt</span>(_, _, _, _) <span class='op'>|</span>
             <span class='ident'>Token</span>::<span class='ident'>SubstNt</span>(_, _) <span class='op'>|</span>
             <span class='ident'>Token</span>::<span class='ident'>SpecialVarNt</span>(_) <span class='op'>=&gt;</span> <span class='macro'>unreachable</span><span class='macro'>!</span>(),
-            _ <span class='op'>=&gt;</span> <span class='macro'>expr</span><span class='macro'>!</span>(<span class='kw-2'>&amp;</span><span class='macro'>format</span><span class='macro'>!</span>(<span class='string'>&quot;{:?}&quot;</span>, <span class='self'>self</span>)),
+            _ <span class='op'>=&gt;</span> <span class='ident'>mk_expr_path</span>(<span class='ident'>context</span>, <span class='ident'>span</span>, <span class='kw-2'>&amp;</span>[<span class='string'>&quot;Token&quot;</span>, <span class='kw-2'>&amp;</span><span class='macro'>format</span><span class='macro'>!</span>(<span class='string'>&quot;{:?}&quot;</span>, <span class='self'>self</span>)]),
         }
     }
 }
 
-<span class='kw'>impl</span><span class='op'>&lt;</span><span class='ident'>T</span><span class='op'>&gt;</span> <span class='ident'>AsExpr</span> <span class='kw'>for</span> <span class='prelude-ty'>Option</span><span class='op'>&lt;</span><span class='ident'>T</span><span class='op'>&gt;</span> <span class='kw'>where</span> <span class='ident'>T</span>: <span class='ident'>AsExpr</span> {
-    <span class='kw'>fn</span> <span class='ident'>as_expr</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>, <span class='ident'>context</span>: <span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='ident'>ExtCtxt</span>, <span class='ident'>span</span>: <span class='ident'>Span</span>) <span class='op'>-&gt;</span> <span class='ident'>P</span><span class='op'>&lt;</span><span class='ident'>Expr</span><span class='op'>&gt;</span> {
+<span class='kw'>impl</span><span class='op'>&lt;</span><span class='ident'>T</span><span class='op'>&gt;</span> <span class='ident'>ToExpr</span> <span class='kw'>for</span> <span class='prelude-ty'>Option</span><span class='op'>&lt;</span><span class='ident'>T</span><span class='op'>&gt;</span> <span class='kw'>where</span> <span class='ident'>T</span>: <span class='ident'>ToExpr</span> {
+    <span class='kw'>fn</span> <span class='ident'>to_expr</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>, <span class='ident'>context</span>: <span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='ident'>ExtCtxt</span>, <span class='ident'>span</span>: <span class='ident'>Span</span>) <span class='op'>-&gt;</span> <span class='ident'>P</span><span class='op'>&lt;</span><span class='ident'>Expr</span><span class='op'>&gt;</span> {
         <span class='kw'>match</span> <span class='op'>*</span><span class='self'>self</span> {
             <span class='prelude-val'>Some</span>(<span class='kw-2'>ref</span> <span class='ident'>some</span>) <span class='op'>=&gt;</span> {
-                <span class='kw'>let</span> <span class='ident'>some</span> <span class='op'>=</span> <span class='ident'>some</span>.<span class='ident'>as_expr</span>(<span class='ident'>context</span>, <span class='ident'>span</span>);
+                <span class='kw'>let</span> <span class='ident'>some</span> <span class='op'>=</span> <span class='ident'>some</span>.<span class='ident'>to_expr</span>(<span class='ident'>context</span>, <span class='ident'>span</span>);
                 <span class='ident'>context</span>.<span class='ident'>expr_some</span>(<span class='ident'>span</span>, <span class='ident'>some</span>)
             },
             <span class='prelude-val'>None</span> <span class='op'>=&gt;</span> <span class='ident'>context</span>.<span class='ident'>expr_none</span>(<span class='ident'>span</span>),
@@ -585,84 +517,30 @@
 }
 
 <span class='attribute'>#[<span class='ident'>cfg_attr</span>(<span class='ident'>feature</span><span class='op'>=</span><span class='string'>&quot;clippy&quot;</span>, <span class='ident'>allow</span>(<span class='ident'>ptr_arg</span>))]</span>
-<span class='kw'>impl</span><span class='op'>&lt;</span><span class='ident'>T</span><span class='op'>&gt;</span> <span class='ident'>AsExpr</span> <span class='kw'>for</span> <span class='ident'>Vec</span><span class='op'>&lt;</span><span class='ident'>T</span><span class='op'>&gt;</span> <span class='kw'>where</span> <span class='ident'>T</span>: <span class='ident'>AsExpr</span> {
-    <span class='kw'>fn</span> <span class='ident'>as_expr</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>, <span class='ident'>context</span>: <span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='ident'>ExtCtxt</span>, <span class='ident'>span</span>: <span class='ident'>Span</span>) <span class='op'>-&gt;</span> <span class='ident'>P</span><span class='op'>&lt;</span><span class='ident'>Expr</span><span class='op'>&gt;</span> {
-        <span class='kw'>let</span> <span class='ident'>exprs</span> <span class='op'>=</span> <span class='self'>self</span>.<span class='ident'>iter</span>().<span class='ident'>map</span>(<span class='op'>|</span><span class='ident'>i</span><span class='op'>|</span> <span class='ident'>i</span>.<span class='ident'>as_expr</span>(<span class='ident'>context</span>, <span class='ident'>span</span>)).<span class='ident'>collect</span>();
+<span class='kw'>impl</span><span class='op'>&lt;</span><span class='ident'>T</span><span class='op'>&gt;</span> <span class='ident'>ToExpr</span> <span class='kw'>for</span> <span class='ident'>Vec</span><span class='op'>&lt;</span><span class='ident'>T</span><span class='op'>&gt;</span> <span class='kw'>where</span> <span class='ident'>T</span>: <span class='ident'>ToExpr</span> {
+    <span class='kw'>fn</span> <span class='ident'>to_expr</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>, <span class='ident'>context</span>: <span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='ident'>ExtCtxt</span>, <span class='ident'>span</span>: <span class='ident'>Span</span>) <span class='op'>-&gt;</span> <span class='ident'>P</span><span class='op'>&lt;</span><span class='ident'>Expr</span><span class='op'>&gt;</span> {
+        <span class='kw'>let</span> <span class='ident'>exprs</span> <span class='op'>=</span> <span class='self'>self</span>.<span class='ident'>iter</span>().<span class='ident'>map</span>(<span class='op'>|</span><span class='ident'>i</span><span class='op'>|</span> <span class='ident'>i</span>.<span class='ident'>to_expr</span>(<span class='ident'>context</span>, <span class='ident'>span</span>)).<span class='ident'>collect</span>();
         <span class='kw'>let</span> <span class='ident'>slice</span> <span class='op'>=</span> <span class='ident'>context</span>.<span class='ident'>expr_vec_slice</span>(<span class='ident'>span</span>, <span class='ident'>exprs</span>);
         <span class='ident'>context</span>.<span class='ident'>expr_method_call</span>(<span class='ident'>span</span>, <span class='ident'>slice</span>, <span class='ident'>context</span>.<span class='ident'>ident_of</span>(<span class='string'>&quot;to_vec&quot;</span>), <span class='macro'>vec</span><span class='macro'>!</span>[])
     }
 }
 
-<span class='kw'>impl</span><span class='op'>&lt;</span><span class='ident'>T</span><span class='op'>&gt;</span> <span class='ident'>AsExpr</span> <span class='kw'>for</span> [<span class='ident'>T</span>] <span class='kw'>where</span> <span class='ident'>T</span>: <span class='ident'>AsExpr</span> {
-    <span class='kw'>fn</span> <span class='ident'>as_expr</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>, <span class='ident'>context</span>: <span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='ident'>ExtCtxt</span>, <span class='ident'>span</span>: <span class='ident'>Span</span>) <span class='op'>-&gt;</span> <span class='ident'>P</span><span class='op'>&lt;</span><span class='ident'>Expr</span><span class='op'>&gt;</span> {
-        <span class='kw'>let</span> <span class='ident'>exprs</span> <span class='op'>=</span> <span class='self'>self</span>.<span class='ident'>iter</span>().<span class='ident'>map</span>(<span class='op'>|</span><span class='ident'>i</span><span class='op'>|</span> <span class='ident'>i</span>.<span class='ident'>as_expr</span>(<span class='ident'>context</span>, <span class='ident'>span</span>)).<span class='ident'>collect</span>();
+<span class='kw'>impl</span><span class='op'>&lt;</span><span class='ident'>T</span><span class='op'>&gt;</span> <span class='ident'>ToExpr</span> <span class='kw'>for</span> [<span class='ident'>T</span>] <span class='kw'>where</span> <span class='ident'>T</span>: <span class='ident'>ToExpr</span> {
+    <span class='kw'>fn</span> <span class='ident'>to_expr</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>, <span class='ident'>context</span>: <span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='ident'>ExtCtxt</span>, <span class='ident'>span</span>: <span class='ident'>Span</span>) <span class='op'>-&gt;</span> <span class='ident'>P</span><span class='op'>&lt;</span><span class='ident'>Expr</span><span class='op'>&gt;</span> {
+        <span class='kw'>let</span> <span class='ident'>exprs</span> <span class='op'>=</span> <span class='self'>self</span>.<span class='ident'>iter</span>().<span class='ident'>map</span>(<span class='op'>|</span><span class='ident'>i</span><span class='op'>|</span> <span class='ident'>i</span>.<span class='ident'>to_expr</span>(<span class='ident'>context</span>, <span class='ident'>span</span>)).<span class='ident'>collect</span>();
         <span class='ident'>context</span>.<span class='ident'>expr_vec_slice</span>(<span class='ident'>span</span>, <span class='ident'>exprs</span>)
     }
 }
 
-<span class='kw'>pub</span> <span class='kw'>trait</span> <span class='ident'>AsError</span><span class='op'>&lt;</span><span class='ident'>T</span>, <span class='ident'>S</span><span class='op'>&gt;</span> <span class='kw'>where</span> <span class='ident'>S</span>: <span class='ident'>AsRef</span><span class='op'>&lt;</span><span class='ident'>str</span><span class='op'>&gt;</span> {
-    <span class='kw'>fn</span> <span class='ident'>as_error</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>, <span class='ident'>message</span>: <span class='ident'>S</span>) <span class='op'>-&gt;</span> <span class='ident'>PluginResult</span><span class='op'>&lt;</span><span class='ident'>T</span><span class='op'>&gt;</span>;
-}
+<span class='comment'>//================================================</span>
+<span class='comment'>// Structs</span>
+<span class='comment'>//================================================</span>
 
-<span class='kw'>impl</span><span class='op'>&lt;</span><span class='ident'>T</span>, <span class='ident'>S</span><span class='op'>&gt;</span> <span class='ident'>AsError</span><span class='op'>&lt;</span><span class='ident'>T</span>, <span class='ident'>S</span><span class='op'>&gt;</span> <span class='kw'>for</span> <span class='ident'>Span</span> <span class='kw'>where</span> <span class='ident'>S</span>: <span class='ident'>AsRef</span><span class='op'>&lt;</span><span class='ident'>str</span><span class='op'>&gt;</span> {
-    <span class='kw'>fn</span> <span class='ident'>as_error</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>, <span class='ident'>message</span>: <span class='ident'>S</span>) <span class='op'>-&gt;</span> <span class='ident'>PluginResult</span><span class='op'>&lt;</span><span class='ident'>T</span><span class='op'>&gt;</span> {
-        <span class='prelude-val'>Err</span>((<span class='op'>*</span><span class='self'>self</span>, <span class='ident'>message</span>.<span class='ident'>as_ref</span>().<span class='ident'>into</span>()))
-    }
-}
+<span class='comment'>// TokenReader ___________________________________</span>
 
-<span class='kw'>impl</span><span class='op'>&lt;</span><span class='ident'>T</span>, <span class='ident'>S</span><span class='op'>&gt;</span> <span class='ident'>AsError</span><span class='op'>&lt;</span><span class='ident'>T</span>, <span class='ident'>S</span><span class='op'>&gt;</span> <span class='kw'>for</span> <span class='ident'>TokenTree</span> <span class='kw'>where</span> <span class='ident'>S</span>: <span class='ident'>AsRef</span><span class='op'>&lt;</span><span class='ident'>str</span><span class='op'>&gt;</span> {
-    <span class='kw'>fn</span> <span class='ident'>as_error</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>, <span class='ident'>message</span>: <span class='ident'>S</span>) <span class='op'>-&gt;</span> <span class='ident'>PluginResult</span><span class='op'>&lt;</span><span class='ident'>T</span><span class='op'>&gt;</span> {
-        <span class='prelude-val'>Err</span>((<span class='self'>self</span>.<span class='ident'>get_span</span>(), <span class='ident'>message</span>.<span class='ident'>as_ref</span>().<span class='ident'>into</span>()))
-    }
-}
-
-<span class='kw'>pub</span> <span class='kw'>struct</span> <span class='ident'>TtsIterator</span><span class='op'>&lt;</span><span class='lifetime'>&#39;i</span>, <span class='ident'>I</span><span class='op'>&gt;</span> <span class='kw'>where</span> <span class='ident'>I</span>: <span class='ident'>Iterator</span><span class='op'>&lt;</span><span class='ident'>Item</span><span class='op'>=</span><span class='kw-2'>&amp;</span><span class='lifetime'>&#39;i</span> <span class='ident'>TokenTree</span><span class='op'>&gt;</span> {
-    <span class='kw'>pub</span> <span class='ident'>error</span>: (<span class='ident'>Span</span>, <span class='ident'>String</span>),
-    <span class='kw'>pub</span> <span class='ident'>iterator</span>: <span class='ident'>I</span>,
-    <span class='ident'>lifetime</span>: <span class='ident'>PhantomData</span><span class='op'>&lt;</span><span class='kw-2'>&amp;</span><span class='lifetime'>&#39;i</span> ()<span class='op'>&gt;</span>,
-}
-
-<span class='kw'>impl</span><span class='op'>&lt;</span><span class='lifetime'>&#39;i</span>, <span class='ident'>I</span><span class='op'>&gt;</span> <span class='ident'>TtsIterator</span><span class='op'>&lt;</span><span class='lifetime'>&#39;i</span>, <span class='ident'>I</span><span class='op'>&gt;</span> <span class='kw'>where</span> <span class='ident'>I</span>: <span class='ident'>Iterator</span><span class='op'>&lt;</span><span class='ident'>Item</span><span class='op'>=</span><span class='kw-2'>&amp;</span><span class='lifetime'>&#39;i</span> <span class='ident'>TokenTree</span><span class='op'>&gt;</span> {
-    <span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>new</span>(<span class='ident'>iterator</span>: <span class='ident'>I</span>, <span class='ident'>span</span>: <span class='ident'>Span</span>, <span class='ident'>message</span>: <span class='kw-2'>&amp;</span><span class='ident'>str</span>) <span class='op'>-&gt;</span> <span class='ident'>TtsIterator</span><span class='op'>&lt;</span><span class='lifetime'>&#39;i</span>, <span class='ident'>I</span><span class='op'>&gt;</span> {
-        <span class='ident'>TtsIterator</span> { <span class='ident'>error</span>: (<span class='ident'>span</span>, <span class='ident'>message</span>.<span class='ident'>into</span>()), <span class='ident'>iterator</span>: <span class='ident'>iterator</span>, <span class='ident'>lifetime</span>: <span class='ident'>PhantomData</span> }
-    }
-
-    <span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>expect</span>(<span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='self'>self</span>) <span class='op'>-&gt;</span> <span class='ident'>PluginResult</span><span class='op'>&lt;</span><span class='kw-2'>&amp;</span><span class='lifetime'>&#39;i</span> <span class='ident'>TokenTree</span><span class='op'>&gt;</span> {
-        <span class='self'>self</span>.<span class='ident'>iterator</span>.<span class='ident'>next</span>().<span class='ident'>ok_or_else</span>(<span class='op'>||</span> <span class='self'>self</span>.<span class='ident'>error</span>.<span class='ident'>clone</span>())
-    }
-
-    <span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>expect_token</span>(<span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='self'>self</span>, <span class='ident'>description</span>: <span class='kw-2'>&amp;</span><span class='ident'>str</span>) <span class='op'>-&gt;</span> <span class='ident'>PluginResult</span><span class='op'>&lt;</span>(<span class='ident'>Span</span>, <span class='kw-2'>&amp;</span><span class='lifetime'>&#39;i</span> <span class='ident'>Token</span>)<span class='op'>&gt;</span> {
-        <span class='self'>self</span>.<span class='ident'>expect</span>().<span class='ident'>and_then</span>(<span class='op'>|</span><span class='ident'>tt</span><span class='op'>|</span> {
-            <span class='kw'>match</span> <span class='op'>*</span><span class='ident'>tt</span> {
-                <span class='ident'>TokenTree</span>::<span class='ident'>Token</span>(<span class='ident'>span</span>, <span class='kw-2'>ref</span> <span class='ident'>token</span>) <span class='op'>=&gt;</span> <span class='prelude-val'>Ok</span>((<span class='ident'>span</span>, <span class='ident'>token</span>)),
-                _ <span class='op'>=&gt;</span> <span class='ident'>tt</span>.<span class='ident'>as_error</span>(<span class='macro'>format</span><span class='macro'>!</span>(<span class='string'>&quot;expected {}&quot;</span>, <span class='ident'>description</span>)),
-            }
-        })
-    }
-
-    <span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>expect_specific_token</span>(<span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='self'>self</span>, <span class='ident'>token</span>: <span class='kw-2'>&amp;</span><span class='ident'>Token</span>) <span class='op'>-&gt;</span> <span class='ident'>PluginResult</span><span class='op'>&lt;</span>()<span class='op'>&gt;</span> {
-        <span class='kw'>let</span> <span class='ident'>description</span> <span class='op'>=</span> <span class='ident'>Parser</span>::<span class='ident'>token_to_string</span>(<span class='ident'>token</span>);
-
-        <span class='self'>self</span>.<span class='ident'>expect_token</span>(<span class='kw-2'>&amp;</span><span class='ident'>description</span>).<span class='ident'>and_then</span>(<span class='op'>|</span>(<span class='ident'>s</span>, <span class='ident'>t</span>)<span class='op'>|</span> {
-            <span class='kw'>if</span> <span class='ident'>t</span>.<span class='ident'>mtwt_eq</span>(<span class='ident'>token</span>) {
-                <span class='prelude-val'>Ok</span>(())
-            } <span class='kw'>else</span> {
-                <span class='ident'>s</span>.<span class='ident'>as_error</span>(<span class='macro'>format</span><span class='macro'>!</span>(<span class='string'>&quot;expected {}&quot;</span>, <span class='ident'>description</span>))
-            }
-        })
-    }
-}
-
-<span class='kw'>impl</span><span class='op'>&lt;</span><span class='lifetime'>&#39;i</span>, <span class='ident'>I</span><span class='op'>&gt;</span> <span class='ident'>Iterator</span> <span class='kw'>for</span> <span class='ident'>TtsIterator</span><span class='op'>&lt;</span><span class='lifetime'>&#39;i</span>, <span class='ident'>I</span><span class='op'>&gt;</span> <span class='kw'>where</span> <span class='ident'>I</span>: <span class='ident'>Iterator</span><span class='op'>&lt;</span><span class='ident'>Item</span><span class='op'>=</span><span class='kw-2'>&amp;</span><span class='lifetime'>&#39;i</span> <span class='ident'>TokenTree</span><span class='op'>&gt;</span> {
-    <span class='kw'>type</span> <span class='ident'>Item</span> <span class='op'>=</span> <span class='kw-2'>&amp;</span><span class='lifetime'>&#39;i</span> <span class='ident'>TokenTree</span>;
-
-    <span class='kw'>fn</span> <span class='ident'>next</span>(<span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='self'>self</span>) <span class='op'>-&gt;</span> <span class='prelude-ty'>Option</span><span class='op'>&lt;</span><span class='kw-2'>&amp;</span><span class='lifetime'>&#39;i</span> <span class='ident'>TokenTree</span><span class='op'>&gt;</span> {
-        <span class='self'>self</span>.<span class='ident'>iterator</span>.<span class='ident'>next</span>()
-    }
-}
-
+<span class='doccomment'>/// A token reader which wraps a `Vec&lt;TokenAndSpan&gt;`.</span>
 <span class='attribute'>#[<span class='ident'>derive</span>(<span class='ident'>Clone</span>)]</span>
-<span class='kw'>pub</span> <span class='kw'>struct</span> <span class='ident'>TokenReader</span><span class='op'>&lt;</span><span class='lifetime'>&#39;a</span><span class='op'>&gt;</span> {
+<span class='kw'>struct</span> <span class='ident'>TokenReader</span><span class='op'>&lt;</span><span class='lifetime'>&#39;a</span><span class='op'>&gt;</span> {
     <span class='ident'>session</span>: <span class='kw-2'>&amp;</span><span class='lifetime'>&#39;a</span> <span class='ident'>ParseSess</span>,
     <span class='ident'>tokens</span>: <span class='ident'>Vec</span><span class='op'>&lt;</span><span class='ident'>TokenAndSpan</span><span class='op'>&gt;</span>,
     <span class='ident'>index</span>: <span class='ident'>usize</span>,
@@ -689,12 +567,12 @@
         <span class='ident'>next</span>
     }
 
-    <span class='kw'>fn</span> <span class='ident'>fatal</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>, <span class='ident'>m</span>: <span class='kw-2'>&amp;</span><span class='ident'>str</span>) <span class='op'>-&gt;</span> <span class='ident'>FatalError</span> {
-        <span class='self'>self</span>.<span class='ident'>session</span>.<span class='ident'>span_diagnostic</span>.<span class='ident'>span_fatal</span>(<span class='self'>self</span>.<span class='ident'>peek</span>().<span class='ident'>sp</span>, <span class='ident'>m</span>)
+    <span class='kw'>fn</span> <span class='ident'>fatal</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>, <span class='ident'>message</span>: <span class='kw-2'>&amp;</span><span class='ident'>str</span>) <span class='op'>-&gt;</span> <span class='ident'>FatalError</span> {
+        <span class='self'>self</span>.<span class='ident'>session</span>.<span class='ident'>span_diagnostic</span>.<span class='ident'>span_fatal</span>(<span class='self'>self</span>.<span class='ident'>peek</span>().<span class='ident'>sp</span>, <span class='ident'>message</span>)
     }
 
-    <span class='kw'>fn</span> <span class='ident'>err</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>, <span class='ident'>m</span>: <span class='kw-2'>&amp;</span><span class='ident'>str</span>) {
-        <span class='self'>self</span>.<span class='ident'>session</span>.<span class='ident'>span_diagnostic</span>.<span class='ident'>span_err</span>(<span class='self'>self</span>.<span class='ident'>peek</span>().<span class='ident'>sp</span>, <span class='ident'>m</span>);
+    <span class='kw'>fn</span> <span class='ident'>err</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>, <span class='ident'>message</span>: <span class='kw-2'>&amp;</span><span class='ident'>str</span>) {
+        <span class='self'>self</span>.<span class='ident'>session</span>.<span class='ident'>span_diagnostic</span>.<span class='ident'>span_err</span>(<span class='self'>self</span>.<span class='ident'>peek</span>().<span class='ident'>sp</span>, <span class='ident'>message</span>);
     }
 
     <span class='kw'>fn</span> <span class='ident'>peek</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>) <span class='op'>-&gt;</span> <span class='ident'>TokenAndSpan</span> {
@@ -702,6 +580,9 @@
     }
 }
 
+<span class='comment'>// TransactionParser _____________________________</span>
+
+<span class='doccomment'>/// A wrapper around a `Parser` which allows for rolling back parsing actions.</span>
 <span class='kw'>pub</span> <span class='kw'>struct</span> <span class='ident'>TransactionParser</span><span class='op'>&lt;</span><span class='lifetime'>&#39;a</span><span class='op'>&gt;</span> {
     <span class='ident'>session</span>: <span class='kw-2'>&amp;</span><span class='lifetime'>&#39;a</span> <span class='ident'>ParseSess</span>,
     <span class='ident'>tokens</span>: <span class='ident'>Vec</span><span class='op'>&lt;</span><span class='ident'>TokenAndSpan</span><span class='op'>&gt;</span>,
@@ -753,6 +634,67 @@
             <span class='self'>self</span>.<span class='ident'>tokens</span>[<span class='self'>self</span>.<span class='ident'>current</span>].<span class='ident'>sp</span>
         }
     }
+}
+
+<span class='comment'>// TtsIterator ___________________________________</span>
+
+<span class='doccomment'>/// A wraper around an iterator of `TokenTree`s.</span>
+<span class='kw'>pub</span> <span class='kw'>struct</span> <span class='ident'>TtsIterator</span><span class='op'>&lt;</span><span class='lifetime'>&#39;i</span>, <span class='ident'>I</span><span class='op'>&gt;</span> <span class='kw'>where</span> <span class='ident'>I</span>: <span class='ident'>Iterator</span><span class='op'>&lt;</span><span class='ident'>Item</span><span class='op'>=</span><span class='kw-2'>&amp;</span><span class='lifetime'>&#39;i</span> <span class='ident'>TokenTree</span><span class='op'>&gt;</span> {
+    <span class='kw'>pub</span> <span class='ident'>error</span>: (<span class='ident'>Span</span>, <span class='ident'>String</span>),
+    <span class='kw'>pub</span> <span class='ident'>iterator</span>: <span class='ident'>I</span>,
+    <span class='ident'>lifetime</span>: <span class='ident'>PhantomData</span><span class='op'>&lt;</span><span class='kw-2'>&amp;</span><span class='lifetime'>&#39;i</span> ()<span class='op'>&gt;</span>,
+}
+
+<span class='kw'>impl</span><span class='op'>&lt;</span><span class='lifetime'>&#39;i</span>, <span class='ident'>I</span><span class='op'>&gt;</span> <span class='ident'>TtsIterator</span><span class='op'>&lt;</span><span class='lifetime'>&#39;i</span>, <span class='ident'>I</span><span class='op'>&gt;</span> <span class='kw'>where</span> <span class='ident'>I</span>: <span class='ident'>Iterator</span><span class='op'>&lt;</span><span class='ident'>Item</span><span class='op'>=</span><span class='kw-2'>&amp;</span><span class='lifetime'>&#39;i</span> <span class='ident'>TokenTree</span><span class='op'>&gt;</span> {
+    <span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>new</span>(<span class='ident'>iterator</span>: <span class='ident'>I</span>, <span class='ident'>span</span>: <span class='ident'>Span</span>, <span class='ident'>message</span>: <span class='kw-2'>&amp;</span><span class='ident'>str</span>) <span class='op'>-&gt;</span> <span class='ident'>TtsIterator</span><span class='op'>&lt;</span><span class='lifetime'>&#39;i</span>, <span class='ident'>I</span><span class='op'>&gt;</span> {
+        <span class='ident'>TtsIterator</span> { <span class='ident'>error</span>: (<span class='ident'>span</span>, <span class='ident'>message</span>.<span class='ident'>into</span>()), <span class='ident'>iterator</span>: <span class='ident'>iterator</span>, <span class='ident'>lifetime</span>: <span class='ident'>PhantomData</span> }
+    }
+
+    <span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>expect</span>(<span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='self'>self</span>) <span class='op'>-&gt;</span> <span class='ident'>PluginResult</span><span class='op'>&lt;</span><span class='kw-2'>&amp;</span><span class='lifetime'>&#39;i</span> <span class='ident'>TokenTree</span><span class='op'>&gt;</span> {
+        <span class='self'>self</span>.<span class='ident'>iterator</span>.<span class='ident'>next</span>().<span class='ident'>ok_or_else</span>(<span class='op'>||</span> <span class='self'>self</span>.<span class='ident'>error</span>.<span class='ident'>clone</span>())
+    }
+
+    <span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>expect_token</span>(<span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='self'>self</span>, <span class='ident'>description</span>: <span class='kw-2'>&amp;</span><span class='ident'>str</span>) <span class='op'>-&gt;</span> <span class='ident'>PluginResult</span><span class='op'>&lt;</span>(<span class='ident'>Span</span>, <span class='kw-2'>&amp;</span><span class='lifetime'>&#39;i</span> <span class='ident'>Token</span>)<span class='op'>&gt;</span> {
+        <span class='self'>self</span>.<span class='ident'>expect</span>().<span class='ident'>and_then</span>(<span class='op'>|</span><span class='ident'>tt</span><span class='op'>|</span> {
+            <span class='kw'>match</span> <span class='op'>*</span><span class='ident'>tt</span> {
+                <span class='ident'>TokenTree</span>::<span class='ident'>Token</span>(<span class='ident'>span</span>, <span class='kw-2'>ref</span> <span class='ident'>token</span>) <span class='op'>=&gt;</span> <span class='prelude-val'>Ok</span>((<span class='ident'>span</span>, <span class='ident'>token</span>)),
+                _ <span class='op'>=&gt;</span> <span class='ident'>tt</span>.<span class='ident'>to_error</span>(<span class='macro'>format</span><span class='macro'>!</span>(<span class='string'>&quot;expected {}&quot;</span>, <span class='ident'>description</span>)),
+            }
+        })
+    }
+
+    <span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>expect_specific_token</span>(<span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='self'>self</span>, <span class='ident'>token</span>: <span class='kw-2'>&amp;</span><span class='ident'>Token</span>) <span class='op'>-&gt;</span> <span class='ident'>PluginResult</span><span class='op'>&lt;</span>()<span class='op'>&gt;</span> {
+        <span class='kw'>let</span> <span class='ident'>description</span> <span class='op'>=</span> <span class='ident'>Parser</span>::<span class='ident'>token_to_string</span>(<span class='ident'>token</span>);
+
+        <span class='self'>self</span>.<span class='ident'>expect_token</span>(<span class='kw-2'>&amp;</span><span class='ident'>description</span>).<span class='ident'>and_then</span>(<span class='op'>|</span>(<span class='ident'>s</span>, <span class='ident'>t</span>)<span class='op'>|</span> {
+            <span class='kw'>if</span> <span class='ident'>t</span>.<span class='ident'>mtwt_eq</span>(<span class='ident'>token</span>) {
+                <span class='prelude-val'>Ok</span>(())
+            } <span class='kw'>else</span> {
+                <span class='ident'>s</span>.<span class='ident'>to_error</span>(<span class='macro'>format</span><span class='macro'>!</span>(<span class='string'>&quot;expected {}&quot;</span>, <span class='ident'>description</span>))
+            }
+        })
+    }
+}
+
+<span class='kw'>impl</span><span class='op'>&lt;</span><span class='lifetime'>&#39;i</span>, <span class='ident'>I</span><span class='op'>&gt;</span> <span class='ident'>Iterator</span> <span class='kw'>for</span> <span class='ident'>TtsIterator</span><span class='op'>&lt;</span><span class='lifetime'>&#39;i</span>, <span class='ident'>I</span><span class='op'>&gt;</span> <span class='kw'>where</span> <span class='ident'>I</span>: <span class='ident'>Iterator</span><span class='op'>&lt;</span><span class='ident'>Item</span><span class='op'>=</span><span class='kw-2'>&amp;</span><span class='lifetime'>&#39;i</span> <span class='ident'>TokenTree</span><span class='op'>&gt;</span> {
+    <span class='kw'>type</span> <span class='ident'>Item</span> <span class='op'>=</span> <span class='kw-2'>&amp;</span><span class='lifetime'>&#39;i</span> <span class='ident'>TokenTree</span>;
+
+    <span class='kw'>fn</span> <span class='ident'>next</span>(<span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='self'>self</span>) <span class='op'>-&gt;</span> <span class='prelude-ty'>Option</span><span class='op'>&lt;</span><span class='kw-2'>&amp;</span><span class='lifetime'>&#39;i</span> <span class='ident'>TokenTree</span><span class='op'>&gt;</span> {
+        <span class='self'>self</span>.<span class='ident'>iterator</span>.<span class='ident'>next</span>()
+    }
+}
+
+<span class='comment'>//================================================</span>
+<span class='comment'>// Functions</span>
+<span class='comment'>//================================================</span>
+
+<span class='kw'>fn</span> <span class='ident'>mk_expr_path</span>(<span class='ident'>context</span>: <span class='kw-2'>&amp;</span><span class='ident'>ExtCtxt</span>, <span class='ident'>span</span>: <span class='ident'>Span</span>, <span class='ident'>identifiers</span>: <span class='kw-2'>&amp;</span>[<span class='kw-2'>&amp;</span><span class='ident'>str</span>]) <span class='op'>-&gt;</span> <span class='ident'>P</span><span class='op'>&lt;</span><span class='ident'>Expr</span><span class='op'>&gt;</span> {
+    <span class='ident'>context</span>.<span class='ident'>expr_path</span>(<span class='ident'>context</span>.<span class='ident'>path_global</span>(<span class='ident'>span</span>, <span class='ident'>mk_path</span>(<span class='ident'>context</span>, <span class='ident'>identifiers</span>)))
+}
+
+<span class='kw'>fn</span> <span class='ident'>mk_path</span>(<span class='ident'>context</span>: <span class='kw-2'>&amp;</span><span class='ident'>ExtCtxt</span>, <span class='ident'>identifiers</span>: <span class='kw-2'>&amp;</span>[<span class='kw-2'>&amp;</span><span class='ident'>str</span>]) <span class='op'>-&gt;</span> <span class='ident'>Vec</span><span class='op'>&lt;</span><span class='ident'>Ident</span><span class='op'>&gt;</span> {
+    <span class='kw'>let</span> <span class='ident'>prefix</span> <span class='op'>=</span> <span class='kw-2'>&amp;</span>[<span class='string'>&quot;syntax&quot;</span>, <span class='string'>&quot;parse&quot;</span>, <span class='string'>&quot;token&quot;</span>];
+    <span class='ident'>prefix</span>.<span class='ident'>iter</span>().<span class='ident'>chain</span>(<span class='ident'>identifiers</span>.<span class='ident'>iter</span>()).<span class='ident'>map</span>(<span class='op'>|</span><span class='ident'>i</span><span class='op'>|</span> <span class='ident'>context</span>.<span class='ident'>ident_of</span>(<span class='ident'>i</span>)).<span class='ident'>collect</span>()
 }
 </pre>
 </section>

@@ -406,6 +406,22 @@
 <span id="363">363</span>
 <span id="364">364</span>
 <span id="365">365</span>
+<span id="366">366</span>
+<span id="367">367</span>
+<span id="368">368</span>
+<span id="369">369</span>
+<span id="370">370</span>
+<span id="371">371</span>
+<span id="372">372</span>
+<span id="373">373</span>
+<span id="374">374</span>
+<span id="375">375</span>
+<span id="376">376</span>
+<span id="377">377</span>
+<span id="378">378</span>
+<span id="379">379</span>
+<span id="380">380</span>
+<span id="381">381</span>
 </pre><pre class='rust '>
 <span class='kw'>use</span> <span class='ident'>std</span>::<span class='ident'>collections</span>::{<span class='ident'>HashSet</span>};
 
@@ -418,7 +434,13 @@
 <span class='kw'>use</span> <span class='ident'>syntax</span>::<span class='ident'>ptr</span>::{<span class='ident'>P</span>};
 
 <span class='kw'>use</span> <span class='ident'>super</span>::{<span class='ident'>PluginResult</span>};
-<span class='kw'>use</span> <span class='ident'>super</span>::<span class='ident'>utility</span>::{<span class='ident'>AsError</span>, <span class='ident'>AsExpr</span>, <span class='ident'>TtsIterator</span>};
+<span class='kw'>use</span> <span class='ident'>super</span>::<span class='ident'>utility</span>::{<span class='ident'>ToError</span>, <span class='ident'>ToExpr</span>, <span class='ident'>TtsIterator</span>};
+
+<span class='comment'>//================================================</span>
+<span class='comment'>// Enums</span>
+<span class='comment'>//================================================</span>
+
+<span class='comment'>// Amount ________________________________________</span>
 
 <span class='doccomment'>/// Indicates how many times a sequence is allowed to occur.</span>
 <span class='attribute'>#[<span class='ident'>derive</span>(<span class='ident'>Copy</span>, <span class='ident'>Clone</span>, <span class='ident'>Debug</span>, <span class='ident'>PartialEq</span>, <span class='ident'>Eq</span>, <span class='ident'>Hash</span>)]</span>
@@ -428,8 +450,8 @@
     <span class='ident'>ZeroOrOne</span>,
 }
 
-<span class='kw'>impl</span> <span class='ident'>AsExpr</span> <span class='kw'>for</span> <span class='ident'>Amount</span> {
-    <span class='kw'>fn</span> <span class='ident'>as_expr</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>, <span class='ident'>context</span>: <span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='ident'>ExtCtxt</span>, <span class='ident'>span</span>: <span class='ident'>Span</span>) <span class='op'>-&gt;</span> <span class='ident'>P</span><span class='op'>&lt;</span><span class='ident'>Expr</span><span class='op'>&gt;</span> {
+<span class='kw'>impl</span> <span class='ident'>ToExpr</span> <span class='kw'>for</span> <span class='ident'>Amount</span> {
+    <span class='kw'>fn</span> <span class='ident'>to_expr</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>, <span class='ident'>context</span>: <span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='ident'>ExtCtxt</span>, <span class='ident'>span</span>: <span class='ident'>Span</span>) <span class='op'>-&gt;</span> <span class='ident'>P</span><span class='op'>&lt;</span><span class='ident'>Expr</span><span class='op'>&gt;</span> {
         <span class='kw'>let</span> <span class='ident'>path</span> <span class='op'>=</span> <span class='macro'>vec</span><span class='macro'>!</span>[
             <span class='ident'>context</span>.<span class='ident'>ident_of</span>(<span class='string'>&quot;easy_plugin&quot;</span>),
             <span class='ident'>context</span>.<span class='ident'>ident_of</span>(<span class='string'>&quot;Amount&quot;</span>),
@@ -439,6 +461,8 @@
         <span class='ident'>context</span>.<span class='ident'>expr_path</span>(<span class='ident'>context</span>.<span class='ident'>path_global</span>(<span class='ident'>span</span>, <span class='ident'>path</span>))
     }
 }
+
+<span class='comment'>// Specifier _____________________________________</span>
 
 <span class='doccomment'>/// A piece of a plugin argument specification.</span>
 <span class='attribute'>#[<span class='ident'>derive</span>(<span class='ident'>Clone</span>, <span class='ident'>Debug</span>, <span class='ident'>PartialEq</span>, <span class='ident'>Eq</span>)]</span>
@@ -485,8 +509,8 @@
     <span class='ident'>NamedSequence</span>(<span class='ident'>String</span>, <span class='ident'>Amount</span>, <span class='prelude-ty'>Option</span><span class='op'>&lt;</span><span class='ident'>Token</span><span class='op'>&gt;</span>, <span class='ident'>Vec</span><span class='op'>&lt;</span><span class='ident'>Specifier</span><span class='op'>&gt;</span>),
 }
 
-<span class='kw'>impl</span> <span class='ident'>AsExpr</span> <span class='kw'>for</span> <span class='ident'>Specifier</span> {
-    <span class='kw'>fn</span> <span class='ident'>as_expr</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>, <span class='ident'>context</span>: <span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='ident'>ExtCtxt</span>, <span class='ident'>span</span>: <span class='ident'>Span</span>) <span class='op'>-&gt;</span> <span class='ident'>P</span><span class='op'>&lt;</span><span class='ident'>Expr</span><span class='op'>&gt;</span> {
+<span class='kw'>impl</span> <span class='ident'>ToExpr</span> <span class='kw'>for</span> <span class='ident'>Specifier</span> {
+    <span class='kw'>fn</span> <span class='ident'>to_expr</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>, <span class='ident'>context</span>: <span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='ident'>ExtCtxt</span>, <span class='ident'>span</span>: <span class='ident'>Span</span>) <span class='op'>-&gt;</span> <span class='ident'>P</span><span class='op'>&lt;</span><span class='ident'>Expr</span><span class='op'>&gt;</span> {
         <span class='macro'>macro_rules</span><span class='macro'>!</span> <span class='ident'>expr</span> {
             (<span class='macro-nonterminal'>$</span><span class='macro-nonterminal'>variant</span>:<span class='ident'>expr</span>, $(<span class='macro-nonterminal'>$</span><span class='macro-nonterminal'>argument</span>:<span class='ident'>expr</span>), <span class='op'>*</span>) <span class='op'>=&gt;</span> ({
                 <span class='kw'>let</span> <span class='ident'>path</span> <span class='op'>=</span> <span class='macro'>vec</span><span class='macro'>!</span>[
@@ -525,21 +549,21 @@
             <span class='ident'>Specifier</span>::<span class='ident'>Ty</span>(<span class='kw-2'>ref</span> <span class='ident'>name</span>) <span class='op'>=&gt;</span> <span class='macro'>expr</span><span class='macro'>!</span>(<span class='string'>&quot;Ty&quot;</span>, <span class='macro'>string</span><span class='macro'>!</span>(<span class='ident'>name</span>)),
             <span class='ident'>Specifier</span>::<span class='ident'>Tok</span>(<span class='kw-2'>ref</span> <span class='ident'>name</span>) <span class='op'>=&gt;</span> <span class='macro'>expr</span><span class='macro'>!</span>(<span class='string'>&quot;Tok&quot;</span>, <span class='macro'>string</span><span class='macro'>!</span>(<span class='ident'>name</span>)),
             <span class='ident'>Specifier</span>::<span class='ident'>Tt</span>(<span class='kw-2'>ref</span> <span class='ident'>name</span>) <span class='op'>=&gt;</span> <span class='macro'>expr</span><span class='macro'>!</span>(<span class='string'>&quot;Tt&quot;</span>, <span class='macro'>string</span><span class='macro'>!</span>(<span class='ident'>name</span>)),
-            <span class='ident'>Specifier</span>::<span class='ident'>Specific</span>(<span class='kw-2'>ref</span> <span class='ident'>token</span>) <span class='op'>=&gt;</span> <span class='macro'>expr</span><span class='macro'>!</span>(<span class='string'>&quot;Specific&quot;</span>, <span class='ident'>token</span>.<span class='ident'>as_expr</span>(<span class='ident'>context</span>, <span class='ident'>span</span>)),
+            <span class='ident'>Specifier</span>::<span class='ident'>Specific</span>(<span class='kw-2'>ref</span> <span class='ident'>token</span>) <span class='op'>=&gt;</span> <span class='macro'>expr</span><span class='macro'>!</span>(<span class='string'>&quot;Specific&quot;</span>, <span class='ident'>token</span>.<span class='ident'>to_expr</span>(<span class='ident'>context</span>, <span class='ident'>span</span>)),
             <span class='ident'>Specifier</span>::<span class='ident'>Delimited</span>(<span class='ident'>delimiter</span>, <span class='kw-2'>ref</span> <span class='ident'>subspecification</span>) <span class='op'>=&gt;</span> {
-                <span class='kw'>let</span> <span class='ident'>subspecification</span> <span class='op'>=</span> <span class='ident'>subspecification</span>.<span class='ident'>as_expr</span>(<span class='ident'>context</span>, <span class='ident'>span</span>);
-                <span class='macro'>expr</span><span class='macro'>!</span>(<span class='string'>&quot;Delimited&quot;</span>, <span class='ident'>delimiter</span>.<span class='ident'>as_expr</span>(<span class='ident'>context</span>, <span class='ident'>span</span>), <span class='ident'>subspecification</span>)
+                <span class='kw'>let</span> <span class='ident'>subspecification</span> <span class='op'>=</span> <span class='ident'>subspecification</span>.<span class='ident'>to_expr</span>(<span class='ident'>context</span>, <span class='ident'>span</span>);
+                <span class='macro'>expr</span><span class='macro'>!</span>(<span class='string'>&quot;Delimited&quot;</span>, <span class='ident'>delimiter</span>.<span class='ident'>to_expr</span>(<span class='ident'>context</span>, <span class='ident'>span</span>), <span class='ident'>subspecification</span>)
             },
             <span class='ident'>Specifier</span>::<span class='ident'>Sequence</span>(<span class='ident'>amount</span>, <span class='kw-2'>ref</span> <span class='ident'>separator</span>, <span class='kw-2'>ref</span> <span class='ident'>subspecification</span>) <span class='op'>=&gt;</span> {
-                <span class='kw'>let</span> <span class='ident'>amount</span> <span class='op'>=</span> <span class='ident'>amount</span>.<span class='ident'>as_expr</span>(<span class='ident'>context</span>, <span class='ident'>span</span>);
-                <span class='kw'>let</span> <span class='ident'>separator</span> <span class='op'>=</span> <span class='ident'>separator</span>.<span class='ident'>as_expr</span>(<span class='ident'>context</span>, <span class='ident'>span</span>);
-                <span class='kw'>let</span> <span class='ident'>subspecification</span> <span class='op'>=</span> <span class='ident'>subspecification</span>.<span class='ident'>as_expr</span>(<span class='ident'>context</span>, <span class='ident'>span</span>);
+                <span class='kw'>let</span> <span class='ident'>amount</span> <span class='op'>=</span> <span class='ident'>amount</span>.<span class='ident'>to_expr</span>(<span class='ident'>context</span>, <span class='ident'>span</span>);
+                <span class='kw'>let</span> <span class='ident'>separator</span> <span class='op'>=</span> <span class='ident'>separator</span>.<span class='ident'>to_expr</span>(<span class='ident'>context</span>, <span class='ident'>span</span>);
+                <span class='kw'>let</span> <span class='ident'>subspecification</span> <span class='op'>=</span> <span class='ident'>subspecification</span>.<span class='ident'>to_expr</span>(<span class='ident'>context</span>, <span class='ident'>span</span>);
                 <span class='macro'>expr</span><span class='macro'>!</span>(<span class='string'>&quot;Sequence&quot;</span>, <span class='ident'>amount</span>, <span class='ident'>separator</span>, <span class='ident'>subspecification</span>)
             },
             <span class='ident'>Specifier</span>::<span class='ident'>NamedSequence</span>(<span class='kw-2'>ref</span> <span class='ident'>name</span>, <span class='ident'>amount</span>, <span class='kw-2'>ref</span> <span class='ident'>separator</span>, <span class='kw-2'>ref</span> <span class='ident'>subspecification</span>) <span class='op'>=&gt;</span> {
-                <span class='kw'>let</span> <span class='ident'>amount</span> <span class='op'>=</span> <span class='ident'>amount</span>.<span class='ident'>as_expr</span>(<span class='ident'>context</span>, <span class='ident'>span</span>);
-                <span class='kw'>let</span> <span class='ident'>separator</span> <span class='op'>=</span> <span class='ident'>separator</span>.<span class='ident'>as_expr</span>(<span class='ident'>context</span>, <span class='ident'>span</span>);
-                <span class='kw'>let</span> <span class='ident'>subspecification</span> <span class='op'>=</span> <span class='ident'>subspecification</span>.<span class='ident'>as_expr</span>(<span class='ident'>context</span>, <span class='ident'>span</span>);
+                <span class='kw'>let</span> <span class='ident'>amount</span> <span class='op'>=</span> <span class='ident'>amount</span>.<span class='ident'>to_expr</span>(<span class='ident'>context</span>, <span class='ident'>span</span>);
+                <span class='kw'>let</span> <span class='ident'>separator</span> <span class='op'>=</span> <span class='ident'>separator</span>.<span class='ident'>to_expr</span>(<span class='ident'>context</span>, <span class='ident'>span</span>);
+                <span class='kw'>let</span> <span class='ident'>subspecification</span> <span class='op'>=</span> <span class='ident'>subspecification</span>.<span class='ident'>to_expr</span>(<span class='ident'>context</span>, <span class='ident'>span</span>);
                 <span class='macro'>expr</span><span class='macro'>!</span>(<span class='string'>&quot;NamedSequence&quot;</span>, <span class='macro'>string</span><span class='macro'>!</span>(<span class='ident'>name</span>), <span class='ident'>amount</span>, <span class='ident'>separator</span>, <span class='ident'>subspecification</span>)
             },
         }
@@ -560,6 +584,10 @@
     }
 }
 
+<span class='comment'>//================================================</span>
+<span class='comment'>// Functions</span>
+<span class='comment'>//================================================</span>
+
 <span class='kw'>fn</span> <span class='ident'>parse_dollar</span><span class='op'>&lt;</span><span class='lifetime'>&#39;i</span>, <span class='ident'>I</span><span class='op'>&gt;</span>(
     <span class='ident'>span</span>: <span class='ident'>Span</span>, <span class='ident'>tts</span>: <span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='ident'>TtsIterator</span><span class='op'>&lt;</span><span class='lifetime'>&#39;i</span>, <span class='ident'>I</span><span class='op'>&gt;</span>, <span class='ident'>names</span>: <span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='ident'>HashSet</span><span class='op'>&lt;</span><span class='ident'>String</span><span class='op'>&gt;</span>
 ) <span class='op'>-&gt;</span> <span class='ident'>PluginResult</span><span class='op'>&lt;</span><span class='ident'>Specifier</span><span class='op'>&gt;</span> <span class='kw'>where</span> <span class='ident'>I</span>: <span class='ident'>Iterator</span><span class='op'>&lt;</span><span class='ident'>Item</span><span class='op'>=</span><span class='kw-2'>&amp;</span><span class='lifetime'>&#39;i</span> <span class='ident'>TokenTree</span><span class='op'>&gt;</span> {
@@ -567,16 +595,16 @@
         <span class='kw-2'>&amp;</span><span class='ident'>TokenTree</span>::<span class='ident'>Token</span>(<span class='ident'>subspan</span>, <span class='ident'>Token</span>::<span class='ident'>Ident</span>(<span class='kw-2'>ref</span> <span class='ident'>ident</span>, _)) <span class='op'>=&gt;</span> {
             <span class='kw'>let</span> <span class='ident'>name</span> <span class='op'>=</span> <span class='ident'>ident</span>.<span class='ident'>name</span>.<span class='ident'>as_str</span>().<span class='ident'>to_string</span>();
 
-            <span class='kw'>if</span> <span class='op'>!</span><span class='ident'>names</span>.<span class='ident'>insert</span>(<span class='ident'>name</span>.<span class='ident'>clone</span>()) {
-                <span class='ident'>subspan</span>.<span class='ident'>as_error</span>(<span class='string'>&quot;duplicate named specifier&quot;</span>)
-            } <span class='kw'>else</span> {
+            <span class='kw'>if</span> <span class='ident'>names</span>.<span class='ident'>insert</span>(<span class='ident'>name</span>.<span class='ident'>clone</span>()) {
                 <span class='ident'>parse_named_specifier</span>(<span class='ident'>tts</span>, <span class='ident'>name</span>)
+            } <span class='kw'>else</span> {
+                <span class='ident'>subspan</span>.<span class='ident'>to_error</span>(<span class='string'>&quot;duplicate named specifier&quot;</span>)
             }
         },
         <span class='kw-2'>&amp;</span><span class='ident'>TokenTree</span>::<span class='ident'>Delimited</span>(_, <span class='kw-2'>ref</span> <span class='ident'>delimited</span>) <span class='op'>=&gt;</span> {
             <span class='ident'>parse_sequence</span>(<span class='ident'>span</span>, <span class='ident'>tts</span>, <span class='kw-2'>&amp;</span><span class='ident'>delimited</span>.<span class='ident'>tts</span>, <span class='ident'>names</span>)
         },
-        <span class='ident'>invalid</span> <span class='op'>=&gt;</span> <span class='ident'>invalid</span>.<span class='ident'>as_error</span>(<span class='string'>&quot;expected named specifier or sequence&quot;</span>),
+        <span class='ident'>invalid</span> <span class='op'>=&gt;</span> <span class='ident'>invalid</span>.<span class='ident'>to_error</span>(<span class='string'>&quot;expected named specifier or sequence&quot;</span>),
     }
 }
 
@@ -591,7 +619,7 @@
             <span class='kw'>let</span> <span class='ident'>subspecification</span> <span class='op'>=</span> <span class='macro'>try</span><span class='macro'>!</span>(<span class='ident'>parse_specification_</span>(<span class='ident'>subspan</span>, <span class='kw-2'>&amp;</span><span class='ident'>delimited</span>.<span class='ident'>tts</span>, <span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='ident'>names</span>));
 
             <span class='kw'>if</span> <span class='op'>!</span><span class='ident'>names</span>.<span class='ident'>is_empty</span>() {
-                <span class='kw'>return</span> <span class='ident'>subspan</span>.<span class='ident'>as_error</span>(<span class='string'>&quot;named specifiers not allowed in named sequences&quot;</span>);
+                <span class='kw'>return</span> <span class='ident'>subspan</span>.<span class='ident'>to_error</span>(<span class='string'>&quot;named specifiers not allowed in named sequences&quot;</span>);
             }
 
             <span class='kw'>let</span> (<span class='ident'>amount</span>, <span class='ident'>separator</span>) <span class='op'>=</span> <span class='macro'>try</span><span class='macro'>!</span>(<span class='ident'>parse_sequence_suffix</span>(<span class='ident'>tts</span>));
@@ -614,9 +642,9 @@
             <span class='string'>&quot;ty&quot;</span> <span class='op'>=&gt;</span> <span class='prelude-val'>Ok</span>(<span class='ident'>Specifier</span>::<span class='ident'>Ty</span>(<span class='ident'>name</span>)),
             <span class='string'>&quot;tok&quot;</span> <span class='op'>=&gt;</span> <span class='prelude-val'>Ok</span>(<span class='ident'>Specifier</span>::<span class='ident'>Tok</span>(<span class='ident'>name</span>)),
             <span class='string'>&quot;tt&quot;</span> <span class='op'>=&gt;</span> <span class='prelude-val'>Ok</span>(<span class='ident'>Specifier</span>::<span class='ident'>Tt</span>(<span class='ident'>name</span>)),
-            _ <span class='op'>=&gt;</span> <span class='ident'>subspan</span>.<span class='ident'>as_error</span>(<span class='string'>&quot;invalid named specifier type&quot;</span>),
+            _ <span class='op'>=&gt;</span> <span class='ident'>subspan</span>.<span class='ident'>to_error</span>(<span class='string'>&quot;invalid named specifier type&quot;</span>),
         },
-        <span class='ident'>invalid</span> <span class='op'>=&gt;</span> <span class='ident'>invalid</span>.<span class='ident'>as_error</span>(<span class='string'>&quot;expected named specifier type or sequence&quot;</span>),
+        <span class='ident'>invalid</span> <span class='op'>=&gt;</span> <span class='ident'>invalid</span>.<span class='ident'>to_error</span>(<span class='string'>&quot;expected named specifier type or sequence&quot;</span>),
     }
 }
 
@@ -630,7 +658,7 @@
         (<span class='ident'>subspan</span>, <span class='ident'>separator</span>) <span class='op'>=&gt;</span> <span class='kw'>match</span> <span class='macro'>try</span><span class='macro'>!</span>(<span class='ident'>tts</span>.<span class='ident'>expect_token</span>(<span class='string'>&quot;expected `*` or `+`&quot;</span>)) {
             (_, <span class='kw-2'>&amp;</span><span class='ident'>Token</span>::<span class='ident'>BinOp</span>(<span class='ident'>BinOpToken</span>::<span class='ident'>Plus</span>)) <span class='op'>=&gt;</span> <span class='prelude-val'>Ok</span>((<span class='ident'>Amount</span>::<span class='ident'>OneOrMore</span>, <span class='prelude-val'>Some</span>(<span class='ident'>separator</span>.<span class='ident'>clone</span>()))),
             (_, <span class='kw-2'>&amp;</span><span class='ident'>Token</span>::<span class='ident'>BinOp</span>(<span class='ident'>BinOpToken</span>::<span class='ident'>Star</span>)) <span class='op'>=&gt;</span> <span class='prelude-val'>Ok</span>((<span class='ident'>Amount</span>::<span class='ident'>ZeroOrMore</span>, <span class='prelude-val'>Some</span>(<span class='ident'>separator</span>.<span class='ident'>clone</span>()))),
-            _ <span class='op'>=&gt;</span> <span class='ident'>subspan</span>.<span class='ident'>as_error</span>(<span class='string'>&quot;expected `*` or `+`&quot;</span>),
+            _ <span class='op'>=&gt;</span> <span class='ident'>subspan</span>.<span class='ident'>to_error</span>(<span class='string'>&quot;expected `*` or `+`&quot;</span>),
         },
     }
 }
@@ -683,7 +711,7 @@
 ) <span class='op'>-&gt;</span> <span class='ident'>Box</span><span class='op'>&lt;</span><span class='ident'>MacResult</span><span class='op'>&gt;</span> {
     <span class='kw'>match</span> <span class='ident'>parse_specification</span>(<span class='ident'>arguments</span>) {
         <span class='prelude-val'>Ok</span>(<span class='ident'>specification</span>) <span class='op'>=&gt;</span> {
-            <span class='kw'>let</span> <span class='ident'>exprs</span> <span class='op'>=</span> <span class='ident'>specification</span>.<span class='ident'>iter</span>().<span class='ident'>map</span>(<span class='op'>|</span><span class='ident'>s</span><span class='op'>|</span> <span class='ident'>s</span>.<span class='ident'>as_expr</span>(<span class='ident'>context</span>, <span class='ident'>span</span>)).<span class='ident'>collect</span>();
+            <span class='kw'>let</span> <span class='ident'>exprs</span> <span class='op'>=</span> <span class='ident'>specification</span>.<span class='ident'>iter</span>().<span class='ident'>map</span>(<span class='op'>|</span><span class='ident'>s</span><span class='op'>|</span> <span class='ident'>s</span>.<span class='ident'>to_expr</span>(<span class='ident'>context</span>, <span class='ident'>span</span>)).<span class='ident'>collect</span>();
             <span class='ident'>MacEager</span>::<span class='ident'>expr</span>(<span class='ident'>context</span>.<span class='ident'>expr_vec_slice</span>(<span class='ident'>span</span>, <span class='ident'>exprs</span>))
         },
         <span class='prelude-val'>Err</span>((<span class='ident'>span</span>, <span class='ident'>message</span>)) <span class='op'>=&gt;</span> {
@@ -692,6 +720,10 @@
         },
     }
 }
+
+<span class='comment'>//================================================</span>
+<span class='comment'>// Tests</span>
+<span class='comment'>//================================================</span>
 
 <span class='attribute'>#[<span class='ident'>cfg</span>(<span class='ident'>test</span>)]</span>
 <span class='kw'>mod</span> <span class='ident'>tests</span> {
