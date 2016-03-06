@@ -50,7 +50,7 @@
 ### Fixed
 - Updated for latest nightly
 
-## [0.2.7] - UNRELEASED
+## [0.2.7] - 2016-3-5
 
 ### Fixed
 - Updated for latest nightly
