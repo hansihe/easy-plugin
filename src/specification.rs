@@ -9,7 +9,7 @@ use syntax::parse::token::{BinOpToken, DelimToken, IdentStyle, Token};
 use syntax::ptr::{P};
 
 use super::{PluginResult};
-use super::utility::{AsError, AsExpr, TtsIterator};
+use super::utility::{ToError, ToExpr, TtsIterator};
 
 //================================================
 // Enums
@@ -25,8 +25,8 @@ pub enum Amount {
     ZeroOrOne,
 }
 
-impl AsExpr for Amount {
-    fn as_expr(&self, context: &mut ExtCtxt, span: Span) -> P<Expr> {
+impl ToExpr for Amount {
+    fn to_expr(&self, context: &mut ExtCtxt, span: Span) -> P<Expr> {
         let path = vec![
             context.ident_of("easy_plugin"),
             context.ident_of("Amount"),
@@ -84,8 +84,8 @@ pub enum Specifier {
     NamedSequence(String, Amount, Option<Token>, Vec<Specifier>),
 }
 
-impl AsExpr for Specifier {
-    fn as_expr(&self, context: &mut ExtCtxt, span: Span) -> P<Expr> {
+impl ToExpr for Specifier {
+    fn to_expr(&self, context: &mut ExtCtxt, span: Span) -> P<Expr> {
         macro_rules! expr {
             ($variant:expr, $($argument:expr), *) => ({
                 let path = vec![
@@ -124,21 +124,21 @@ impl AsExpr for Specifier {
             Specifier::Ty(ref name) => expr!("Ty", string!(name)),
             Specifier::Tok(ref name) => expr!("Tok", string!(name)),
             Specifier::Tt(ref name) => expr!("Tt", string!(name)),
-            Specifier::Specific(ref token) => expr!("Specific", token.as_expr(context, span)),
+            Specifier::Specific(ref token) => expr!("Specific", token.to_expr(context, span)),
             Specifier::Delimited(delimiter, ref subspecification) => {
-                let subspecification = subspecification.as_expr(context, span);
-                expr!("Delimited", delimiter.as_expr(context, span), subspecification)
+                let subspecification = subspecification.to_expr(context, span);
+                expr!("Delimited", delimiter.to_expr(context, span), subspecification)
             },
             Specifier::Sequence(amount, ref separator, ref subspecification) => {
-                let amount = amount.as_expr(context, span);
-                let separator = separator.as_expr(context, span);
-                let subspecification = subspecification.as_expr(context, span);
+                let amount = amount.to_expr(context, span);
+                let separator = separator.to_expr(context, span);
+                let subspecification = subspecification.to_expr(context, span);
                 expr!("Sequence", amount, separator, subspecification)
             },
             Specifier::NamedSequence(ref name, amount, ref separator, ref subspecification) => {
-                let amount = amount.as_expr(context, span);
-                let separator = separator.as_expr(context, span);
-                let subspecification = subspecification.as_expr(context, span);
+                let amount = amount.to_expr(context, span);
+                let separator = separator.to_expr(context, span);
+                let subspecification = subspecification.to_expr(context, span);
                 expr!("NamedSequence", string!(name), amount, separator, subspecification)
             },
         }
@@ -173,13 +173,13 @@ fn parse_dollar<'i, I>(
             if names.insert(name.clone()) {
                 parse_named_specifier(tts, name)
             } else {
-                subspan.as_error("duplicate named specifier")
+                subspan.to_error("duplicate named specifier")
             }
         },
         &TokenTree::Delimited(_, ref delimited) => {
             parse_sequence(span, tts, &delimited.tts, names)
         },
-        invalid => invalid.as_error("expected named specifier or sequence"),
+        invalid => invalid.to_error("expected named specifier or sequence"),
     }
 }
 
@@ -194,7 +194,7 @@ fn parse_named_specifier<'i, I>(
             let subspecification = try!(parse_specification_(subspan, &delimited.tts, &mut names));
 
             if !names.is_empty() {
-                return subspan.as_error("named specifiers not allowed in named sequences");
+                return subspan.to_error("named specifiers not allowed in named sequences");
             }
 
             let (amount, separator) = try!(parse_sequence_suffix(tts));
@@ -217,9 +217,9 @@ fn parse_named_specifier<'i, I>(
             "ty" => Ok(Specifier::Ty(name)),
             "tok" => Ok(Specifier::Tok(name)),
             "tt" => Ok(Specifier::Tt(name)),
-            _ => subspan.as_error("invalid named specifier type"),
+            _ => subspan.to_error("invalid named specifier type"),
         },
-        invalid => invalid.as_error("expected named specifier type or sequence"),
+        invalid => invalid.to_error("expected named specifier type or sequence"),
     }
 }
 
@@ -233,7 +233,7 @@ fn parse_sequence_suffix<'i, I>(
         (subspan, separator) => match try!(tts.expect_token("expected `*` or `+`")) {
             (_, &Token::BinOp(BinOpToken::Plus)) => Ok((Amount::OneOrMore, Some(separator.clone()))),
             (_, &Token::BinOp(BinOpToken::Star)) => Ok((Amount::ZeroOrMore, Some(separator.clone()))),
-            _ => subspan.as_error("expected `*` or `+`"),
+            _ => subspan.to_error("expected `*` or `+`"),
         },
     }
 }
@@ -286,7 +286,7 @@ pub fn expand_parse_specification(
 ) -> Box<MacResult> {
     match parse_specification(arguments) {
         Ok(specification) => {
-            let exprs = specification.iter().map(|s| s.as_expr(context, span)).collect();
+            let exprs = specification.iter().map(|s| s.to_expr(context, span)).collect();
             MacEager::expr(context.expr_vec_slice(span, exprs))
         },
         Err((span, message)) => {

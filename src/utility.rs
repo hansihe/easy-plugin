@@ -18,154 +18,109 @@ use super::{PluginResult};
 // Traits
 //================================================
 
-// AsExpr ________________________________________
+// ToError _______________________________________
 
-pub trait AsExpr {
-    fn as_expr(&self, context: &mut ExtCtxt, span: Span) -> P<Expr>;
+/// A type that can be extended into a `PluginResult<T>`.
+pub trait ToError<T, S> where S: AsRef<str> {
+    /// Returns an `Err` value with the span of this value and the supplied message.
+    fn to_error(&self, message: S) -> PluginResult<T>;
 }
 
-impl AsExpr for BinOpToken {
-    fn as_expr(&self, context: &mut ExtCtxt, span: Span) -> P<Expr> {
-        let path = vec![
-            context.ident_of("syntax"),
-            context.ident_of("parse"),
-            context.ident_of("token"),
-            context.ident_of("BinOpToken"),
-            context.ident_of(&format!("{:?}", self)),
-        ];
-
-        context.expr_path(context.path_global(span, path))
+impl<T, S> ToError<T, S> for Span where S: AsRef<str> {
+    fn to_error(&self, message: S) -> PluginResult<T> {
+        Err((*self, message.as_ref().into()))
     }
 }
 
-impl AsExpr for DelimToken {
-    fn as_expr(&self, context: &mut ExtCtxt, span: Span) -> P<Expr> {
-        let path = vec![
-            context.ident_of("syntax"),
-            context.ident_of("parse"),
-            context.ident_of("token"),
-            context.ident_of("DelimToken"),
-            context.ident_of(&format!("{:?}", self)),
-        ];
-
-        context.expr_path(context.path_global(span, path))
+impl<T, S> ToError<T, S> for TokenTree where S: AsRef<str> {
+    fn to_error(&self, message: S) -> PluginResult<T> {
+        Err((self.get_span(), message.as_ref().into()))
     }
 }
 
-impl AsExpr for Ident {
-    fn as_expr(&self, context: &mut ExtCtxt, span: Span) -> P<Expr> {
-        let path = vec![
-            context.ident_of("syntax"),
-            context.ident_of("parse"),
-            context.ident_of("token"),
-            context.ident_of("str_to_ident"),
-        ];
+// ToExpr ________________________________________
 
+/// A type that can be converted into a `P<Expr>`.
+pub trait ToExpr {
+    /// Returns a `P<Expr>` which would produce this value if executed.
+    fn to_expr(&self, context: &mut ExtCtxt, span: Span) -> P<Expr>;
+}
+
+impl ToExpr for BinOpToken {
+    fn to_expr(&self, context: &mut ExtCtxt, span: Span) -> P<Expr> {
+        mk_expr_path(context, span, &["BinOpToken", &format!("{:?}", self)])
+    }
+}
+
+impl ToExpr for DelimToken {
+    fn to_expr(&self, context: &mut ExtCtxt, span: Span) -> P<Expr> {
+        mk_expr_path(context, span, &["DelimToken", &format!("{:?}", self)])
+    }
+}
+
+impl ToExpr for Ident {
+    fn to_expr(&self, context: &mut ExtCtxt, span: Span) -> P<Expr> {
+        let path = mk_path(context, &["str_to_ident"]);
         context.expr_call_global(span, path, vec![context.expr_str(span, self.name.as_str())])
     }
 }
 
-impl AsExpr for IdentStyle {
-    fn as_expr(&self, context: &mut ExtCtxt, span: Span) -> P<Expr> {
-        let path = vec![
-            context.ident_of("syntax"),
-            context.ident_of("parse"),
-            context.ident_of("token"),
-            context.ident_of("IdentStyle"),
-            context.ident_of(&format!("{:?}", self)),
-        ];
-
-        context.expr_path(context.path_global(span, path))
+impl ToExpr for IdentStyle {
+    fn to_expr(&self, context: &mut ExtCtxt, span: Span) -> P<Expr> {
+        mk_expr_path(context, span, &["IdentStyle", &format!("{:?}", self)])
     }
 }
 
-impl AsExpr for Lit {
-    fn as_expr(&self, context: &mut ExtCtxt, span: Span) -> P<Expr> {
+impl ToExpr for Lit {
+    fn to_expr(&self, context: &mut ExtCtxt, span: Span) -> P<Expr> {
         macro_rules! expr {
-            ($variant:expr, $($argument:expr), *) => ({
-                let path = vec![
-                    context.ident_of("syntax"),
-                    context.ident_of("parse"),
-                    context.ident_of("token"),
-                    context.ident_of("Lit"),
-                    context.ident_of($variant),
-                ];
+            ($variant:expr, $name:expr) => ({
+                let arguments = vec![$name.to_expr(context, span)];
+                context.expr_call_global(span, mk_path(context, &["Lit", $variant]), arguments)
+            });
 
-                let arguments = vec![$($argument), *];
-                context.expr_call_global(span, path, arguments)
+            ($variant:expr, $name:expr, $size:expr) => ({
+                let arguments = vec![$name.to_expr(context, span), context.expr_usize(span, $size)];
+                context.expr_call_global(span, mk_path(context, &["Lit", $variant]), arguments)
             });
         }
 
         match *self {
-            Lit::Byte(name) => expr!("Byte", name.as_expr(context, span)),
-            Lit::Char(name) => expr!("Char", name.as_expr(context, span)),
-            Lit::Integer(name) => expr!("Integer", name.as_expr(context, span)),
-            Lit::Float(name) => expr!("Float", name.as_expr(context, span)),
-            Lit::Str_(name) => expr!("Str_", name.as_expr(context, span)),
-            Lit::StrRaw(name, size) => {
-                expr!("StrRaw", name.as_expr(context, span), context.expr_usize(span, size))
-            },
-            Lit::ByteStr(name) => expr!("ByteStr", name.as_expr(context, span)),
-            Lit::ByteStrRaw(name, size) => {
-                expr!("ByteStrRaw", name.as_expr(context, span), context.expr_usize(span, size))
-            },
+            Lit::Byte(name) => expr!("Byte", name),
+            Lit::Char(name) => expr!("Char", name),
+            Lit::Integer(name) => expr!("Integer", name),
+            Lit::Float(name) => expr!("Float", name),
+            Lit::Str_(name) => expr!("Str_", name),
+            Lit::StrRaw(name, size) => expr!("StrRaw", name, size),
+            Lit::ByteStr(name) => expr!("ByteStr", name),
+            Lit::ByteStrRaw(name, size) => expr!("ByteStrRaw", name, size),
         }
     }
 }
 
-impl AsExpr for Name {
-    fn as_expr(&self, context: &mut ExtCtxt, span: Span) -> P<Expr> {
-        let path = vec![
-            context.ident_of("syntax"),
-            context.ident_of("parse"),
-            context.ident_of("token"),
-            context.ident_of("intern"),
-        ];
-
+impl ToExpr for Name {
+    fn to_expr(&self, context: &mut ExtCtxt, span: Span) -> P<Expr> {
+        let path = mk_path(context, &["intern"]);
         context.expr_call_global(span, path, vec![context.expr_str(span, self.as_str())])
     }
 }
 
-impl AsExpr for Token {
-    fn as_expr(&self, context: &mut ExtCtxt, span: Span) -> P<Expr> {
+impl ToExpr for Token {
+    fn to_expr(&self, context: &mut ExtCtxt, span: Span) -> P<Expr> {
         macro_rules! expr {
-            ($variant:expr) => ({
-                let path = vec![
-                    context.ident_of("syntax"),
-                    context.ident_of("parse"),
-                    context.ident_of("token"),
-                    context.ident_of("Token"),
-                    context.ident_of($variant),
-                ];
-
-                context.expr_path(context.path_global(span, path))
-            });
-
             ($variant:expr, $($argument:expr), *) => ({
-                let path = vec![
-                    context.ident_of("syntax"),
-                    context.ident_of("parse"),
-                    context.ident_of("token"),
-                    context.ident_of("Token"),
-                    context.ident_of($variant),
-                ];
-
-                let arguments = vec![$($argument), *];
-                context.expr_call_global(span, path, arguments)
+                let arguments = vec![$($argument.to_expr(context, span)), *];
+                context.expr_call_global(span, mk_path(context, &["Token", $variant]), arguments)
             });
         }
 
         match *self {
-            Token::BinOp(binop) => expr!("BinOp", binop.as_expr(context, span)),
-            Token::BinOpEq(binop) => expr!("BinOpEq", binop.as_expr(context, span)),
-            Token::Literal(lit, suffix) => {
-                expr!("Literal", lit.as_expr(context, span), suffix.as_expr(context, span))
-            },
-            Token::Ident(ref ident, style) => {
-                expr!("Ident", ident.as_expr(context, span), style.as_expr(context, span))
-            },
-            Token::Lifetime(ref lifetime) => expr!("Lifetime", lifetime.as_expr(context, span)),
-            Token::DocComment(comment) => expr!("DocComment", comment.as_expr(context, span)),
+            Token::BinOp(binop) => expr!("BinOp", binop),
+            Token::BinOpEq(binop) => expr!("BinOpEq", binop),
+            Token::Literal(lit, suffix) => expr!("Literal", lit, suffix),
+            Token::Ident(ref ident, style) => expr!("Ident", ident, style),
+            Token::Lifetime(ref lifetime) => expr!("Lifetime", lifetime),
+            Token::DocComment(comment) => expr!("DocComment", comment),
             Token::OpenDelim(_) |
             Token::CloseDelim(_) |
             Token::Shebang(_) |
@@ -173,16 +128,16 @@ impl AsExpr for Token {
             Token::MatchNt(_, _, _, _) |
             Token::SubstNt(_, _) |
             Token::SpecialVarNt(_) => unreachable!(),
-            _ => expr!(&format!("{:?}", self)),
+            _ => mk_expr_path(context, span, &["Token", &format!("{:?}", self)]),
         }
     }
 }
 
-impl<T> AsExpr for Option<T> where T: AsExpr {
-    fn as_expr(&self, context: &mut ExtCtxt, span: Span) -> P<Expr> {
+impl<T> ToExpr for Option<T> where T: ToExpr {
+    fn to_expr(&self, context: &mut ExtCtxt, span: Span) -> P<Expr> {
         match *self {
             Some(ref some) => {
-                let some = some.as_expr(context, span);
+                let some = some.to_expr(context, span);
                 context.expr_some(span, some)
             },
             None => context.expr_none(span),
@@ -191,34 +146,18 @@ impl<T> AsExpr for Option<T> where T: AsExpr {
 }
 
 #[cfg_attr(feature="clippy", allow(ptr_arg))]
-impl<T> AsExpr for Vec<T> where T: AsExpr {
-    fn as_expr(&self, context: &mut ExtCtxt, span: Span) -> P<Expr> {
-        let exprs = self.iter().map(|i| i.as_expr(context, span)).collect();
+impl<T> ToExpr for Vec<T> where T: ToExpr {
+    fn to_expr(&self, context: &mut ExtCtxt, span: Span) -> P<Expr> {
+        let exprs = self.iter().map(|i| i.to_expr(context, span)).collect();
         let slice = context.expr_vec_slice(span, exprs);
         context.expr_method_call(span, slice, context.ident_of("to_vec"), vec![])
     }
 }
 
-impl<T> AsExpr for [T] where T: AsExpr {
-    fn as_expr(&self, context: &mut ExtCtxt, span: Span) -> P<Expr> {
-        let exprs = self.iter().map(|i| i.as_expr(context, span)).collect();
+impl<T> ToExpr for [T] where T: ToExpr {
+    fn to_expr(&self, context: &mut ExtCtxt, span: Span) -> P<Expr> {
+        let exprs = self.iter().map(|i| i.to_expr(context, span)).collect();
         context.expr_vec_slice(span, exprs)
-    }
-}
-
-pub trait AsError<T, S> where S: AsRef<str> {
-    fn as_error(&self, message: S) -> PluginResult<T>;
-}
-
-impl<T, S> AsError<T, S> for Span where S: AsRef<str> {
-    fn as_error(&self, message: S) -> PluginResult<T> {
-        Err((*self, message.as_ref().into()))
-    }
-}
-
-impl<T, S> AsError<T, S> for TokenTree where S: AsRef<str> {
-    fn as_error(&self, message: S) -> PluginResult<T> {
-        Err((self.get_span(), message.as_ref().into()))
     }
 }
 
@@ -228,8 +167,9 @@ impl<T, S> AsError<T, S> for TokenTree where S: AsRef<str> {
 
 // TokenReader ___________________________________
 
+/// A token reader which wraps a `Vec<TokenAndSpan>`.
 #[derive(Clone)]
-pub struct TokenReader<'a> {
+struct TokenReader<'a> {
     session: &'a ParseSess,
     tokens: Vec<TokenAndSpan>,
     index: usize,
@@ -256,12 +196,12 @@ impl<'a> Reader for TokenReader<'a> {
         next
     }
 
-    fn fatal(&self, m: &str) -> FatalError {
-        self.session.span_diagnostic.span_fatal(self.peek().sp, m)
+    fn fatal(&self, message: &str) -> FatalError {
+        self.session.span_diagnostic.span_fatal(self.peek().sp, message)
     }
 
-    fn err(&self, m: &str) {
-        self.session.span_diagnostic.span_err(self.peek().sp, m);
+    fn err(&self, message: &str) {
+        self.session.span_diagnostic.span_err(self.peek().sp, message);
     }
 
     fn peek(&self) -> TokenAndSpan {
@@ -271,6 +211,7 @@ impl<'a> Reader for TokenReader<'a> {
 
 // TransactionParser _____________________________
 
+/// A wrapper around a `Parser` which allows for rolling back parsing actions.
 pub struct TransactionParser<'a> {
     session: &'a ParseSess,
     tokens: Vec<TokenAndSpan>,
@@ -326,6 +267,7 @@ impl<'a> TransactionParser<'a> {
 
 // TtsIterator ___________________________________
 
+/// A wraper around an iterator of `TokenTree`s.
 pub struct TtsIterator<'i, I> where I: Iterator<Item=&'i TokenTree> {
     pub error: (Span, String),
     pub iterator: I,
@@ -345,7 +287,7 @@ impl<'i, I> TtsIterator<'i, I> where I: Iterator<Item=&'i TokenTree> {
         self.expect().and_then(|tt| {
             match *tt {
                 TokenTree::Token(span, ref token) => Ok((span, token)),
-                _ => tt.as_error(format!("expected {}", description)),
+                _ => tt.to_error(format!("expected {}", description)),
             }
         })
     }
@@ -357,7 +299,7 @@ impl<'i, I> TtsIterator<'i, I> where I: Iterator<Item=&'i TokenTree> {
             if t.mtwt_eq(token) {
                 Ok(())
             } else {
-                s.as_error(format!("expected {}", description))
+                s.to_error(format!("expected {}", description))
             }
         })
     }
@@ -369,4 +311,17 @@ impl<'i, I> Iterator for TtsIterator<'i, I> where I: Iterator<Item=&'i TokenTree
     fn next(&mut self) -> Option<&'i TokenTree> {
         self.iterator.next()
     }
+}
+
+//================================================
+// Functions
+//================================================
+
+fn mk_expr_path(context: &ExtCtxt, span: Span, identifiers: &[&str]) -> P<Expr> {
+    context.expr_path(context.path_global(span, mk_path(context, identifiers)))
+}
+
+fn mk_path(context: &ExtCtxt, identifiers: &[&str]) -> Vec<Ident> {
+    let prefix = &["syntax", "parse", "token"];
+    prefix.iter().chain(identifiers.iter()).map(|i| context.ident_of(i)).collect()
 }

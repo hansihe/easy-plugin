@@ -211,7 +211,7 @@ use syntax::ptr::{P};
 use syntax::util::small_vector::{SmallVector};
 
 mod utility;
-use utility::{AsError, AsExpr};
+use utility::{ToError, ToExpr};
 
 mod arguments;
 pub use self::arguments::*;
@@ -408,7 +408,7 @@ fn expand_parse(
     };
 
     let fields = expand_fields(context, span, specification, &[]);
-    let specification = specification.as_expr(context, span);
+    let specification = specification.to_expr(context, span);
 
     let result = if fields.is_empty() {
         quote_expr!(context, $name)
@@ -609,16 +609,16 @@ fn expand_easy_plugin_(
     context: &mut ExtCtxt, span: Span, arguments: &[TokenTree]
 ) -> PluginResult<Box<MacResult + 'static>> {
     if arguments.is_empty() {
-        return span.as_error("unexpected end of arguments");
+        return span.to_error("unexpected end of arguments");
     }
 
     match arguments[0] {
         TokenTree::Token(_, Token::Ident(ref ident, _)) => match &*ident.name.as_str() {
             "enum" => expand_enum_easy_plugin(context, span, arguments),
             "struct" => expand_struct_easy_plugin(context, span, arguments),
-            _ => arguments[0].as_error("expected `enum` or `struct`"),
+            _ => arguments[0].to_error("expected `enum` or `struct`"),
         },
-        _ => arguments[0].as_error("expected `enum` or `struct`"),
+        _ => arguments[0].to_error("expected `enum` or `struct`"),
     }
 }
 

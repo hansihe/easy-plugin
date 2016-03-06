@@ -13,7 +13,7 @@ use syntax::parse::token::{BinOpToken, Token};
 use syntax::ptr::{P};
 
 use super::{Amount, PluginResult, Specifier};
-use super::utility::{AsError, TransactionParser};
+use super::utility::{ToError, TransactionParser};
 
 //================================================
 // Enums
@@ -300,6 +300,7 @@ impl Match {
 
 thread_local!(static ERROR: RefCell<(Span, String)> = RefCell::new((DUMMY_SP, "no error".into())));
 
+/// A diagnostic emitter that saves fatal diagnostics to a thread local variable to be used later.
 struct SaveEmitter;
 
 impl SaveEmitter {
@@ -403,7 +404,7 @@ fn parse_arguments_<'a>(
     macro_rules! expect {
         () => ({
             match parser.apply(|p| p.bump_and_get()) {
-                Token::Eof => return span.as_error("unexpected end of arguments"),
+                Token::Eof => return span.to_error("unexpected end of arguments"),
                 token => token,
             }
         });
@@ -416,7 +417,7 @@ fn parse_arguments_<'a>(
                 let expected = Parser::token_to_string(expected);
                 let found = Parser::token_to_string(&found);
                 let error = format!("expected `{}`, found `{}`", expected, found);
-                return parser.get_last_span().as_error(error);
+                return parser.get_last_span().to_error(error);
             }
         });
     }
@@ -447,7 +448,7 @@ fn parse_arguments_<'a>(
                 invalid => {
                     let string = Parser::token_to_string(&invalid);
                     let error = format!("expected binop, found `{}`", string);
-                    return parser.get_last_span().as_error(error);
+                    return parser.get_last_span().to_error(error);
                 },
             },
             Specifier::Block(ref name) => {
@@ -459,7 +460,7 @@ fn parse_arguments_<'a>(
                     invalid => {
                         let string = Parser::token_to_string(&invalid);
                         let error = format!("expected opening delimiter, found `{}`", string);
-                        return parser.get_last_span().as_error(error);
+                        return parser.get_last_span().to_error(error);
                     },
                 };
 
@@ -483,7 +484,7 @@ fn parse_arguments_<'a>(
                 Some(item) => {
                     matches.insert(name.clone(), Match::Item(item));
                 },
-                None => return parser.get_last_span().as_error("expected item"),
+                None => return parser.get_last_span().to_error("expected item"),
             },
             Specifier::Lftm(ref name) => {
                 matches.insert(name.clone(), Match::Lftm(try_parse!(parse_lifetime).name));
@@ -505,7 +506,7 @@ fn parse_arguments_<'a>(
                 Some(item) => {
                     matches.insert(name.clone(), Match::Stmt(item));
                 },
-                None => return parser.get_last_span().as_error("expected statement"),
+                None => return parser.get_last_span().to_error("expected statement"),
             },
             Specifier::Ty(ref name) => {
                 matches.insert(name.clone(), Match::Ty(try_parse!(parse_ty)));
@@ -547,7 +548,7 @@ pub fn parse_arguments(
     let span = Span { lo: start.lo, hi: end.hi, expn_id: start.expn_id };
 
     if !tts.is_empty() && specification.is_empty() {
-        return span.as_error("too many arguments");
+        return span.to_error("too many arguments");
     }
 
     let handler = Handler::with_emitter(false, false, Box::new(SaveEmitter));
@@ -562,7 +563,7 @@ pub fn parse_arguments(
     if tts.iter().last().map_or(true, |tt| tt.get_span().hi == parser.get_last_span().hi) {
         Ok(matches)
     } else {
-        span.as_error("too many arguments")
+        span.to_error("too many arguments")
     }
 }
 
