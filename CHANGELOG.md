@@ -54,3 +54,8 @@
 
 ### Fixed
 - Updated for latest nightly
+
+## [0.2.8] - UNRELEASED
+
+### Fixed
+- Fixed spurious `unexpected end of arguments` error with sequences

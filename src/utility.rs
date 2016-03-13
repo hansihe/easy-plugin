@@ -263,6 +263,10 @@ impl<'a> TransactionParser<'a> {
             self.tokens[self.current].sp
         }
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.current == self.tokens.len() - 1
+    }
 }
 
 // TtsIterator ___________________________________

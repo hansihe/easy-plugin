@@ -360,6 +360,8 @@ fn parse_sequence<'a>(
     let mut count = 0;
 
     loop {
+        parser.start();
+
         if let Some(ref separator) = *separator {
             if count != 0 && !parser.apply(|p| p.eat(separator)) {
                 return Ok(count);
@@ -368,11 +370,9 @@ fn parse_sequence<'a>(
 
         let mut submatches = HashMap::new();
 
-        parser.start();
-
         match parse_arguments_(span, parser, &specification, &mut submatches) {
             Ok(()) => { },
-            Err(error) => if (count == 0 && required) || (count != 0 && separator.is_some()) {
+            Err(error) => if count == 0 && required {
                 return Err(error);
             } else {
                 parser.rollback();
@@ -560,7 +560,7 @@ pub fn parse_arguments(
     let mut matches = HashMap::new();
     try!(parse_arguments_(span, &mut parser, specification, &mut matches));
 
-    if tts.iter().last().map_or(true, |tt| tt.get_span().hi == parser.get_last_span().hi) {
+    if tts.is_empty() || parser.is_empty() {
         Ok(matches)
     } else {
         span.to_error("too many arguments")
@@ -762,6 +762,20 @@ mod tests {
             assert_eq!(get!(m, b, as_named_sequence), 3);
             assert_eq!(get!(m, c, as_named_sequence), 0);
             assert_eq!(get!(m, d, as_named_sequence), 1);
+        });
+
+        let arguments = "a, b, c,";
+        let specification = "$($a:ident), +,";
+
+        with_matches(arguments, specification, |m| {
+            assert_eq!(m.len(), 1);
+
+            let a = get!(m, a, as_sequence, as_ident);
+            assert_eq!(a.len(), 3);
+
+            assert_eq!(a[0].name.as_str(), "a");
+            assert_eq!(a[1].name.as_str(), "b");
+            assert_eq!(a[2].name.as_str(), "c");
         });
     }
 }
