@@ -808,6 +808,20 @@
 <span id="765">765</span>
 <span id="766">766</span>
 <span id="767">767</span>
+<span id="768">768</span>
+<span id="769">769</span>
+<span id="770">770</span>
+<span id="771">771</span>
+<span id="772">772</span>
+<span id="773">773</span>
+<span id="774">774</span>
+<span id="775">775</span>
+<span id="776">776</span>
+<span id="777">777</span>
+<span id="778">778</span>
+<span id="779">779</span>
+<span id="780">780</span>
+<span id="781">781</span>
 </pre><pre class='rust '>
 <span class='kw'>use</span> <span class='ident'>std</span>::<span class='ident'>cell</span>::{<span class='ident'>RefCell</span>};
 <span class='kw'>use</span> <span class='ident'>std</span>::<span class='ident'>collections</span>::{<span class='ident'>HashMap</span>};
@@ -1171,6 +1185,8 @@
     <span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>count</span> <span class='op'>=</span> <span class='number'>0</span>;
 
     <span class='kw'>loop</span> {
+        <span class='ident'>parser</span>.<span class='ident'>start</span>();
+
         <span class='kw'>if</span> <span class='kw'>let</span> <span class='prelude-val'>Some</span>(<span class='kw-2'>ref</span> <span class='ident'>separator</span>) <span class='op'>=</span> <span class='op'>*</span><span class='ident'>separator</span> {
             <span class='kw'>if</span> <span class='ident'>count</span> <span class='op'>!=</span> <span class='number'>0</span> <span class='op'>&amp;&amp;</span> <span class='op'>!</span><span class='ident'>parser</span>.<span class='ident'>apply</span>(<span class='op'>|</span><span class='ident'>p</span><span class='op'>|</span> <span class='ident'>p</span>.<span class='ident'>eat</span>(<span class='ident'>separator</span>)) {
                 <span class='kw'>return</span> <span class='prelude-val'>Ok</span>(<span class='ident'>count</span>);
@@ -1179,11 +1195,9 @@
 
         <span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>submatches</span> <span class='op'>=</span> <span class='ident'>HashMap</span>::<span class='ident'>new</span>();
 
-        <span class='ident'>parser</span>.<span class='ident'>start</span>();
-
         <span class='kw'>match</span> <span class='ident'>parse_arguments_</span>(<span class='ident'>span</span>, <span class='ident'>parser</span>, <span class='kw-2'>&amp;</span><span class='ident'>specification</span>, <span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='ident'>submatches</span>) {
             <span class='prelude-val'>Ok</span>(()) <span class='op'>=&gt;</span> { },
-            <span class='prelude-val'>Err</span>(<span class='ident'>error</span>) <span class='op'>=&gt;</span> <span class='kw'>if</span> (<span class='ident'>count</span> <span class='op'>==</span> <span class='number'>0</span> <span class='op'>&amp;&amp;</span> <span class='ident'>required</span>) <span class='op'>||</span> (<span class='ident'>count</span> <span class='op'>!=</span> <span class='number'>0</span> <span class='op'>&amp;&amp;</span> <span class='ident'>separator</span>.<span class='ident'>is_some</span>()) {
+            <span class='prelude-val'>Err</span>(<span class='ident'>error</span>) <span class='op'>=&gt;</span> <span class='kw'>if</span> <span class='ident'>count</span> <span class='op'>==</span> <span class='number'>0</span> <span class='op'>&amp;&amp;</span> <span class='ident'>required</span> {
                 <span class='kw'>return</span> <span class='prelude-val'>Err</span>(<span class='ident'>error</span>);
             } <span class='kw'>else</span> {
                 <span class='ident'>parser</span>.<span class='ident'>rollback</span>();
@@ -1371,7 +1385,7 @@
     <span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>matches</span> <span class='op'>=</span> <span class='ident'>HashMap</span>::<span class='ident'>new</span>();
     <span class='macro'>try</span><span class='macro'>!</span>(<span class='ident'>parse_arguments_</span>(<span class='ident'>span</span>, <span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='ident'>parser</span>, <span class='ident'>specification</span>, <span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='ident'>matches</span>));
 
-    <span class='kw'>if</span> <span class='ident'>tts</span>.<span class='ident'>iter</span>().<span class='ident'>last</span>().<span class='ident'>map_or</span>(<span class='boolval'>true</span>, <span class='op'>|</span><span class='ident'>tt</span><span class='op'>|</span> <span class='ident'>tt</span>.<span class='ident'>get_span</span>().<span class='ident'>hi</span> <span class='op'>==</span> <span class='ident'>parser</span>.<span class='ident'>get_last_span</span>().<span class='ident'>hi</span>) {
+    <span class='kw'>if</span> <span class='ident'>tts</span>.<span class='ident'>is_empty</span>() <span class='op'>||</span> <span class='ident'>parser</span>.<span class='ident'>is_empty</span>() {
         <span class='prelude-val'>Ok</span>(<span class='ident'>matches</span>)
     } <span class='kw'>else</span> {
         <span class='ident'>span</span>.<span class='ident'>to_error</span>(<span class='string'>&quot;too many arguments&quot;</span>)
@@ -1573,6 +1587,20 @@
             <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='macro'>get</span><span class='macro'>!</span>(<span class='ident'>m</span>, <span class='ident'>b</span>, <span class='ident'>as_named_sequence</span>), <span class='number'>3</span>);
             <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='macro'>get</span><span class='macro'>!</span>(<span class='ident'>m</span>, <span class='ident'>c</span>, <span class='ident'>as_named_sequence</span>), <span class='number'>0</span>);
             <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='macro'>get</span><span class='macro'>!</span>(<span class='ident'>m</span>, <span class='ident'>d</span>, <span class='ident'>as_named_sequence</span>), <span class='number'>1</span>);
+        });
+
+        <span class='kw'>let</span> <span class='ident'>arguments</span> <span class='op'>=</span> <span class='string'>&quot;a, b, c,&quot;</span>;
+        <span class='kw'>let</span> <span class='ident'>specification</span> <span class='op'>=</span> <span class='string'>&quot;$($a:ident), +,&quot;</span>;
+
+        <span class='ident'>with_matches</span>(<span class='ident'>arguments</span>, <span class='ident'>specification</span>, <span class='op'>|</span><span class='ident'>m</span><span class='op'>|</span> {
+            <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>m</span>.<span class='ident'>len</span>(), <span class='number'>1</span>);
+
+            <span class='kw'>let</span> <span class='ident'>a</span> <span class='op'>=</span> <span class='macro'>get</span><span class='macro'>!</span>(<span class='ident'>m</span>, <span class='ident'>a</span>, <span class='ident'>as_sequence</span>, <span class='ident'>as_ident</span>);
+            <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>a</span>.<span class='ident'>len</span>(), <span class='number'>3</span>);
+
+            <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>a</span>[<span class='number'>0</span>].<span class='ident'>name</span>.<span class='ident'>as_str</span>(), <span class='string'>&quot;a&quot;</span>);
+            <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>a</span>[<span class='number'>1</span>].<span class='ident'>name</span>.<span class='ident'>as_str</span>(), <span class='string'>&quot;b&quot;</span>);
+            <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>a</span>[<span class='number'>2</span>].<span class='ident'>name</span>.<span class='ident'>as_str</span>(), <span class='string'>&quot;c&quot;</span>);
         });
     }
 }
