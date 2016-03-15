@@ -190,11 +190,12 @@
 
 #![feature(plugin_registrar, quote, rustc_private)]
 
+#![warn(missing_copy_implementations, missing_debug_implementations, missing_docs)]
+
 #![cfg_attr(feature="clippy", feature(plugin))]
 #![cfg_attr(feature="clippy", plugin(clippy))]
 #![cfg_attr(feature="clippy", warn(clippy))]
-
-#![cfg_attr(feature="clippy", allow(cyclomatic_complexity, used_underscore_binding))]
+#![cfg_attr(feature="clippy", allow(used_underscore_binding))]
 
 extern crate rustc_plugin;
 extern crate syntax;

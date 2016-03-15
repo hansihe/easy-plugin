@@ -1,11 +1,9 @@
-use std::cell::{RefCell};
 use std::collections::{HashMap};
 use std::rc::{Rc};
 
 use syntax::ast::*;
-use syntax::codemap::{DUMMY_SP, CodeMap, MultiSpan, Span};
-use syntax::errors::{Handler, Level, RenderSpan};
-use syntax::errors::emitter::{Emitter};
+use syntax::codemap::{DUMMY_SP, CodeMap, Span};
+use syntax::errors::{Handler};
 use syntax::parse::{ParseSess};
 use syntax::parse::common::{SeqSep};
 use syntax::parse::parser::{Parser, PathParsingMode};
@@ -13,7 +11,7 @@ use syntax::parse::token::{BinOpToken, Token};
 use syntax::ptr::{P};
 
 use super::{Amount, PluginResult, Specifier};
-use super::utility::{ToError, TransactionParser};
+use super::utility::{SaveEmitter, ToError, TransactionParser};
 
 //================================================
 // Enums
@@ -63,6 +61,8 @@ pub enum Match {
 }
 
 impl Match {
+    //- Accessors --------------------------------
+
     /// Returns this attribute match.
     ///
     /// # Panics
@@ -296,253 +296,243 @@ impl Match {
 // Structs
 //================================================
 
-// SaveEmitter ___________________________________
+// ArgumentParser ________________________________
 
-thread_local!(static ERROR: RefCell<(Span, String)> = RefCell::new((DUMMY_SP, "no error".into())));
-
-/// A diagnostic emitter that saves fatal diagnostics to a thread local variable to be used later.
-struct SaveEmitter;
-
-impl SaveEmitter {
-    fn emit_(&self, span: Span, message: &str) {
-        ERROR.with(|e| *e.borrow_mut() = (span, message.into()));
-    }
+/// Parses arguments.
+struct ArgumentParser<'s> {
+    parser: TransactionParser<'s>,
+    span: Span,
 }
 
-impl Emitter for SaveEmitter {
-    fn emit(&mut self, cs: Option<&MultiSpan>, message: &str, _: Option<&str>, level: Level) {
-        if level == Level::Fatal {
-            self.emit_(cs.map_or(DUMMY_SP, |ms| ms.to_span_bounds()), message);
+impl<'s> ArgumentParser<'s> {
+    //- Constructors -----------------------------
+
+    fn new(session: &'s ParseSess, tts: &'s [TokenTree], span: Span) -> ArgumentParser<'s> {
+        ArgumentParser { span: span, parser: TransactionParser::new(&session, tts.into()) }
+    }
+
+    //- Mutators ---------------------------------
+
+    fn expect_token(&mut self) -> PluginResult<Token> {
+        match self.parser.apply(|p| p.bump_and_get()) {
+            Token::Eof => self.span.to_error("unexpected end of arguments"),
+            token => Ok(token),
         }
     }
 
-    fn custom_emit(&mut self, _: &RenderSpan, _: &str, _: Level) { }
+    fn expect_specific_token(&mut self, token: &Token) -> PluginResult<()> {
+        let found = try!(self.expect_token());
+        if found.mtwt_eq(token) {
+            Ok(())
+        } else {
+            let expected = Parser::token_to_string(token);
+            let found = Parser::token_to_string(&found);
+            let message = format!("expected `{}`, found `{}`", expected, found);
+            self.parser.get_last_span().to_error(message)
+        }
+    }
+
+    fn parse_sequence(
+        &mut self,
+        amount: Amount,
+        separator: Option<&Token>,
+        specification: &[Specifier],
+        matches: &mut HashMap<String, Match>,
+    ) -> PluginResult<usize> {
+        for specifier in specification {
+            if let Some(name) = specifier.get_name() {
+                matches.insert(name.clone(), Match::Sequence(vec![]));
+            }
+        }
+
+        let required = amount == Amount::OneOrMore;
+        let mut count = 0;
+
+        loop {
+            self.parser.start();
+            if let Some(ref separator) = separator {
+                if count != 0 && !self.parser.apply(|p| p.eat(separator)) {
+                    return Ok(count);
+                }
+            }
+
+            let mut submatches = HashMap::new();
+            match self.parse_arguments(&specification, &mut submatches) {
+                Ok(()) => { },
+                Err(error) => if count == 0 && required {
+                    return Err(error);
+                } else {
+                    self.parser.rollback();
+                    return Ok(count);
+                },
+            }
+            for (k, v) in submatches {
+                match *matches.entry(k).or_insert_with(|| Match::Sequence(vec![])) {
+                    Match::Sequence(ref mut sequence) => sequence.push(v),
+                    _ => unreachable!(),
+                }
+            }
+
+            count += 1;
+            if amount == Amount::ZeroOrOne {
+                return Ok(count);
+            }
+        }
+    }
+
+   fn parse_delim(&mut self) -> PluginResult<Rc<Delimited>> {
+        let (delimiter, open) = match try!(self.expect_token()) {
+            Token::OpenDelim(delimiter) => (delimiter, self.parser.get_last_span()),
+            invalid => {
+                let string = Parser::token_to_string(&invalid);
+                let error = format!("expected opening delimiter, found `{}`", string);
+                return self.parser.get_last_span().to_error(error);
+            },
+        };
+        let tts = self.parser.parse(|p| {
+            let sep = SeqSep { sep: None, trailing_sep_allowed: false };
+            p.parse_seq_to_end(&Token::CloseDelim(delimiter), sep, |p| p.parse_token_tree())
+        });
+        let delimited = Delimited {
+            delim: delimiter,
+            open_span: open,
+            tts: try!(tts),
+            close_span: self.parser.get_last_span(),
+        };
+        Ok(Rc::new(delimited))
+    }
+
+    #[cfg_attr(feature="clippy", allow(cyclomatic_complexity))]
+    fn parse_arguments(
+        &mut self, specification: &[Specifier], matches: &mut HashMap<String, Match>
+    ) -> PluginResult<()> {
+        for specifier in specification {
+            match *specifier {
+                Specifier::Attr(ref name) => {
+                    let attr = try!(self.parser.parse(|p| p.parse_attribute(true)));
+                    matches.insert(name.clone(), Match::Attr(attr));
+                },
+                Specifier::BinOp(ref name) => match try!(self.expect_token()) {
+                    Token::BinOp(binop) | Token::BinOpEq(binop) => {
+                        matches.insert(name.clone(), Match::BinOp(binop));
+                    },
+                    invalid => {
+                        let string = Parser::token_to_string(&invalid);
+                        let error = format!("expected binop, found `{}`", string);
+                        return self.parser.get_last_span().to_error(error);
+                    },
+                },
+                Specifier::Block(ref name) => {
+                    let block = try!(self.parser.parse(|p| p.parse_block()));
+                    matches.insert(name.clone(), Match::Block(block));
+                },
+                Specifier::Delim(ref name) => {
+                    let delim = try!(self.parse_delim());
+                    matches.insert(name.clone(), Match::Delim(delim));
+                },
+                Specifier::Expr(ref name) => {
+                    let expr = try!(self.parser.parse(|p| p.parse_expr()));
+                    matches.insert(name.clone(), Match::Expr(expr));
+                },
+                Specifier::Ident(ref name) => {
+                    let ident = try!(self.parser.parse(|p| p.parse_ident()));
+                    matches.insert(name.clone(), Match::Ident(ident));
+                },
+                Specifier::Item(ref name) => {
+                    let start = self.parser.get_last_span();
+                    match self.parser.parse(|p| p.parse_item()) {
+                        Ok(Some(item)) => {
+                            matches.insert(name.clone(), Match::Item(item));
+                        },
+                        _ => return start.to_error("expected item"),
+                    }
+                },
+                Specifier::Lftm(ref name) => {
+                    let lftm = try!(self.parser.parse(|p| p.parse_lifetime()));
+                    matches.insert(name.clone(), Match::Lftm(lftm.name));
+                },
+                Specifier::Lit(ref name) => {
+                    let lit = try!(self.parser.parse(|p| p.parse_lit()));
+                    matches.insert(name.clone(), Match::Lit(lit));
+                },
+                Specifier::Meta(ref name) => {
+                    let meta = try!(self.parser.parse(|p| p.parse_meta_item()));
+                    matches.insert(name.clone(), Match::Meta(meta));
+                },
+                Specifier::Pat(ref name) => {
+                    let pat = try!(self.parser.parse(|p| p.parse_pat()));
+                    matches.insert(name.clone(), Match::Pat(pat));
+                },
+                Specifier::Path(ref name) => {
+                    let mode = PathParsingMode::LifetimeAndTypesWithoutColons;
+                    let path = try!(self.parser.parse(|p| p.parse_path(mode)));
+                    matches.insert(name.clone(), Match::Path(path));
+                },
+                Specifier::Stmt(ref name) => {
+                    let start = self.parser.get_last_span();
+                    match self.parser.parse(|p| p.parse_stmt()) {
+                        Ok(Some(stmt)) => {
+                            matches.insert(name.clone(), Match::Stmt(stmt));
+                        },
+                        _ => return start.to_error("expected statement"),
+                    }
+                },
+                Specifier::Ty(ref name) => {
+                    let ty = try!(self.parser.parse(|p| p.parse_ty()));
+                    matches.insert(name.clone(), Match::Ty(ty));
+                },
+                Specifier::Tok(ref name) => {
+                    let tok = try!(self.expect_token());
+                    matches.insert(name.clone(), Match::Tok(tok));
+                },
+                Specifier::Tt(ref name) => {
+                    let tt = try!(self.parser.parse(|p| p.parse_token_tree()));
+                    matches.insert(name.clone(), Match::Tt(tt));
+                },
+                Specifier::Specific(ref expected) => try!(self.expect_specific_token(expected)),
+                Specifier::Delimited(delimiter, ref specification) => {
+                    try!(self.expect_specific_token(&Token::OpenDelim(delimiter)));
+                    try!(self.parse_arguments(&specification, matches));
+                    try!(self.expect_specific_token(&Token::CloseDelim(delimiter)));
+                },
+                Specifier::Sequence(amount, ref separator, ref specification) => {
+                    try!(self.parse_sequence(amount, separator.as_ref(), specification, matches));
+                },
+                Specifier::NamedSequence(ref name, amount, ref separator, ref specification) => {
+                    let count = self.parse_sequence(
+                        amount, separator.as_ref(), specification, matches
+                    );
+                    matches.insert(name.clone(), Match::NamedSequence(try!(count)));
+                },
+            }
+        }
+
+        Ok(())
+    }
+
+    pub fn parse(mut self, specification: &[Specifier]) -> PluginResult<HashMap<String, Match>> {
+        let mut matches = HashMap::new();
+        try!(self.parse_arguments(specification, &mut matches));
+        if self.parser.is_empty() {
+            Ok(matches)
+        } else {
+            self.span.to_error("too many arguments")
+        }
+    }
 }
 
 //================================================
 // Functions
 //================================================
 
-fn parse_sequence<'a>(
-    span: Span,
-    parser: &mut TransactionParser<'a>,
-    amount: Amount,
-    separator: &Option<Token>,
-    specification: &[Specifier],
-    matches: &mut HashMap<String, Match>,
-) -> PluginResult<usize> {
-    let required = amount == Amount::OneOrMore;
-
-    for specifier in specification {
-        match *specifier {
-            Specifier::Attr(ref name) |
-            Specifier::BinOp(ref name) |
-            Specifier::Block(ref name) |
-            Specifier::Delim(ref name) |
-            Specifier::Expr(ref name) |
-            Specifier::Ident(ref name) |
-            Specifier::Item(ref name) |
-            Specifier::Lftm(ref name) |
-            Specifier::Lit(ref name) |
-            Specifier::Meta(ref name) |
-            Specifier::Pat(ref name) |
-            Specifier::Path(ref name) |
-            Specifier::Stmt(ref name) |
-            Specifier::Ty(ref name) |
-            Specifier::Tok(ref name) |
-            Specifier::Tt(ref name) => {
-                matches.insert(name.clone(), Match::Sequence(vec![]));
-            },
-            _ => { },
-        }
-    }
-
-    let mut count = 0;
-
-    loop {
-        parser.start();
-
-        if let Some(ref separator) = *separator {
-            if count != 0 && !parser.apply(|p| p.eat(separator)) {
-                return Ok(count);
-            }
-        }
-
-        let mut submatches = HashMap::new();
-
-        match parse_arguments_(span, parser, &specification, &mut submatches) {
-            Ok(()) => { },
-            Err(error) => if count == 0 && required {
-                return Err(error);
-            } else {
-                parser.rollback();
-                return Ok(count);
-            },
-        }
-
-        for (k, v) in submatches {
-            match *matches.entry(k).or_insert_with(|| Match::Sequence(vec![])) {
-                Match::Sequence(ref mut sequence) => sequence.push(v),
-                _ => unreachable!(),
-            }
-        }
-
-        count += 1;
-
-        if amount == Amount::ZeroOrOne {
-            return Ok(count);
-        }
-    }
-}
-
-fn parse_arguments_<'a>(
-    span: Span,
-    parser: &mut TransactionParser<'a>,
-    specification: &[Specifier],
-    matches: &mut HashMap<String, Match>,
-) -> PluginResult<()> {
-    macro_rules! expect {
-        () => ({
-            match parser.apply(|p| p.bump_and_get()) {
-                Token::Eof => return span.to_error("unexpected end of arguments"),
-                token => token,
-            }
-        });
-
-        ($expected:expr) => ({
-            let expected = $expected;
-            let found = expect!();
-
-            if !found.mtwt_eq(expected) {
-                let expected = Parser::token_to_string(expected);
-                let found = Parser::token_to_string(&found);
-                let error = format!("expected `{}`, found `{}`", expected, found);
-                return parser.get_last_span().to_error(error);
-            }
-        });
-    }
-
-    macro_rules! try_parse {
-        ($method:ident) => (try_parse!($method()));
-
-        ($method:ident($($argument:expr), *)) => ({
-            match parser.apply(|p| p.$method($($argument), *)) {
-                Ok(ok) => ok,
-                Err(mut db) => {
-                    db.cancel();
-                    return Err(ERROR.with(|e| e.borrow().clone()))
-                },
-            }
-        });
-    }
-
-    for specifier in specification {
-        match *specifier {
-            Specifier::Attr(ref name) => {
-                matches.insert(name.clone(), Match::Attr(try_parse!(parse_attribute(true))));
-            },
-            Specifier::BinOp(ref name) => match expect!() {
-                Token::BinOp(binop) | Token::BinOpEq(binop) => {
-                    matches.insert(name.clone(), Match::BinOp(binop));
-                },
-                invalid => {
-                    let string = Parser::token_to_string(&invalid);
-                    let error = format!("expected binop, found `{}`", string);
-                    return parser.get_last_span().to_error(error);
-                },
-            },
-            Specifier::Block(ref name) => {
-                matches.insert(name.clone(), Match::Block(try_parse!(parse_block)));
-            },
-            Specifier::Delim(ref name) => {
-                let (delimiter, open) = match expect!() {
-                    Token::OpenDelim(delimiter) => (delimiter, parser.get_last_span()),
-                    invalid => {
-                        let string = Parser::token_to_string(&invalid);
-                        let error = format!("expected opening delimiter, found `{}`", string);
-                        return parser.get_last_span().to_error(error);
-                    },
-                };
-
-                let sep = SeqSep { sep: None, trailing_sep_allowed: false };
-                let f = |p: &mut Parser<'a>| { p.parse_token_tree() };
-                let tts = try_parse!(parse_seq_to_end(&Token::CloseDelim(delimiter), sep, f));
-
-                let delimited = Delimited {
-                    delim: delimiter, open_span: open, tts: tts, close_span: parser.get_last_span()
-                };
-
-                matches.insert(name.clone(), Match::Delim(Rc::new(delimited)));
-            },
-            Specifier::Expr(ref name) => {
-                matches.insert(name.clone(), Match::Expr(try_parse!(parse_expr)));
-            },
-            Specifier::Ident(ref name) => {
-                matches.insert(name.clone(), Match::Ident(try_parse!(parse_ident)));
-            },
-            Specifier::Item(ref name) => match try_parse!(parse_item) {
-                Some(item) => {
-                    matches.insert(name.clone(), Match::Item(item));
-                },
-                None => return parser.get_last_span().to_error("expected item"),
-            },
-            Specifier::Lftm(ref name) => {
-                matches.insert(name.clone(), Match::Lftm(try_parse!(parse_lifetime).name));
-            },
-            Specifier::Lit(ref name) => {
-                matches.insert(name.clone(), Match::Lit(try_parse!(parse_lit)));
-            },
-            Specifier::Meta(ref name) => {
-                matches.insert(name.clone(), Match::Meta(try_parse!(parse_meta_item)));
-            },
-            Specifier::Pat(ref name) => {
-                matches.insert(name.clone(), Match::Pat(try_parse!(parse_pat)));
-            },
-            Specifier::Path(ref name) => {
-                let path = try_parse!(parse_path(PathParsingMode::LifetimeAndTypesWithoutColons));
-                matches.insert(name.clone(), Match::Path(path));
-            },
-            Specifier::Stmt(ref name) => match try_parse!(parse_stmt) {
-                Some(item) => {
-                    matches.insert(name.clone(), Match::Stmt(item));
-                },
-                None => return parser.get_last_span().to_error("expected statement"),
-            },
-            Specifier::Ty(ref name) => {
-                matches.insert(name.clone(), Match::Ty(try_parse!(parse_ty)));
-            },
-            Specifier::Tok(ref name) => {
-                matches.insert(name.clone(), Match::Tok(expect!()));
-            },
-            Specifier::Tt(ref name) => {
-                matches.insert(name.clone(), Match::Tt(try_parse!(parse_token_tree)));
-            },
-            Specifier::Specific(ref expected) => expect!(expected),
-            Specifier::Delimited(delimiter, ref subspecification) => {
-                expect!(&Token::OpenDelim(delimiter));
-                try!(parse_arguments_(span, parser, &subspecification, matches));
-                expect!(&Token::CloseDelim(delimiter));
-            },
-            Specifier::Sequence(amount, ref separator, ref subspecification) => {
-                try!(parse_sequence(span, parser, amount, separator, subspecification, matches));
-            },
-            Specifier::NamedSequence(ref name, amount, ref separator, ref subspecification) => {
-                let count = parse_sequence(
-                    span, parser, amount, separator, subspecification, matches
-                );
-
-                matches.insert(name.clone(), Match::NamedSequence(try!(count)));
-            }
-        }
-    }
-
-    Ok(())
-}
-
-/// Parses the given arguments with the given specification.
+/// Parses the supplied arguments with the supplied specification.
 pub fn parse_arguments(
     session: &ParseSess, tts: &[TokenTree], specification: &[Specifier]
 ) -> PluginResult<HashMap<String, Match>> {
+    if tts.is_empty() && specification.is_empty() {
+        return Ok(HashMap::new());
+    }
+
     let start = tts.iter().nth(0).map_or(DUMMY_SP, |s| s.get_span());
     let end = tts.iter().last().map_or(DUMMY_SP, |s| s.get_span());
     let span = Span { lo: start.lo, hi: end.hi, expn_id: start.expn_id };
@@ -555,16 +545,7 @@ pub fn parse_arguments(
     let mut codemap = CodeMap::new();
     codemap.files = session.codemap().files.clone();
     let session = ParseSess::with_span_handler(handler, Rc::new(codemap));
-    let mut parser = TransactionParser::new(&session, tts);
-
-    let mut matches = HashMap::new();
-    try!(parse_arguments_(span, &mut parser, specification, &mut matches));
-
-    if tts.is_empty() || parser.is_empty() {
-        Ok(matches)
-    } else {
-        span.to_error("too many arguments")
-    }
+    ArgumentParser::new(&session, tts, span).parse(specification)
 }
 
 //================================================
@@ -585,12 +566,10 @@ mod tests {
     fn parse_token_trees(source: &str) -> (ParseSess, Vec<TokenTree>) {
         let session = ParseSess::new();
         let source = source.into();
-
         let tts = {
             let mut parser = parse::new_parser_from_source_str(&session, vec![], "".into(), source);
             parser.parse_all_token_trees().unwrap()
         };
-
         (session, tts)
     }
 

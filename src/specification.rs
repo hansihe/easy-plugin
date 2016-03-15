@@ -9,7 +9,7 @@ use syntax::parse::token::{BinOpToken, DelimToken, IdentStyle, Token};
 use syntax::ptr::{P};
 
 use super::{PluginResult};
-use super::utility::{ToError, ToExpr, TtsIterator};
+use super::utility::{self, ToError, ToExpr, TtsIterator};
 
 //================================================
 // Enums
@@ -20,19 +20,17 @@ use super::utility::{ToError, ToExpr, TtsIterator};
 /// Indicates how many times a sequence is allowed to occur.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Amount {
+    /// `+`
     OneOrMore,
+    /// `*`
     ZeroOrMore,
+    /// `?`
     ZeroOrOne,
 }
 
 impl ToExpr for Amount {
     fn to_expr(&self, context: &mut ExtCtxt, span: Span) -> P<Expr> {
-        let path = vec![
-            context.ident_of("easy_plugin"),
-            context.ident_of("Amount"),
-            context.ident_of(&format!("{:?}", self)),
-        ];
-
+        let path = utility::mk_path(context, &["easy_plugin", "Amount", &format!("{:?}", self)]);
         context.expr_path(context.path_global(span, path))
     }
 }
@@ -84,68 +82,9 @@ pub enum Specifier {
     NamedSequence(String, Amount, Option<Token>, Vec<Specifier>),
 }
 
-impl ToExpr for Specifier {
-    fn to_expr(&self, context: &mut ExtCtxt, span: Span) -> P<Expr> {
-        macro_rules! expr {
-            ($variant:expr, $($argument:expr), *) => ({
-                let path = vec![
-                    context.ident_of("easy_plugin"),
-                    context.ident_of("Specifier"),
-                    context.ident_of($variant),
-                ];
-
-                let arguments = vec![$($argument), *];
-                context.expr_call_global(span, path, arguments)
-            });
-        }
-
-        macro_rules! string {
-            ($name:expr) => ({
-                let name = context.expr_str(span, context.name_of($name).as_str());
-                let into = context.ident_of("into");
-                context.expr_method_call(span, name, into, vec![])
-            });
-        }
-
-        match *self {
-            Specifier::Attr(ref name) => expr!("Attr", string!(name)),
-            Specifier::BinOp(ref name) => expr!("BinOp", string!(name)),
-            Specifier::Block(ref name) => expr!("Block", string!(name)),
-            Specifier::Delim(ref name) => expr!("Delim", string!(name)),
-            Specifier::Expr(ref name) => expr!("Expr", string!(name)),
-            Specifier::Ident(ref name) => expr!("Ident", string!(name)),
-            Specifier::Item(ref name) => expr!("Item", string!(name)),
-            Specifier::Lftm(ref name) => expr!("Lftm", string!(name)),
-            Specifier::Lit(ref name) => expr!("Lit", string!(name)),
-            Specifier::Meta(ref name) => expr!("Meta", string!(name)),
-            Specifier::Pat(ref name) => expr!("Pat", string!(name)),
-            Specifier::Path(ref name) => expr!("Path", string!(name)),
-            Specifier::Stmt(ref name) => expr!("Stmt", string!(name)),
-            Specifier::Ty(ref name) => expr!("Ty", string!(name)),
-            Specifier::Tok(ref name) => expr!("Tok", string!(name)),
-            Specifier::Tt(ref name) => expr!("Tt", string!(name)),
-            Specifier::Specific(ref token) => expr!("Specific", token.to_expr(context, span)),
-            Specifier::Delimited(delimiter, ref subspecification) => {
-                let subspecification = subspecification.to_expr(context, span);
-                expr!("Delimited", delimiter.to_expr(context, span), subspecification)
-            },
-            Specifier::Sequence(amount, ref separator, ref subspecification) => {
-                let amount = amount.to_expr(context, span);
-                let separator = separator.to_expr(context, span);
-                let subspecification = subspecification.to_expr(context, span);
-                expr!("Sequence", amount, separator, subspecification)
-            },
-            Specifier::NamedSequence(ref name, amount, ref separator, ref subspecification) => {
-                let amount = amount.to_expr(context, span);
-                let separator = separator.to_expr(context, span);
-                let subspecification = subspecification.to_expr(context, span);
-                expr!("NamedSequence", string!(name), amount, separator, subspecification)
-            },
-        }
-    }
-}
-
 impl Specifier {
+    //- Constructors -----------------------------
+
     /// Returns a new `Specifier` corresponding to the given identifier.
     pub fn specific_ident(ident: &str) -> Specifier {
         let ident = Ident::with_empty_ctxt(token::intern(ident));
@@ -157,46 +96,106 @@ impl Specifier {
         let lftm = Ident::with_empty_ctxt(token::intern(lftm));
         Specifier::Specific(Token::Lifetime(lftm))
     }
+
+    //- Accessors --------------------------------
+
+    /// Returns the name of this specifier, if applicable.
+    pub fn get_name(&self) -> Option<&String> {
+        match *self {
+            Specifier::Attr(ref name) |
+            Specifier::BinOp(ref name) |
+            Specifier::Block(ref name) |
+            Specifier::Delim(ref name) |
+            Specifier::Expr(ref name) |
+            Specifier::Ident(ref name) |
+            Specifier::Item(ref name) |
+            Specifier::Lftm(ref name) |
+            Specifier::Lit(ref name) |
+            Specifier::Meta(ref name) |
+            Specifier::Pat(ref name) |
+            Specifier::Path(ref name) |
+            Specifier::Stmt(ref name) |
+            Specifier::Ty(ref name) |
+            Specifier::Tok(ref name) |
+            Specifier::Tt(ref name) => Some(name),
+            _ => None,
+        }
+    }
+}
+
+impl ToExpr for Specifier {
+    fn to_expr(&self, context: &mut ExtCtxt, span: Span) -> P<Expr> {
+        macro_rules! expr {
+            ($variant:expr, $($argument:expr), *) => ({
+                let identifiers = &["easy_plugin", "Specifier", $variant];
+                let arguments = vec![$($argument.to_expr(context, span)), *];
+                utility::mk_expr_call(context, span, identifiers, arguments)
+            });
+        }
+
+        match *self {
+            Specifier::Attr(ref name) => expr!("Attr", name),
+            Specifier::BinOp(ref name) => expr!("BinOp", name),
+            Specifier::Block(ref name) => expr!("Block", name),
+            Specifier::Delim(ref name) => expr!("Delim", name),
+            Specifier::Expr(ref name) => expr!("Expr", name),
+            Specifier::Ident(ref name) => expr!("Ident", name),
+            Specifier::Item(ref name) => expr!("Item", name),
+            Specifier::Lftm(ref name) => expr!("Lftm", name),
+            Specifier::Lit(ref name) => expr!("Lit", name),
+            Specifier::Meta(ref name) => expr!("Meta", name),
+            Specifier::Pat(ref name) => expr!("Pat", name),
+            Specifier::Path(ref name) => expr!("Path", name),
+            Specifier::Stmt(ref name) => expr!("Stmt", name),
+            Specifier::Ty(ref name) => expr!("Ty", name),
+            Specifier::Tok(ref name) => expr!("Tok", name),
+            Specifier::Tt(ref name) => expr!("Tt", name),
+            Specifier::Specific(ref token) => expr!("Specific", token),
+            Specifier::Delimited(delimiter, ref subspecification) =>
+                expr!("Delimited", delimiter, subspecification),
+            Specifier::Sequence(amount, ref separator, ref subspecification) =>
+                expr!("Sequence", amount, separator, subspecification),
+            Specifier::NamedSequence(ref name, amount, ref separator, ref subspecification) =>
+                expr!("NamedSequence", name, amount, separator, subspecification),
+        }
+    }
 }
 
 //================================================
 // Functions
 //================================================
 
+/// Parses a named specifier or a sequence (e.g., `$a:expr` or `$($b:expr), *`).
 fn parse_dollar<'i, I>(
     span: Span, tts: &mut TtsIterator<'i, I>, names: &mut HashSet<String>
 ) -> PluginResult<Specifier> where I: Iterator<Item=&'i TokenTree> {
     match try!(tts.expect()) {
         &TokenTree::Token(subspan, Token::Ident(ref ident, _)) => {
             let name = ident.name.as_str().to_string();
-
             if names.insert(name.clone()) {
                 parse_named_specifier(tts, name)
             } else {
                 subspan.to_error("duplicate named specifier")
             }
         },
-        &TokenTree::Delimited(_, ref delimited) => {
-            parse_sequence(span, tts, &delimited.tts, names)
-        },
+        &TokenTree::Delimited(_, ref delimited) => parse_sequence(span, tts, &delimited.tts, names),
         invalid => invalid.to_error("expected named specifier or sequence"),
     }
 }
 
+/// Parses a named specifier (e.g., `$a:expr`).
 fn parse_named_specifier<'i, I>(
     tts: &mut TtsIterator<'i, I>, name: String
 ) -> PluginResult<Specifier> where I: Iterator<Item=&'i TokenTree> {
-    try!(tts.expect_specific_token(&Token::Colon));
+    try!(tts.expect_specific_token(Token::Colon));
 
     match try!(tts.expect()) {
         &TokenTree::Delimited(subspan, ref delimited) => {
             let mut names = HashSet::new();
             let subspecification = try!(parse_specification_(subspan, &delimited.tts, &mut names));
-
             if !names.is_empty() {
                 return subspan.to_error("named specifiers not allowed in named sequences");
             }
-
             let (amount, separator) = try!(parse_sequence_suffix(tts));
             Ok(Specifier::NamedSequence(name, amount, separator, subspecification))
         },
@@ -223,21 +222,23 @@ fn parse_named_specifier<'i, I>(
     }
 }
 
+/// Parses the suffix of a sequence (e.g., the `, *` in `$($b:expr), *`).
 fn parse_sequence_suffix<'i, I>(
     tts: &mut TtsIterator<'i, I>
 ) -> PluginResult<(Amount, Option<Token>)> where I: Iterator<Item=&'i TokenTree> {
     match try!(tts.expect_token("expected separator, `*`, or `+`")) {
-        (_, &Token::BinOp(BinOpToken::Plus)) => Ok((Amount::OneOrMore, None)),
-        (_, &Token::BinOp(BinOpToken::Star)) => Ok((Amount::ZeroOrMore, None)),
-        (_, &Token::Question) => Ok((Amount::ZeroOrOne, None)),
+        (_, Token::BinOp(BinOpToken::Plus)) => Ok((Amount::OneOrMore, None)),
+        (_, Token::BinOp(BinOpToken::Star)) => Ok((Amount::ZeroOrMore, None)),
+        (_, Token::Question) => Ok((Amount::ZeroOrOne, None)),
         (subspan, separator) => match try!(tts.expect_token("expected `*` or `+`")) {
-            (_, &Token::BinOp(BinOpToken::Plus)) => Ok((Amount::OneOrMore, Some(separator.clone()))),
-            (_, &Token::BinOp(BinOpToken::Star)) => Ok((Amount::ZeroOrMore, Some(separator.clone()))),
+            (_, Token::BinOp(BinOpToken::Plus)) => Ok((Amount::OneOrMore, Some(separator))),
+            (_, Token::BinOp(BinOpToken::Star)) => Ok((Amount::ZeroOrMore, Some(separator))),
             _ => subspan.to_error("expected `*` or `+`"),
         },
     }
 }
 
+/// Parses a sequence (e.g., `$($b:expr), *`).
 fn parse_sequence<'i, I>(
     span: Span, tts: &mut TtsIterator<'i, I>, subtts: &[TokenTree], names: &mut HashSet<String>
 ) -> PluginResult<Specifier> where I: Iterator<Item=&'i TokenTree> {
@@ -246,21 +247,18 @@ fn parse_sequence<'i, I>(
     Ok(Specifier::Sequence(amount, separator, subspecification))
 }
 
+/// Actually parses the supplied specification.
 fn parse_specification_(
     span: Span, tts: &[TokenTree], names: &mut HashSet<String>
 ) -> PluginResult<Vec<Specifier>> {
     let mut tts = TtsIterator::new(tts.iter(), span, "unexpected end of specification");
-
     let mut specification = vec![];
-
     while let Some(tt) = tts.next() {
         match *tt {
-            TokenTree::Token(_, Token::Dollar) => {
-                specification.push(try!(parse_dollar(span, &mut tts, names)));
-            },
-            TokenTree::Token(_, ref token) => {
-                specification.push(Specifier::Specific(token.clone()));
-            },
+            TokenTree::Token(_, Token::Dollar) =>
+                specification.push(try!(parse_dollar(span, &mut tts, names))),
+            TokenTree::Token(_, ref token) =>
+                specification.push(Specifier::Specific(token.clone())),
             TokenTree::Delimited(subspan, ref delimited) => {
                 let subspecification = try!(parse_specification_(subspan, &delimited.tts, names));
                 specification.push(Specifier::Delimited(delimited.delim, subspecification));
@@ -268,11 +266,10 @@ fn parse_specification_(
             _ => unreachable!(),
         }
     }
-
     Ok(specification)
 }
 
-/// Parses the given specification.
+/// Parses the supplied specification.
 pub fn parse_specification(tts: &[TokenTree]) -> PluginResult<Vec<Specifier>> {
     let start = tts.iter().nth(0).map_or(DUMMY_SP, |s| s.get_span());
     let end = tts.iter().last().map_or(DUMMY_SP, |s| s.get_span());
