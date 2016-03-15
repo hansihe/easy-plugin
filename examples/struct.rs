@@ -15,6 +15,7 @@ use rustc_plugin::{Registry};
 use syntax::codemap::{Span};
 use syntax::ext::base::{ExtCtxt, DummyResult, MacResult};
 
+// This example is explained in the crate-level documentation.
 easy_plugin! {
     struct Arguments { $a:ident }
 
@@ -33,5 +34,3 @@ pub fn plugin_registrar(registry: &mut Registry) {
 }
 
 fn main() { }
-
-// This example is explained in the crate-level documentation.
