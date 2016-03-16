@@ -60,7 +60,7 @@
 ### Fixed
 - Fixed spurious `unexpected end of arguments` error with sequences
 
-## [0.2.9] - UNRELEASED
+## [0.2.9] - 2016-3-16
 
 ### Changed
 - Improved error reporting
