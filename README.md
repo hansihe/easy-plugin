@@ -8,7 +8,7 @@ easy-plugin
 
 A compiler plugin that makes it easier to write compiler plugins.
 
-Released under the MIT license.
+Released under the Apache License 2.0.
 
 ### Example
 
