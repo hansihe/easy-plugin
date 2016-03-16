@@ -6,7 +6,7 @@ use syntax::codemap::{DUMMY_SP, CodeMap, Span};
 use syntax::errors::{Handler};
 use syntax::parse::{ParseSess};
 use syntax::parse::common::{SeqSep};
-use syntax::parse::parser::{Parser, PathParsingMode};
+use syntax::parse::parser::{Parser};
 use syntax::parse::token::{BinOpToken, Token};
 use syntax::ptr::{P};
 
@@ -325,9 +325,7 @@ impl<'s> ArgumentParser<'s> {
         if found.mtwt_eq(token) {
             Ok(())
         } else {
-            let expected = Parser::token_to_string(token);
-            let found = Parser::token_to_string(&found);
-            let message = format!("expected `{}`, found `{}`", expected, found);
+            let message = format!("expected `{}`", Parser::token_to_string(token));
             self.parser.get_last_span().to_error(message)
         }
     }
@@ -406,89 +404,45 @@ impl<'s> ArgumentParser<'s> {
     fn parse_arguments(
         &mut self, specification: &[Specifier], matches: &mut HashMap<String, Match>
     ) -> PluginResult<()> {
+        macro_rules! insert {
+            ($variant:ident, $parse:ident$(.$field:ident)*, $name:expr) => ({
+                let match_ = try!(self.parser.$parse($name))$(.$field)*;
+                matches.insert($name.clone(), Match::$variant(match_));
+            });
+        }
+
         for specifier in specification {
             match *specifier {
-                Specifier::Attr(ref name) => {
-                    let attr = try!(self.parser.parse(|p| p.parse_attribute(true)));
-                    matches.insert(name.clone(), Match::Attr(attr));
-                },
+                Specifier::Attr(ref name) => insert!(Attr, parse_attribute, name),
                 Specifier::BinOp(ref name) => match try!(self.expect_token()) {
                     Token::BinOp(binop) | Token::BinOpEq(binop) => {
                         matches.insert(name.clone(), Match::BinOp(binop));
                     },
-                    invalid => {
-                        let string = Parser::token_to_string(&invalid);
-                        let error = format!("expected binop, found `{}`", string);
+                    _ => {
+                        let error = format!("expected binop: '{}'", name);
                         return self.parser.get_last_span().to_error(error);
                     },
                 },
-                Specifier::Block(ref name) => {
-                    let block = try!(self.parser.parse(|p| p.parse_block()));
-                    matches.insert(name.clone(), Match::Block(block));
-                },
+                Specifier::Block(ref name) => insert!(Block, parse_block, name),
                 Specifier::Delim(ref name) => {
                     let delim = try!(self.parse_delim());
                     matches.insert(name.clone(), Match::Delim(delim));
                 },
-                Specifier::Expr(ref name) => {
-                    let expr = try!(self.parser.parse(|p| p.parse_expr()));
-                    matches.insert(name.clone(), Match::Expr(expr));
-                },
-                Specifier::Ident(ref name) => {
-                    let ident = try!(self.parser.parse(|p| p.parse_ident()));
-                    matches.insert(name.clone(), Match::Ident(ident));
-                },
-                Specifier::Item(ref name) => {
-                    let start = self.parser.get_last_span();
-                    match self.parser.parse(|p| p.parse_item()) {
-                        Ok(Some(item)) => {
-                            matches.insert(name.clone(), Match::Item(item));
-                        },
-                        _ => return start.to_error("expected item"),
-                    }
-                },
-                Specifier::Lftm(ref name) => {
-                    let lftm = try!(self.parser.parse(|p| p.parse_lifetime()));
-                    matches.insert(name.clone(), Match::Lftm(lftm.name));
-                },
-                Specifier::Lit(ref name) => {
-                    let lit = try!(self.parser.parse(|p| p.parse_lit()));
-                    matches.insert(name.clone(), Match::Lit(lit));
-                },
-                Specifier::Meta(ref name) => {
-                    let meta = try!(self.parser.parse(|p| p.parse_meta_item()));
-                    matches.insert(name.clone(), Match::Meta(meta));
-                },
-                Specifier::Pat(ref name) => {
-                    let pat = try!(self.parser.parse(|p| p.parse_pat()));
-                    matches.insert(name.clone(), Match::Pat(pat));
-                },
-                Specifier::Path(ref name) => {
-                    let mode = PathParsingMode::LifetimeAndTypesWithoutColons;
-                    let path = try!(self.parser.parse(|p| p.parse_path(mode)));
-                    matches.insert(name.clone(), Match::Path(path));
-                },
-                Specifier::Stmt(ref name) => {
-                    let start = self.parser.get_last_span();
-                    match self.parser.parse(|p| p.parse_stmt()) {
-                        Ok(Some(stmt)) => {
-                            matches.insert(name.clone(), Match::Stmt(stmt));
-                        },
-                        _ => return start.to_error("expected statement"),
-                    }
-                },
-                Specifier::Ty(ref name) => {
-                    let ty = try!(self.parser.parse(|p| p.parse_ty()));
-                    matches.insert(name.clone(), Match::Ty(ty));
-                },
+                Specifier::Expr(ref name) => insert!(Expr, parse_expr, name),
+                Specifier::Ident(ref name) => insert!(Ident, parse_ident, name),
+                Specifier::Item(ref name) => insert!(Item, parse_item, name),
+                Specifier::Lftm(ref name) => insert!(Lftm, parse_lifetime.name, name),
+                Specifier::Lit(ref name) => insert!(Lit, parse_lit, name),
+                Specifier::Meta(ref name) => insert!(Meta, parse_meta_item, name),
+                Specifier::Pat(ref name) => insert!(Pat, parse_pat, name),
+                Specifier::Path(ref name) => insert!(Path, parse_path, name),
+                Specifier::Stmt(ref name) => insert!(Stmt, parse_stmt, name),
+                Specifier::Ty(ref name) => insert!(Ty, parse_ty, name),
                 Specifier::Tok(ref name) => {
                     let tok = try!(self.expect_token());
                     matches.insert(name.clone(), Match::Tok(tok));
                 },
-                Specifier::Tt(ref name) => {
-                    let tt = try!(self.parser.parse(|p| p.parse_token_tree()));
-                    matches.insert(name.clone(), Match::Tt(tt));
-                },
+                Specifier::Tt(ref name) => insert!(Tt, parse_token_tree, name),
                 Specifier::Specific(ref expected) => try!(self.expect_specific_token(expected)),
                 Specifier::Delimited(delimiter, ref specification) => {
                     try!(self.expect_specific_token(&Token::OpenDelim(delimiter)));
@@ -499,9 +453,8 @@ impl<'s> ArgumentParser<'s> {
                     try!(self.parse_sequence(amount, separator.as_ref(), specification, matches));
                 },
                 Specifier::NamedSequence(ref name, amount, ref separator, ref specification) => {
-                    let count = self.parse_sequence(
-                        amount, separator.as_ref(), specification, matches
-                    );
+                    let separator = separator.as_ref();
+                    let count = self.parse_sequence(amount, separator, specification, matches);
                     matches.insert(name.clone(), Match::NamedSequence(try!(count)));
                 },
             }

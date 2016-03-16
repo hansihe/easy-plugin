@@ -2,7 +2,8 @@ use std::cell::{RefCell};
 use std::marker::{PhantomData};
 
 use syntax::ext::tt::transcribe;
-use syntax::ast::{Expr, Ident, Name, TokenTree};
+use syntax::parse::token;
+use syntax::ast::*;
 use syntax::codemap::{DUMMY_SP, MultiSpan, Span};
 use syntax::errors::{FatalError, Level, RenderSpan};
 use syntax::errors::emitter::{Emitter};
@@ -10,8 +11,8 @@ use syntax::ext::base::{ExtCtxt};
 use syntax::ext::build::{AstBuilder};
 use syntax::parse::{ParseSess, PResult};
 use syntax::parse::lexer::{Reader, TokenAndSpan};
-use syntax::parse::parser::{Parser};
-use syntax::parse::token::{BinOpToken, DelimToken, IdentStyle, Lit, Token};
+use syntax::parse::parser::{Parser, PathParsingMode};
+use syntax::parse::token::{BinOpToken, DelimToken, IdentStyle, Token};
 use syntax::ptr::{P};
 
 use super::{PluginResult};
@@ -19,6 +20,29 @@ use super::{PluginResult};
 //================================================
 // Macros
 //================================================
+
+// parse! _______________________________________
+
+/// Defines a parsing method for `TransactionParser`.
+macro_rules! parse {
+    ($name:ident($($argument:expr), *)$(.$method:ident())*, $description:expr, $ty:ty) => {
+        pub fn $name(&mut self, name: &str) -> PluginResult<$ty> {
+            self.parse2($description, name, |p| p.$name($($argument), *))
+        }
+    };
+
+    (OPTION: $name:ident($($argument:expr), *)$(.$method:ident())*, $description:expr, $ty:ty) => {
+        pub fn $name(&mut self, name: &str) -> PluginResult<$ty> {
+            match self.apply(|p| p.$name($($argument), *)) {
+                Ok(Some(value)) => return Ok(value),
+                Err(mut db) => db.cancel(),
+                _ => { },
+            }
+
+            self.get_last_span().to_error(format!("expected {}: '{}'", $description, name))
+        }
+    };
+}
 
 // token! ________________________________________
 
@@ -84,7 +108,7 @@ impl ToExpr for IdentStyle {
     }
 }
 
-impl ToExpr for Lit {
+impl ToExpr for token::Lit {
     fn to_expr(&self, context: &mut ExtCtxt, span: Span) -> P<Expr> {
         macro_rules! expr {
             ($variant:expr, $name:expr) => ({
@@ -99,14 +123,14 @@ impl ToExpr for Lit {
         }
 
         match *self {
-            Lit::Byte(name) => expr!("Byte", name),
-            Lit::Char(name) => expr!("Char", name),
-            Lit::Integer(name) => expr!("Integer", name),
-            Lit::Float(name) => expr!("Float", name),
-            Lit::Str_(name) => expr!("Str_", name),
-            Lit::StrRaw(name, size) => expr!("StrRaw", name, size),
-            Lit::ByteStr(name) => expr!("ByteStr", name),
-            Lit::ByteStrRaw(name, size) => expr!("ByteStrRaw", name, size),
+            token::Lit::Byte(name) => expr!("Byte", name),
+            token::Lit::Char(name) => expr!("Char", name),
+            token::Lit::Integer(name) => expr!("Integer", name),
+            token::Lit::Float(name) => expr!("Float", name),
+            token::Lit::Str_(name) => expr!("Str_", name),
+            token::Lit::StrRaw(name, size) => expr!("StrRaw", name, size),
+            token::Lit::ByteStr(name) => expr!("ByteStr", name),
+            token::Lit::ByteStrRaw(name, size) => expr!("ByteStrRaw", name, size),
         }
     }
 }
@@ -315,6 +339,29 @@ impl<'s> TransactionParser<'s> {
             ERROR.with(|e| e.borrow().clone().unwrap_or_else(|| (DUMMY_SP, "no error".into())))
         })
     }
+
+    pub fn parse2<T, F: FnOnce(&mut Parser<'s>) -> PResult<'s, T>>(
+        &mut self, description: &str, name: &str, f: F
+    ) -> PluginResult<T> {
+        self.apply(f).map_err(|mut db| {
+            db.cancel();
+            (self.get_last_span(), format!("expected {}: '{}'", description, name))
+        })
+    }
+
+    parse!(parse_attribute(true), "attribute", Attribute);
+    parse!(parse_block(), "block", P<Block>);
+    parse!(parse_expr(), "expression", P<Expr>);
+    parse!(parse_ident(), "identifier", Ident);
+    parse!(OPTION: parse_item(), "item", P<Item>);
+    parse!(parse_lifetime(), "lifetime", Lifetime);
+    parse!(parse_lit(), "literal", Lit);
+    parse!(parse_meta_item(), "meta item", P<MetaItem>);
+    parse!(parse_pat(), "pattern", P<Pat>);
+    parse!(parse_path(PathParsingMode::LifetimeAndTypesWithoutColons), "path", Path);
+    parse!(OPTION: parse_stmt(), "statement", Stmt);
+    parse!(parse_ty(), "type", P<Ty>);
+    parse!(parse_token_tree(), "token tree", TokenTree);
 }
 
 // TtsIterator ___________________________________
