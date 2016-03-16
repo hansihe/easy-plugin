@@ -684,6 +684,7 @@
 <span id="641">641</span>
 <span id="642">642</span>
 <span id="643">643</span>
+<span id="644">644</span>
 </pre><pre class='rust '>
 <span class='doccomment'>//! This crate provides a compiler plugin, `easy_plugin!`, which makes it easier to write compiler</span>
 <span class='doccomment'>//! plugins.</span>
@@ -877,11 +878,12 @@
 
 <span class='attribute'>#<span class='op'>!</span>[<span class='ident'>feature</span>(<span class='ident'>plugin_registrar</span>, <span class='ident'>quote</span>, <span class='ident'>rustc_private</span>)]</span>
 
+<span class='attribute'>#<span class='op'>!</span>[<span class='ident'>warn</span>(<span class='ident'>missing_copy_implementations</span>, <span class='ident'>missing_debug_implementations</span>, <span class='ident'>missing_docs</span>)]</span>
+
 <span class='attribute'>#<span class='op'>!</span>[<span class='ident'>cfg_attr</span>(<span class='ident'>feature</span><span class='op'>=</span><span class='string'>&quot;clippy&quot;</span>, <span class='ident'>feature</span>(<span class='ident'>plugin</span>))]</span>
 <span class='attribute'>#<span class='op'>!</span>[<span class='ident'>cfg_attr</span>(<span class='ident'>feature</span><span class='op'>=</span><span class='string'>&quot;clippy&quot;</span>, <span class='ident'>plugin</span>(<span class='ident'>clippy</span>))]</span>
 <span class='attribute'>#<span class='op'>!</span>[<span class='ident'>cfg_attr</span>(<span class='ident'>feature</span><span class='op'>=</span><span class='string'>&quot;clippy&quot;</span>, <span class='ident'>warn</span>(<span class='ident'>clippy</span>))]</span>
-
-<span class='attribute'>#<span class='op'>!</span>[<span class='ident'>cfg_attr</span>(<span class='ident'>feature</span><span class='op'>=</span><span class='string'>&quot;clippy&quot;</span>, <span class='ident'>allow</span>(<span class='ident'>cyclomatic_complexity</span>, <span class='ident'>used_underscore_binding</span>))]</span>
+<span class='attribute'>#<span class='op'>!</span>[<span class='ident'>cfg_attr</span>(<span class='ident'>feature</span><span class='op'>=</span><span class='string'>&quot;clippy&quot;</span>, <span class='ident'>allow</span>(<span class='ident'>used_underscore_binding</span>))]</span>
 
 <span class='kw'>extern</span> <span class='kw'>crate</span> <span class='ident'>rustc_plugin</span>;
 <span class='kw'>extern</span> <span class='kw'>crate</span> <span class='ident'>syntax</span>;
