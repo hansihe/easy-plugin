@@ -69,3 +69,8 @@
 
 ### Fixed
 - Improved error reporting
+
+## [0.3.0] - UNRELEASED
+
+### Added
+- Added `Specification` struct

@@ -2,12 +2,13 @@
 #![plugin(easy_plugin)]
 
 #[allow(plugin_as_library)]
+#[macro_use]
 extern crate easy_plugin;
 
 extern crate rustc_plugin;
 extern crate syntax;
 
-use easy_plugin::{Amount, PluginResult, Specifier};
+use easy_plugin::{Amount, PluginResult, Specification, Specifier};
 
 use rustc_plugin::{Registry};
 
@@ -22,10 +23,10 @@ use syntax::parse::token::{BinOpToken, DelimToken, Lit, Token};
 
 #[test]
 fn test_parse_specification() {
-    let specification: &[Specifier] = parse_specification!();
-    assert_eq!(specification, &[]);
+    let specification: Specification = parse_specification!();
+    assert_eq!(specification, spec![]);
 
-    let specification: &[Specifier] = parse_specification!(
+    let specification: Specification = parse_specification!(
         $attr:attr
         $binop:binop
         $block:block
@@ -53,10 +54,8 @@ fn test_parse_specification() {
         $kappa:(Kappa)*
         $keepo:(Keepo), +
     );
-
     let lit = Token::Literal(Lit::Integer(token::intern("322")), Some(token::intern("u32")));
-
-    assert_eq!(specification, &[
+    assert_eq!(specification, spec![
         Specifier::Attr("attr".into()),
         Specifier::BinOp("binop".into()),
         Specifier::Block("block".into()),
@@ -78,23 +77,23 @@ fn test_parse_specification() {
         Specifier::specific_ident("foo"),
         Specifier::specific_lftm("'bar"),
         Specifier::Specific(Token::DocComment(token::intern("/// comment"))),
-        Specifier::Delimited(DelimToken::Bracket, vec![
+        Specifier::Delimited(DelimToken::Bracket, spec![
             Specifier::Ident("a".into()),
             Specifier::Ident("b".into()),
         ]),
-        Specifier::Sequence(Amount::OneOrMore, Some(Token::Comma), vec![
+        Specifier::Sequence(Amount::OneOrMore, Some(Token::Comma), spec![
             Specifier::Ident("c".into()),
-            Specifier::Sequence(Amount::ZeroOrMore, None, vec![
+            Specifier::Sequence(Amount::ZeroOrMore, None, spec![
                 Specifier::Ident("d".into()),
             ]),
         ]),
-        Specifier::Sequence(Amount::ZeroOrOne, None, vec![
+        Specifier::Sequence(Amount::ZeroOrOne, None, spec![
             Specifier::Ident("e".into()),
         ]),
-        Specifier::NamedSequence("kappa".into(), Amount::ZeroOrMore, None, vec![
+        Specifier::NamedSequence("kappa".into(), Amount::ZeroOrMore, None, spec![
             Specifier::specific_ident("Kappa"),
         ]),
-        Specifier::NamedSequence("keepo".into(), Amount::OneOrMore, Some(Token::Comma), vec![
+        Specifier::NamedSequence("keepo".into(), Amount::OneOrMore, Some(Token::Comma), spec![
             Specifier::specific_ident("Keepo"),
         ]),
     ]);
@@ -162,40 +161,32 @@ easy_plugin! {
         check!(ty_to_string, arguments.ty, "i32");
         check!(token_to_string, arguments.tok, "~");
         check!(tt_to_string, arguments.tt, "!");
-
         assert_eq!(arguments.a, context.ident_of("a"));
         assert_eq!(arguments.b, context.ident_of("b"));
-
         assert_eq!(arguments.c, &[
             context.ident_of("a"),
             context.ident_of("b"),
             context.ident_of("d"),
         ]);
-
         assert_eq!(arguments.d, &[
             vec![],
             vec![context.ident_of("c")],
             vec![context.ident_of("e"), context.ident_of("f")],
         ]);
-
         assert_eq!(arguments.e, None);
         assert_eq!(arguments.f, Some(context.ident_of("g")));
-
         assert_eq!(arguments.g, &[
             None,
             Some(context.ident_of("h")),
             Some(context.ident_of("i")),
         ]);
-
         assert_eq!(arguments.h, &[
             None,
             None,
             Some(context.ident_of("j")),
         ]);
-
         assert_eq!(arguments.kappa, 3);
         assert_eq!(arguments.keepo, vec![false, true, false, true]);
-
         Ok(DummyResult::any(span))
     }
 }
@@ -222,7 +213,6 @@ easy_plugin! {
                     context.ident_of("b"),
                     context.ident_of("d"),
                 ]);
-
                 assert_eq!(c.b, &[
                     vec![],
                     vec![context.ident_of("c")],
@@ -230,7 +220,6 @@ easy_plugin! {
                 ]);
             },
         }
-
         Ok(DummyResult::any(span))
     }
 }

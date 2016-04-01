@@ -216,7 +216,6 @@ extern crate syntax;
 
 use rustc_plugin::{Registry};
 
-use syntax::codemap;
 use syntax::ast::*;
 use syntax::codemap::{Span};
 use syntax::ext::base::{ExtCtxt, DummyResult, MacEager, MacResult};
@@ -231,105 +230,38 @@ use utility::{ToError, ToExpr};
 mod arguments;
 pub use self::arguments::*;
 
+#[macro_use]
 mod specification;
 pub use self::specification::*;
 
 /// A result type suitable for reporting errors in plugins.
 pub type PluginResult<T> = Result<T, (Span, String)>;
 
-fn alter_function(
+//================================================
+// Functions
+//================================================
+
+fn strip_function(
     context: &mut ExtCtxt, function: P<Item>
 ) -> (P<Item>, Ident, Visibility, Vec<Attribute>) {
     let ident = function.ident;
     let visibility = function.vis;
     let attributes = function.attrs.clone();
-
     let function = function.map(|mut f| {
         f.ident = context.ident_of(&format!("{}_", ident.name));
         f.vis = Visibility::Inherited;
         f.attrs = vec![];
         f
     });
-
     (function, ident, visibility, attributes)
 }
 
-fn expand_variants(
-    context: &mut ExtCtxt, span: Span, variants: &[(Ident, Vec<Specifier>)]
-) -> Vec<Variant> {
-    variants.iter().map(|v| {
-        let name = v.0;
-        context.variant(span, name, vec![quote_ty!(context, $name)])
-    }).collect()
-}
-
-fn expand_struct_fields(
-    context: &mut ExtCtxt, span: Span, specification: &[Specifier]
-) -> Vec<StructField> {
-    let mut fields = vec![];
-
-    macro_rules! field {
-        ($name:expr, $($variant:tt)*) => ({
-            let kind = StructFieldKind::NamedField(context.ident_of($name), Visibility::Inherited);
-            let ty = quote_ty!(context, $($variant)*);
-            let field = StructField_ { kind: kind, id: DUMMY_NODE_ID, ty: ty, attrs: vec![] };
-            fields.push(codemap::respan(span, field));
-        });
-    }
-
-    for specifier in specification {
-        match *specifier {
-            Specifier::Attr(ref name) => field!(name, ::syntax::ast::Attribute),
-            Specifier::BinOp(ref name) => field!(name, ::syntax::parse::token::BinOpToken),
-            Specifier::Block(ref name) => field!(name, ::syntax::ptr::P<::syntax::ast::Block>),
-            Specifier::Delim(ref name) => field!(name, ::std::rc::Rc<::syntax::ast::Delimited>),
-            Specifier::Expr(ref name) => field!(name, ::syntax::ptr::P<::syntax::ast::Expr>),
-            Specifier::Ident(ref name) => field!(name, ::syntax::ast::Ident),
-            Specifier::Item(ref name) => field!(name, ::syntax::ptr::P<::syntax::ast::Item>),
-            Specifier::Lftm(ref name) => field!(name, ::syntax::ast::Name),
-            Specifier::Lit(ref name) => field!(name, ::syntax::ast::Lit),
-            Specifier::Meta(ref name) => field!(name, ::syntax::ptr::P<::syntax::ast::MetaItem>),
-            Specifier::Pat(ref name) => field!(name, ::syntax::ptr::P<::syntax::ast::Pat>),
-            Specifier::Path(ref name) => field!(name, ::syntax::ast::Path),
-            Specifier::Stmt(ref name) => field!(name, ::syntax::ast::Stmt),
-            Specifier::Ty(ref name) => field!(name, ::syntax::ptr::P<::syntax::ast::Ty>),
-            Specifier::Tok(ref name) => field!(name, ::syntax::parse::token::Token),
-            Specifier::Tt(ref name) => field!(name, ::syntax::ast::TokenTree),
-            Specifier::Delimited(_, ref subspecification) => {
-                fields.extend(expand_struct_fields(context, span, &subspecification));
-            },
-            Specifier::Sequence(amount, _, ref subspecification) => {
-                let mut subfields = expand_struct_fields(context, span, &subspecification);
-
-                for subfield in &mut subfields {
-                    let ty = subfield.node.ty.clone();
-
-                    if amount == Amount::ZeroOrOne {
-                        subfield.node.ty = quote_ty!(context, ::std::option::Option<$ty>);
-                    } else {
-                        subfield.node.ty = quote_ty!(context, ::std::vec::Vec<$ty>);
-                    }
-                }
-
-                fields.extend(subfields);
-            },
-            Specifier::NamedSequence(ref name, amount, _, _) => if amount == Amount::ZeroOrOne {
-                field!(name, bool);
-            } else {
-                field!(name, usize);
-            },
-            _ => { },
-        }
-    }
-
-    fields
-}
-
 fn expand_struct(
-    context: &mut ExtCtxt, span: Span, name: Ident, specification: &[Specifier]
+    context: &mut ExtCtxt, span: Span, name: Ident, specification: &Specification
 ) -> P<Item> {
-    let fields = expand_struct_fields(context, span, specification);
-
+    let fields = specification.iter().flat_map(|s| {
+        s.to_struct_fields(context, span).into_iter()
+    }).collect::<Vec<_>>();
     if fields.is_empty() {
         quote_item!(context, struct $name;).unwrap()
     } else {
@@ -337,175 +269,69 @@ fn expand_struct(
     }
 }
 
-fn expand_field(
-    context: &mut ExtCtxt, span: Span, name: &str, get: &str, stack: &[Amount]
-) -> Field {
-    let get = context.ident_of(get);
-    let mut expr = quote_expr!(context, _m.get($name).unwrap());
-
-    if stack.is_empty() {
-        context.field_imm(span, context.ident_of(name), quote_expr!(context, $expr.$get()))
-    } else {
-        let f = stack.iter().skip(1).fold(quote_expr!(context, |s| s.$get()), |f, a| {
-            if *a == Amount::ZeroOrOne {
-                quote_expr!(context, |s| s.as_sequence().iter().map($f).next())
-            } else {
-                quote_expr!(context, |s| s.as_sequence().iter().map($f).collect())
-            }
-        });
-
-        if stack[0] == Amount::ZeroOrOne {
-            expr = quote_expr!(context, $expr.as_sequence().iter().map($f).next());
-        } else {
-            expr = quote_expr!(context, $expr.as_sequence().iter().map($f).collect());
-        }
-
-        context.field_imm(span, context.ident_of(name), expr)
-    }
-}
-
-fn expand_fields(
-    context: &mut ExtCtxt, span: Span, specification: &[Specifier], stack: &[Amount]
-) -> Vec<Field> {
-    let mut fields = vec![];
-
-    macro_rules! field {
-        ($name:expr, $get:ident) => ({
-            fields.push(expand_field(context, span, $name, stringify!($get), stack));
-        });
-    }
-
-    for specifier in specification {
-        match *specifier {
-            Specifier::Attr(ref name) => field!(name, as_attr),
-            Specifier::BinOp(ref name) => field!(name, as_binop),
-            Specifier::Block(ref name) => field!(name, as_block),
-            Specifier::Delim(ref name) => field!(name, as_delim),
-            Specifier::Expr(ref name) => field!(name, as_expr),
-            Specifier::Ident(ref name) => field!(name, as_ident),
-            Specifier::Item(ref name) => field!(name, as_item),
-            Specifier::Lftm(ref name) => field!(name, as_lftm),
-            Specifier::Lit(ref name) => field!(name, as_lit),
-            Specifier::Meta(ref name) => field!(name, as_meta),
-            Specifier::Pat(ref name) => field!(name, as_pat),
-            Specifier::Path(ref name) => field!(name, as_path),
-            Specifier::Stmt(ref name) => field!(name, as_stmt),
-            Specifier::Ty(ref name) => field!(name, as_ty),
-            Specifier::Tok(ref name) => field!(name, as_tok),
-            Specifier::Tt(ref name) => field!(name, as_tt),
-            Specifier::Delimited(_, ref subspecification) => {
-                fields.extend(expand_fields(context, span, &subspecification, stack));
-            },
-            Specifier::Sequence(amount, _, ref subspecification) => {
-                let mut stack = stack.to_vec();
-                stack.push(amount);
-                fields.extend(expand_fields(context, span, &subspecification, &stack));
-            },
-            Specifier::NamedSequence(ref name, amount, _, _) => if amount == Amount::ZeroOrOne {
-                fields.push(expand_field(context, span, name, "as_named_sequence_bool", &stack));
-            } else {
-                fields.push(expand_field(context, span, name, "as_named_sequence", &stack));
-            },
-            _ => { },
-        }
-    }
-
-    fields
+fn expand_structs(
+    context: &mut ExtCtxt, span: Span, specifications: &[(Ident, Specification)]
+) -> Vec<P<Item>> {
+    specifications.iter().map(|&(n, ref s)| expand_struct(context, span, n, s)).collect()
 }
 
 fn expand_parse(
-    context: &mut ExtCtxt, span: Span, name: Ident, specification: &[Specifier], multiple: bool
+    context: &mut ExtCtxt, span: Span, name: Ident, specification: &Specification, multiple: bool
 ) -> P<Item> {
     let function = if multiple {
         context.ident_of(&format!("parse{}", name.name))
     } else {
         context.ident_of("parse")
     };
-
-    let fields = expand_fields(context, span, specification, &[]);
-    let specification = specification.to_expr(context, span);
-
+    let fields = specification.iter().flat_map(|s| {
+        s.to_fields(context, span, &[]).into_iter()
+    }).collect::<Vec<_>>();
     let result = if fields.is_empty() {
         quote_expr!(context, $name)
     } else {
         let path = context.path(span, vec![name]);
         context.expr_struct(span, path, fields)
     };
-
+    let specification = specification.to_expr(context, span);
     quote_item!(context,
         #[allow(non_snake_case)]
         fn $function(
             session: &::syntax::parse::ParseSess, arguments: &[::syntax::ast::TokenTree]
         ) -> ::easy_plugin::PluginResult<$name> {
-            ::easy_plugin::parse_arguments(session, arguments, $specification).map(|_m| $result)
+            ::easy_plugin::parse_arguments(session, arguments, &$specification.0).map(|_m| $result)
         }
     ).unwrap()
 }
 
-fn expand_enum_easy_plugin(
-    context: &mut ExtCtxt, span: Span, arguments: &[TokenTree]
+fn expand_parses(
+    context: &mut ExtCtxt, span: Span, specifications: &[(Ident, Specification)]
+) -> Vec<P<Item>> {
+    specifications.iter().map(|&(n, ref s)| expand_parse(context, span, n, s, true)).collect()
+}
+
+fn expand_enum_easy_plugin_(
+    context: &mut ExtCtxt,
+    span: Span,
+    arguments: Ident,
+    names: Vec<Ident>,
+    ttss: Vec<Vec<TokenTree>>,
+    function: P<Item>,
 ) -> PluginResult<Box<MacResult + 'static>> {
-    let specification = &[
-        Specifier::specific_ident("enum"),
-        Specifier::Ident("arguments".into()),
-        Specifier::Delimited(DelimToken::Brace, vec![
-            Specifier::Sequence(Amount::ZeroOrMore, None, vec![
-                Specifier::Ident("name".into()),
-                Specifier::Delimited(DelimToken::Brace, vec![
-                    Specifier::Sequence(Amount::ZeroOrMore, None, vec![
-                        Specifier::Tt("tt".into()),
-                    ]),
-                ]),
-                Specifier::Specific(Token::Comma),
-            ]),
-        ]),
-        Specifier::Item("function".into()),
-    ];
-
-    let matches = try!(parse_arguments(context.parse_sess, arguments, specification));
-
-    let arguments = matches.get("arguments").unwrap().as_ident();
-
-    let names = matches.get("name").unwrap().as_sequence().into_iter().map(|s| s.as_ident());
-
-    let ttss = matches.get("tt").unwrap().as_sequence().into_iter().map(|s| {
-        s.as_sequence().into_iter().map(|s| s.as_tt()).collect::<Vec<_>>()
-    });
-
-    let function = matches.get("function").unwrap().as_item();
-
-    let variants: Result<Vec<_>, _> = names.zip(ttss).map(|(n, tts)| {
-        parse_specification(&tts).map(|s| (n, s))
+    let specifications: Result<Vec<_>, _> = names.iter().zip(ttss.into_iter()).map(|(n, tts)| {
+        parse_specification(&tts).map(|s| (*n, s))
     }).collect();
+    let specifications = try!(specifications);
+    let structs = expand_structs(context, span, &specifications);
+    let parses = expand_parses(context, span, &specifications);
 
-    let variants = try!(variants);
-
-    let structs = variants.iter().map(|&(n, ref s)| {
-        expand_struct(context, span, n, &s)
-    }).collect::<Vec<_>>();
-
-    let parses = variants.iter().map(|&(n, ref s)| {
-        expand_parse(context, span, n, &s, true)
-    }).collect::<Vec<_>>();
-
-    let def = EnumDef { variants: expand_variants(context, span, &variants)};
-    let enum_ = context.item_enum(span, arguments, def);
-
-    let (function, identifier, visibility, attributes) = alter_function(context, function);
+    let (function, identifier, visibility, attributes) = strip_function(context, function);
     let inner = function.ident;
-
-    let mut stmts = vec![];
-
-    let mut variants = variants.iter().peekable();
-
-    while let Some(variant) = variants.next() {
-        let parse = context.ident_of(&format!("parse{}", variant.0.name));
-        let constructor = variant.0;
-
-        let stmt = if variants.peek().is_some() {
+    let stmts = names.iter().enumerate().map(|(i, ref n)| {
+        let parse = context.ident_of(&format!("parse{}", n));
+        if i + 1 < specifications.len() {
             quote_stmt!(context,
                 if let Ok(arguments) = $parse(context.parse_sess, arguments) {
-                    return match $inner(context, span, $arguments::$constructor(arguments)) {
+                    return match $inner(context, span, $arguments::$n(arguments)) {
                         Ok(result) => result,
                         Err((subspan, message)) => {
                             let span = if subspan == ::syntax::codemap::DUMMY_SP {
@@ -523,7 +349,7 @@ fn expand_enum_easy_plugin(
         } else {
             quote_stmt!(context,
                 return match $parse(context.parse_sess, arguments).and_then(|a| {
-                    $inner(context, span, $arguments::$constructor(a))
+                    $inner(context, span, $arguments::$n(a))
                 }) {
                     Ok(result) => result,
                     Err((subspan, message)) => {
@@ -538,12 +364,15 @@ fn expand_enum_easy_plugin(
                     }
                 };
             )
-        };
+        }
+    }).collect::<Vec<_>>();
 
-        stmts.push(stmt);
-    }
+    let variants = names.iter().map(|n| {
+        context.variant(span, *n, vec![quote_ty!(context, $n)])
+    }).collect();
+    let enum_ = context.item_enum(span, arguments, EnumDef { variants: variants });
 
-    let mut item = quote_item!(context,
+    let item = quote_item!(context,
         fn $identifier(
             context: &mut ::syntax::ext::base::ExtCtxt,
             span: ::syntax::codemap::Span,
@@ -555,48 +384,54 @@ fn expand_enum_easy_plugin(
             $function
             $stmts
         }
-    ).unwrap();
-
-    item = item.map(|mut i| {
+    ).unwrap().map(|mut i| {
         i.vis = visibility;
         i.attrs = attributes;
         i
     });
-
     Ok(MacEager::items(SmallVector::one(item)))
 }
 
-fn expand_struct_easy_plugin(
+fn expand_enum_easy_plugin(
     context: &mut ExtCtxt, span: Span, arguments: &[TokenTree]
 ) -> PluginResult<Box<MacResult + 'static>> {
     let specification = &[
-        Specifier::specific_ident("struct"),
+        Specifier::specific_ident("enum"),
         Specifier::Ident("arguments".into()),
-        Specifier::Delimited(DelimToken::Brace, vec![
-            Specifier::Sequence(Amount::ZeroOrMore, None, vec![
-                Specifier::Tt("tt".into()),
+        Specifier::Delimited(DelimToken::Brace, spec![
+            Specifier::Sequence(Amount::ZeroOrMore, None, spec![
+                Specifier::Ident("name".into()),
+                Specifier::Delimited(DelimToken::Brace, spec![
+                    Specifier::Sequence(Amount::ZeroOrMore, None, spec![
+                        Specifier::Tt("tt".into()),
+                    ]),
+                ]),
+                Specifier::Specific(Token::Comma),
             ]),
         ]),
         Specifier::Item("function".into()),
     ];
-
     let matches = try!(parse_arguments(context.parse_sess, arguments, specification));
-
     let arguments = matches.get("arguments").unwrap().as_ident();
-
-    let tts = matches.get("tt").unwrap().as_sequence().iter().map(|s| {
-        s.as_tt()
-    }).collect::<Vec<_>>();
-
+    let names = matches.get("name").unwrap().as_sequence().into_iter().map(|s| {
+        s.as_ident()
+    }).collect();
+    let ttss = matches.get("tt").unwrap().as_sequence().into_iter().map(|s| {
+        s.as_sequence().into_iter().map(|s| s.as_tt()).collect::<Vec<_>>()
+    }).collect();
     let function = matches.get("function").unwrap().as_item();
+    expand_enum_easy_plugin_(context, span, arguments, names, ttss, function)
+}
 
+fn expand_struct_easy_plugin_(
+    context: &mut ExtCtxt, span: Span, arguments: Ident, tts: Vec<TokenTree>, function: P<Item>
+) -> PluginResult<Box<MacResult + 'static>> {
     let specification = try!(parse_specification(&tts));
     let struct_ = expand_struct(context, span, arguments, &specification);
     let parse = expand_parse(context, span, arguments, &specification, false);
-    let (function, identifier, visibility, attributes) = alter_function(context, function);
+    let (function, identifier, visibility, attributes) = strip_function(context, function);
     let inner = function.ident;
-
-    let mut item = quote_item!(context,
+    let item = quote_item!(context,
         fn $identifier(
             context: &mut ::syntax::ext::base::ExtCtxt,
             span: ::syntax::codemap::Span,
@@ -619,15 +454,34 @@ fn expand_struct_easy_plugin(
                 },
             }
         }
-    ).unwrap();
-
-    item = item.map(|mut i| {
+    ).unwrap().map(|mut i| {
         i.vis = visibility;
         i.attrs = attributes;
         i
     });
-
     Ok(MacEager::items(SmallVector::one(item)))
+}
+
+fn expand_struct_easy_plugin(
+    context: &mut ExtCtxt, span: Span, arguments: &[TokenTree]
+) -> PluginResult<Box<MacResult + 'static>> {
+    let specification = &[
+        Specifier::specific_ident("struct"),
+        Specifier::Ident("arguments".into()),
+        Specifier::Delimited(DelimToken::Brace, spec![
+            Specifier::Sequence(Amount::ZeroOrMore, None, spec![
+                Specifier::Tt("tt".into()),
+            ]),
+        ]),
+        Specifier::Item("function".into()),
+    ];
+    let matches = try!(parse_arguments(context.parse_sess, arguments, specification));
+    let arguments = matches.get("arguments").unwrap().as_ident();
+    let tts = matches.get("tt").unwrap().as_sequence().iter().map(|s| {
+        s.as_tt()
+    }).collect::<Vec<_>>();
+    let function = matches.get("function").unwrap().as_item();
+    expand_struct_easy_plugin_(context, span, arguments, tts, function)
 }
 
 fn expand_easy_plugin_(
@@ -636,7 +490,6 @@ fn expand_easy_plugin_(
     if arguments.is_empty() {
         return span.to_error("unexpected end of arguments");
     }
-
     match arguments[0] {
         TokenTree::Token(_, Token::Ident(ref ident, _)) => match &*ident.name.as_str() {
             "enum" => expand_enum_easy_plugin(context, span, arguments),

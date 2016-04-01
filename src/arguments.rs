@@ -28,6 +28,22 @@ use super::{Amount, PluginResult, Specifier};
 use super::utility::{SaveEmitter, ToError, TransactionParser};
 
 //================================================
+// Macros
+//================================================
+
+// from! _________________________________________
+
+macro_rules! from {
+    ($method:ident, $ty:ty) => {
+        impl<'a> From<&'a Match> for $ty {
+            fn from(match_: &'a Match) -> $ty {
+                match_.$method()
+            }
+        }
+    };
+}
+
+//================================================
 // Enums
 //================================================
 
@@ -94,7 +110,7 @@ impl Match {
     /// # Panics
     ///
     /// * this match is not a binary operator
-    pub fn as_binop(&self) -> BinOpToken {
+    pub fn as_bin_op(&self) -> BinOpToken {
         match *self {
             Match::BinOp(binop) => binop,
             _ => panic!("this match is not a binary operator"),
@@ -305,6 +321,26 @@ impl Match {
         }
     }
 }
+
+from!(as_attr, Attribute);
+from!(as_bin_op, BinOpToken);
+from!(as_block, P<Block>);
+from!(as_delim, Rc<Delimited>);
+from!(as_expr, P<Expr>);
+from!(as_ident, Ident);
+from!(as_item, P<Item>);
+from!(as_lftm, Name);
+from!(as_lit, Lit);
+from!(as_meta, P<MetaItem>);
+from!(as_pat, P<Pat>);
+from!(as_path, Path);
+from!(as_stmt, Stmt);
+from!(as_ty, P<Ty>);
+from!(as_tok, Token);
+from!(as_tt, TokenTree);
+from!(as_sequence, Vec<Match>);
+from!(as_named_sequence, usize);
+from!(as_named_sequence_bool, bool);
 
 //================================================
 // Structs
@@ -616,7 +652,7 @@ mod tests {
             assert_eq!(m.len(), 16);
 
             check!(attribute_to_string, get!(m, attr, as_attr), "#[cfg(target_os = \"windows\")]");
-            assert_eq!(m.get("binop").unwrap().as_binop(), BinOpToken::Plus);
+            assert_eq!(m.get("binop").unwrap().as_bin_op(), BinOpToken::Plus);
             check!(block_to_string, &get!(m, block, as_block), "{ let a = 322; a }");
 
             let delim = get!(m, delim, as_delim);

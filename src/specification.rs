@@ -12,18 +12,32 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::ops;
 use std::collections::{HashSet};
 
 use syntax::parse::token;
-use syntax::ast::{Expr, Ident, TokenTree};
+use syntax::ast::*;
 use syntax::ext::base::{DummyResult, ExtCtxt, MacEager, MacResult};
 use syntax::ext::build::{AstBuilder};
-use syntax::codemap::{DUMMY_SP, Span};
+use syntax::codemap::{self, DUMMY_SP, Span};
 use syntax::parse::token::{BinOpToken, DelimToken, IdentStyle, Token};
 use syntax::ptr::{P};
 
 use super::{PluginResult};
 use super::utility::{self, ToError, ToExpr, TtsIterator};
+
+//================================================
+// Macros
+//================================================
+
+// spec! ________________________________________
+
+/// Constructs a `Specification`.
+#[macro_export]
+macro_rules! spec {
+    ($($specifier:expr), *) => (Specification(vec![$($specifier), *]));
+    ($($specifier:expr), *,) => (Specification(vec![$($specifier), *]));
+}
 
 //================================================
 // Enums
@@ -89,11 +103,11 @@ pub enum Specifier {
     /// A non-variable piece.
     Specific(Token),
     /// A delimited piece.
-    Delimited(DelimToken, Vec<Specifier>),
+    Delimited(DelimToken, Specification),
     /// A sequence piece.
-    Sequence(Amount, Option<Token>, Vec<Specifier>),
+    Sequence(Amount, Option<Token>, Specification),
     /// A named sequence piece.
-    NamedSequence(String, Amount, Option<Token>, Vec<Specifier>),
+    NamedSequence(String, Amount, Option<Token>, Specification),
 }
 
 impl Specifier {
@@ -131,8 +145,102 @@ impl Specifier {
             Specifier::Stmt(ref name) |
             Specifier::Ty(ref name) |
             Specifier::Tok(ref name) |
-            Specifier::Tt(ref name) => Some(name),
+            Specifier::Tt(ref name) |
+            Specifier::NamedSequence(ref name, _, _, _) => Some(name),
             _ => None,
+        }
+    }
+
+    fn to_fields_(&self, context: &mut ExtCtxt, span: Span, stack: &[Amount]) -> Vec<Field> {
+        let name = match self.get_name() {
+            Some(name) => name,
+            None => return vec![],
+        };
+
+        let mut expr = quote_expr!(context, _m.get($name).unwrap());
+        if stack.is_empty() {
+            expr =  quote_expr!(context, $expr.into());
+            vec![context.field_imm(span, context.ident_of(name), expr)]
+        } else {
+            let f = stack.iter().skip(1).fold(quote_expr!(context, |s| s.into()), |f, a| {
+                if *a == Amount::ZeroOrOne {
+                    quote_expr!(context, |s| s.as_sequence().iter().map($f).next())
+                } else {
+                    quote_expr!(context, |s| s.as_sequence().iter().map($f).collect())
+                }
+            });
+            if stack[0] == Amount::ZeroOrOne {
+                expr = quote_expr!(context, $expr.as_sequence().iter().map($f).next());
+            } else {
+                expr = quote_expr!(context, $expr.as_sequence().iter().map($f).collect());
+            }
+            vec![context.field_imm(span, context.ident_of(name), expr)]
+        }
+    }
+
+    /// Returns `Field`s that would initialize values matched by this specifier.
+    pub fn to_fields(&self, context: &mut ExtCtxt, span: Span, stack: &[Amount]) -> Vec<Field> {
+        match *self {
+            Specifier::Delimited(_, ref subspecification) =>
+                subspecification.to_fields(context, span, stack),
+            Specifier::Sequence(amount, _, ref subspecification) => {
+                let mut stack = stack.to_vec();
+                stack.push(amount);
+                subspecification.to_fields(context, span, &stack)
+            },
+            _ => self.to_fields_(context, span, stack),
+        }
+    }
+
+    /// Returns `StructField`s that could contain values matched by this specifier.
+    pub fn to_struct_fields(&self, context: &mut ExtCtxt, span: Span) -> Vec<StructField> {
+        macro_rules! field {
+            ($name:expr, $($variant:tt)*) => ({
+                let ident = context.ident_of($name);
+                let kind = StructFieldKind::NamedField(ident, Visibility::Inherited);
+                let ty = quote_ty!(context, $($variant)*);
+                let field = StructField_ { kind: kind, id: DUMMY_NODE_ID, ty: ty, attrs: vec![] };
+                vec![codemap::respan(span, field)]
+            });
+        }
+
+        match *self {
+            Specifier::Attr(ref name) => field!(name, ::syntax::ast::Attribute),
+            Specifier::BinOp(ref name) => field!(name, ::syntax::parse::token::BinOpToken),
+            Specifier::Block(ref name) => field!(name, ::syntax::ptr::P<::syntax::ast::Block>),
+            Specifier::Delim(ref name) => field!(name, ::std::rc::Rc<::syntax::ast::Delimited>),
+            Specifier::Expr(ref name) => field!(name, ::syntax::ptr::P<::syntax::ast::Expr>),
+            Specifier::Ident(ref name) => field!(name, ::syntax::ast::Ident),
+            Specifier::Item(ref name) => field!(name, ::syntax::ptr::P<::syntax::ast::Item>),
+            Specifier::Lftm(ref name) => field!(name, ::syntax::ast::Name),
+            Specifier::Lit(ref name) => field!(name, ::syntax::ast::Lit),
+            Specifier::Meta(ref name) => field!(name, ::syntax::ptr::P<::syntax::ast::MetaItem>),
+            Specifier::Pat(ref name) => field!(name, ::syntax::ptr::P<::syntax::ast::Pat>),
+            Specifier::Path(ref name) => field!(name, ::syntax::ast::Path),
+            Specifier::Stmt(ref name) => field!(name, ::syntax::ast::Stmt),
+            Specifier::Ty(ref name) => field!(name, ::syntax::ptr::P<::syntax::ast::Ty>),
+            Specifier::Tok(ref name) => field!(name, ::syntax::parse::token::Token),
+            Specifier::Tt(ref name) => field!(name, ::syntax::ast::TokenTree),
+            Specifier::Delimited(_, ref subspecification) =>
+                subspecification.to_struct_fields(context, span),
+            Specifier::Sequence(amount, _, ref subspecification) => {
+                let mut subfields = subspecification.to_struct_fields(context, span);
+                for subfield in &mut subfields {
+                    let ty = subfield.node.ty.clone();
+                    if amount == Amount::ZeroOrOne {
+                        subfield.node.ty = quote_ty!(context, ::std::option::Option<$ty>);
+                    } else {
+                        subfield.node.ty = quote_ty!(context, ::std::vec::Vec<$ty>);
+                    }
+                }
+                subfields
+            },
+            Specifier::NamedSequence(ref name, amount, _, _) => if amount == Amount::ZeroOrOne {
+                field!(name, bool)
+            } else {
+                field!(name, usize)
+            },
+            _ => vec![],
         }
     }
 }
@@ -176,6 +284,46 @@ impl ToExpr for Specifier {
 }
 
 //================================================
+// Structs
+//================================================
+
+// Specification _________________________________
+
+/// A sequence of specifiers.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Specification(pub Vec<Specifier>);
+
+impl Specification {
+    //- Accessors --------------------------------
+
+    /// Returns `Field`s that would initialize values matched by this specification.
+    pub fn to_fields(&self, context: &mut ExtCtxt, span: Span, stack: &[Amount]) -> Vec<Field> {
+        self.iter().flat_map(|s| s.to_fields(context, span, &stack).into_iter()).collect()
+    }
+
+    /// Returns `StructField`s that could contain values matched by this specification.
+    pub fn to_struct_fields(&self, context: &mut ExtCtxt, span: Span) -> Vec<StructField> {
+        self.iter().flat_map(|s| s.to_struct_fields(context, span).into_iter()).collect()
+    }
+}
+
+impl ToExpr for Specification {
+    fn to_expr(&self, context: &mut ExtCtxt, span: Span) -> P<Expr> {
+        let identifiers = &["easy_plugin", "Specification"];
+        let arguments = vec![self.0.to_expr(context, span)];
+        utility::mk_expr_call(context, span, identifiers, arguments)
+    }
+}
+
+impl ops::Deref for Specification {
+    type Target = [Specifier];
+
+    fn deref(&self) -> &[Specifier] {
+        &self.0[..]
+    }
+}
+
+//================================================
 // Functions
 //================================================
 
@@ -202,7 +350,6 @@ fn parse_named_specifier<'i, I>(
     tts: &mut TtsIterator<'i, I>, name: String
 ) -> PluginResult<Specifier> where I: Iterator<Item=&'i TokenTree> {
     try!(tts.expect_specific_token(Token::Colon));
-
     match try!(tts.expect()) {
         &TokenTree::Delimited(subspan, ref delimited) => {
             let mut names = HashSet::new();
@@ -264,7 +411,7 @@ fn parse_sequence<'i, I>(
 /// Actually parses the supplied specification.
 fn parse_specification_(
     span: Span, tts: &[TokenTree], names: &mut HashSet<String>
-) -> PluginResult<Vec<Specifier>> {
+) -> PluginResult<Specification> {
     let mut tts = TtsIterator::new(tts.iter(), span, "unexpected end of specification");
     let mut specification = vec![];
     while let Some(tt) = tts.next() {
@@ -280,11 +427,11 @@ fn parse_specification_(
             _ => unreachable!(),
         }
     }
-    Ok(specification)
+    Ok(Specification(specification))
 }
 
 /// Parses the supplied specification.
-pub fn parse_specification(tts: &[TokenTree]) -> PluginResult<Vec<Specifier>> {
+pub fn parse_specification(tts: &[TokenTree]) -> PluginResult<Specification> {
     let start = tts.iter().nth(0).map_or(DUMMY_SP, |s| s.get_span());
     let end = tts.iter().last().map_or(DUMMY_SP, |s| s.get_span());
     let span = Span { lo: start.lo, hi: end.hi, expn_id: start.expn_id };
@@ -296,10 +443,7 @@ pub fn expand_parse_specification(
     context: &mut ExtCtxt, span: Span, arguments: &[TokenTree]
 ) -> Box<MacResult> {
     match parse_specification(arguments) {
-        Ok(specification) => {
-            let exprs = specification.iter().map(|s| s.to_expr(context, span)).collect();
-            MacEager::expr(context.expr_vec_slice(span, exprs))
-        },
+        Ok(specification) => MacEager::expr(specification.to_expr(context, span)),
         Err((span, message)) => {
             context.span_err(span, &message);
             DummyResult::any(span)
@@ -330,51 +474,51 @@ mod tests {
     #[test]
     fn test_parse_specification() {
         with_tts("", |tts| {
-            assert_eq!(parse_specification(&tts).unwrap(), vec![]);
+            assert_eq!(parse_specification(&tts).unwrap(), spec![]);
         });
 
         with_tts("$a:attr $b:tt", |tts| {
-            assert_eq!(parse_specification(&tts).unwrap(), vec![
+            assert_eq!(parse_specification(&tts).unwrap(), spec![
                 Specifier::Attr("a".into()),
                 Specifier::Tt("b".into()),
             ]);
         });
 
         with_tts("$($a:ident $($b:ident)*), + $($c:ident)?", |tts| {
-            assert_eq!(parse_specification(&tts).unwrap(), vec![
-                Specifier::Sequence(Amount::OneOrMore, Some(Token::Comma), vec![
+            assert_eq!(parse_specification(&tts).unwrap(), spec![
+                Specifier::Sequence(Amount::OneOrMore, Some(Token::Comma), spec![
                     Specifier::Ident("a".into()),
-                    Specifier::Sequence(Amount::ZeroOrMore, None, vec![
+                    Specifier::Sequence(Amount::ZeroOrMore, None, spec![
                         Specifier::Ident("b".into()),
                     ]),
                 ]),
-                Specifier::Sequence(Amount::ZeroOrOne, None, vec![
+                Specifier::Sequence(Amount::ZeroOrOne, None, spec![
                     Specifier::Ident("c".into()),
                 ]),
             ]);
         });
 
         with_tts("$a:(A)* $b:(B), + $c:(C)?", |tts| {
-            assert_eq!(parse_specification(&tts).unwrap(), vec![
-                Specifier::NamedSequence("a".into(), Amount::ZeroOrMore, None, vec![
+            assert_eq!(parse_specification(&tts).unwrap(), spec![
+                Specifier::NamedSequence("a".into(), Amount::ZeroOrMore, None, spec![
                     Specifier::specific_ident("A"),
                 ]),
-                Specifier::NamedSequence("b".into(), Amount::OneOrMore, Some(Token::Comma), vec![
+                Specifier::NamedSequence("b".into(), Amount::OneOrMore, Some(Token::Comma), spec![
                     Specifier::specific_ident("B"),
                 ]),
-                Specifier::NamedSequence("c".into(), Amount::ZeroOrOne, None, vec![
+                Specifier::NamedSequence("c".into(), Amount::ZeroOrOne, None, spec![
                     Specifier::specific_ident("C"),
                 ]),
             ]);
         });
 
         with_tts("() [$a:ident] {$b:ident $c:ident}", |tts| {
-            assert_eq!(parse_specification(&tts).unwrap(), vec![
-                Specifier::Delimited(DelimToken::Paren, vec![]),
-                Specifier::Delimited(DelimToken::Bracket, vec![
+            assert_eq!(parse_specification(&tts).unwrap(), spec![
+                Specifier::Delimited(DelimToken::Paren, spec![]),
+                Specifier::Delimited(DelimToken::Bracket, spec![
                     Specifier::Ident("a".into()),
                 ]),
-                Specifier::Delimited(DelimToken::Brace, vec![
+                Specifier::Delimited(DelimToken::Brace, spec![
                     Specifier::Ident("b".into()),
                     Specifier::Ident("c".into()),
                 ]),
@@ -382,7 +526,7 @@ mod tests {
         });
 
         with_tts("~ foo 'bar", |tts| {
-            assert_eq!(parse_specification(&tts).unwrap(), vec![
+            assert_eq!(parse_specification(&tts).unwrap(), spec![
                 Specifier::Specific(Token::Tilde),
                 Specifier::specific_ident("foo"),
                 Specifier::specific_lftm("'bar"),
