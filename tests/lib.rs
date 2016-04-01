@@ -145,48 +145,52 @@ easy_plugin! {
         }
 
         check!(attribute_to_string, arguments.attr, r#"#[cfg(target_os = "windows")]"#);
-        assert_eq!(arguments.binop, BinOpToken::Plus);
+        assert_eq!(arguments.binop.node, BinOpToken::Plus);
         check!(block_to_string, arguments.block, "{ let a = 322; a }");
-        assert_eq!(arguments.delim.delim, DelimToken::Bracket);
-        check!(tts_to_string, arguments.delim.tts, "1 , 2 , 3");
+        assert_eq!(arguments.delim.node.delim, DelimToken::Bracket);
+        check!(tts_to_string, arguments.delim.node.tts, "1 , 2 , 3");
         check!(expr_to_string, arguments.expr, "2 + 2");
-        assert_eq!(arguments.ident, context.ident_of("foo"));
+        assert_eq!(arguments.ident.node, context.ident_of("foo"));
         check!(item_to_string, arguments.item, "struct Bar;");
-        assert_eq!(arguments.lftm, context.name_of("'baz"));
+        assert_eq!(arguments.lftm.node, context.name_of("'baz"));
         check!(lit_to_string, arguments.lit, "322");
         check!(meta_item_to_string, arguments.meta, r#"cfg(target_os = "windows")"#);
         check!(pat_to_string, arguments.pat, r#"(foo, "bar")"#);
-        check!(path_to_string, arguments.path, "::std::vec::Vec<i32>");
+        check!(path_to_string, arguments.path.node, "::std::vec::Vec<i32>");
         check!(stmt_to_string, arguments.stmt, "let a = 322;");
         check!(ty_to_string, arguments.ty, "i32");
-        check!(token_to_string, arguments.tok, "~");
+        check!(token_to_string, arguments.tok.node, "~");
         check!(tt_to_string, arguments.tt, "!");
-        assert_eq!(arguments.a, context.ident_of("a"));
-        assert_eq!(arguments.b, context.ident_of("b"));
-        assert_eq!(arguments.c, &[
+        assert_eq!(arguments.a.node, context.ident_of("a"));
+        assert_eq!(arguments.b.node, context.ident_of("b"));
+        assert_eq!(arguments.c.iter().map(|c| c.node).collect::<Vec<_>>(), &[
             context.ident_of("a"),
             context.ident_of("b"),
             context.ident_of("d"),
         ]);
-        assert_eq!(arguments.d, &[
+        assert_eq!(arguments.d.iter().map(|d| {
+            d.iter().map(|d| d.node).collect()
+        }).collect::<Vec<Vec<_>>>(), &[
             vec![],
             vec![context.ident_of("c")],
             vec![context.ident_of("e"), context.ident_of("f")],
         ]);
         assert_eq!(arguments.e, None);
-        assert_eq!(arguments.f, Some(context.ident_of("g")));
-        assert_eq!(arguments.g, &[
+        assert_eq!(arguments.f.map(|f| f.node), Some(context.ident_of("g")));
+        assert_eq!(arguments.g.iter().map(|g| g.map(|g| g.node)).collect::<Vec<_>>(), vec![
             None,
             Some(context.ident_of("h")),
             Some(context.ident_of("i")),
         ]);
-        assert_eq!(arguments.h, &[
+        assert_eq!(arguments.h.iter().map(|h| h.map(|h| h.node)).collect::<Vec<_>>(), vec![
             None,
             None,
             Some(context.ident_of("j")),
         ]);
-        assert_eq!(arguments.kappa, 3);
-        assert_eq!(arguments.keepo, vec![false, true, false, true]);
+        assert_eq!(arguments.kappa.node, 3);
+        assert_eq!(arguments.keepo.iter().map(|k| k.node).collect::<Vec<_>>(), &[
+            false, true, false, true
+        ]);
         Ok(DummyResult::any(span))
     }
 }
@@ -204,16 +208,18 @@ easy_plugin! {
         match arguments {
             Arguments::A(_) => { },
             Arguments::B(b) => {
-                assert_eq!(b.a, context.ident_of("a"));
-                assert_eq!(b.b, context.ident_of("b"));
+                assert_eq!(b.a.node, context.ident_of("a"));
+                assert_eq!(b.b.node, context.ident_of("b"));
             },
             Arguments::C(c) => {
-                assert_eq!(c.a, &[
+                assert_eq!(c.a.iter().map(|a| a.node).collect::<Vec<_>>(), &[
                     context.ident_of("a"),
                     context.ident_of("b"),
                     context.ident_of("d"),
                 ]);
-                assert_eq!(c.b, &[
+                assert_eq!(c.b.iter().map(|b| {
+                    b.iter().map(|b| b.node).collect()
+                }).collect::<Vec<Vec<_>>>(), &[
                     vec![],
                     vec![context.ident_of("c")],
                     vec![context.ident_of("e"), context.ident_of("f")],

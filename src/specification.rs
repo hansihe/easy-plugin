@@ -204,22 +204,29 @@ impl Specifier {
             });
         }
 
+        macro_rules! field_spanned {
+            ($name:expr, $($variant:tt)*) => ({
+                field!($name, ::syntax::codemap::Spanned<$($variant)*>)
+            });
+        }
+
         match *self {
             Specifier::Attr(ref name) => field!(name, ::syntax::ast::Attribute),
-            Specifier::BinOp(ref name) => field!(name, ::syntax::parse::token::BinOpToken),
+            Specifier::BinOp(ref name) => field_spanned!(name, ::syntax::parse::token::BinOpToken),
             Specifier::Block(ref name) => field!(name, ::syntax::ptr::P<::syntax::ast::Block>),
-            Specifier::Delim(ref name) => field!(name, ::std::rc::Rc<::syntax::ast::Delimited>),
+            Specifier::Delim(ref name) =>
+                field_spanned!(name, ::std::rc::Rc<::syntax::ast::Delimited>),
             Specifier::Expr(ref name) => field!(name, ::syntax::ptr::P<::syntax::ast::Expr>),
-            Specifier::Ident(ref name) => field!(name, ::syntax::ast::Ident),
+            Specifier::Ident(ref name) => field_spanned!(name, ::syntax::ast::Ident),
             Specifier::Item(ref name) => field!(name, ::syntax::ptr::P<::syntax::ast::Item>),
-            Specifier::Lftm(ref name) => field!(name, ::syntax::ast::Name),
+            Specifier::Lftm(ref name) => field_spanned!(name, ::syntax::ast::Name),
             Specifier::Lit(ref name) => field!(name, ::syntax::ast::Lit),
             Specifier::Meta(ref name) => field!(name, ::syntax::ptr::P<::syntax::ast::MetaItem>),
             Specifier::Pat(ref name) => field!(name, ::syntax::ptr::P<::syntax::ast::Pat>),
-            Specifier::Path(ref name) => field!(name, ::syntax::ast::Path),
+            Specifier::Path(ref name) => field_spanned!(name, ::syntax::ast::Path),
             Specifier::Stmt(ref name) => field!(name, ::syntax::ast::Stmt),
             Specifier::Ty(ref name) => field!(name, ::syntax::ptr::P<::syntax::ast::Ty>),
-            Specifier::Tok(ref name) => field!(name, ::syntax::parse::token::Token),
+            Specifier::Tok(ref name) => field_spanned!(name, ::syntax::parse::token::Token),
             Specifier::Tt(ref name) => field!(name, ::syntax::ast::TokenTree),
             Specifier::Delimited(_, ref subspecification) =>
                 subspecification.to_struct_fields(context, span),
@@ -236,9 +243,9 @@ impl Specifier {
                 subfields
             },
             Specifier::NamedSequence(ref name, amount, _, _) => if amount == Amount::ZeroOrOne {
-                field!(name, bool)
+                field_spanned!(name, bool)
             } else {
-                field!(name, usize)
+                field_spanned!(name, usize)
             },
             _ => vec![],
         }

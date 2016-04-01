@@ -128,24 +128,24 @@
 //! writing for macros. There are two primary differences: no restrictions on ordering and
 //! additional types of named specifiers.
 //!
-//! | Name    | Description                           |  Storage Type                           |
-//! |:--------|:--------------------------------------|:----------------------------------------|
-//! | `attr`  | An attribute                          | `syntax::ast::Attribute`                |
-//! | `binop` | A binary operator                     | `syntax::parse::token::BinOpToken`      |
-//! | `block` | A brace-delimited statement sequence  | `syntax::ptr::P<syntax::ast::Block>`    |
-//! | `delim` | A delimited token tree sequence       | `std::rc::Rc<syntax::ast::Delimited>`   |
-//! | `expr`  | An expression                         | `syntax::ptr::P<syntax::ast::Expr>`     |
-//! | `ident` | An identifier                         | `syntax::ast::Ident`                    |
-//! | `item`  | An item                               | `syntax::ptr::P<syntax::ast::Item>`     |
-//! | `lftm`  | A lifetime                            | `syntax::ast::Name`                     |
-//! | `lit`   | A literal                             | `syntax::ast::Lit`                      |
-//! | `meta`  | A "meta" item, as found in attributes | `syntax::ptr::P<syntax::ast::MetaItem>` |
-//! | `pat`   | A pattern                             | `syntax::ptr::P<syntax::ast::Pat>`      |
-//! | `path`  | A qualified name                      | `syntax::ast::Path`                     |
-//! | `stmt`  | A single statement                    | `syntax::ptr::P<syntax::ast::Stmt>`     |
-//! | `ty`    | A type                                | `syntax::ptr::P<syntax::ast::Ty>`       |
-//! | `tok`   | A single token                        | `syntax::parse::token::Token`           |
-//! | `tt`    | A single token tree                   | `syntax::ast::TokenTree`                |
+//! | Name    | Description                           |  Storage Type            |
+//! |:--------|:--------------------------------------|:-------------------------|
+//! | `attr`  | An attribute                          | `Attribute`              |
+//! | `binop` | A binary operator                     | `Spanned<BinOpToken>`    |
+//! | `block` | A brace-delimited statement sequence  | `P<Block>`               |
+//! | `delim` | A delimited token tree sequence       | `Spanned<Rc<Delimited>>` |
+//! | `expr`  | An expression                         | `P<Expr>`                |
+//! | `ident` | An identifier                         | `Spanned<Ident>`         |
+//! | `item`  | An item                               | `P<Item>`                |
+//! | `lftm`  | A lifetime                            | `Spanned<Name>`          |
+//! | `lit`   | A literal                             | `Lit`                    |
+//! | `meta`  | A "meta" item, as found in attributes | `P<MetaItem>`            |
+//! | `pat`   | A pattern                             | `P<Pat>`                 |
+//! | `path`  | A qualified name                      | `Spanned<Path>`          |
+//! | `stmt`  | A single statement                    | `P<Stmt>`                |
+//! | `ty`    | A type                                | `P<Ty>`                  |
+//! | `tok`   | A single token                        | `Spanned<Token>`         |
+//! | `tt`    | A single token tree                   | `TokenTree`              |
 //!
 //! ## Sequences
 //!
@@ -412,9 +412,9 @@ fn expand_enum_easy_plugin(
         Specifier::Item("function".into()),
     ];
     let matches = try!(parse_arguments(context.parse_sess, arguments, specification));
-    let arguments = matches.get("arguments").unwrap().as_ident();
+    let arguments = matches.get("arguments").unwrap().as_ident().node;
     let names = matches.get("name").unwrap().as_sequence().into_iter().map(|s| {
-        s.as_ident()
+        s.as_ident().node
     }).collect();
     let ttss = matches.get("tt").unwrap().as_sequence().into_iter().map(|s| {
         s.as_sequence().into_iter().map(|s| s.as_tt()).collect::<Vec<_>>()
@@ -476,7 +476,7 @@ fn expand_struct_easy_plugin(
         Specifier::Item("function".into()),
     ];
     let matches = try!(parse_arguments(context.parse_sess, arguments, specification));
-    let arguments = matches.get("arguments").unwrap().as_ident();
+    let arguments = matches.get("arguments").unwrap().as_ident().node;
     let tts = matches.get("tt").unwrap().as_sequence().iter().map(|s| {
         s.as_tt()
     }).collect::<Vec<_>>();

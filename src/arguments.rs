@@ -16,7 +16,7 @@ use std::collections::{HashMap};
 use std::rc::{Rc};
 
 use syntax::ast::*;
-use syntax::codemap::{DUMMY_SP, CodeMap, Span};
+use syntax::codemap::{self, DUMMY_SP, CodeMap, Span, Spanned};
 use syntax::errors::{Handler};
 use syntax::parse::{ParseSess};
 use syntax::parse::common::{SeqSep};
@@ -55,19 +55,19 @@ pub enum Match {
     /// An attribute (e.g., `#[cfg(target_os = "windows")]`).
     Attr(Attribute),
     /// A binary operator (e.g., `+`, `*`).
-    BinOp(BinOpToken),
+    BinOp(Spanned<BinOpToken>),
     /// A brace-delimited sequence of statements (e.g., `{ log(error, "hi"); return 12; }`).
     Block(P<Block>),
     /// A delimited sequence of token trees (e.g., `()`, `[foo - "bar"]`).
-    Delim(Rc<Delimited>),
+    Delim(Spanned<Rc<Delimited>>),
     /// An expression (e.g., `2 + 2`, `if true { 1 } else { 2 }`, `f(42)`).
     Expr(P<Expr>),
     /// An identifier (e.g., `x`, `foo`).
-    Ident(Ident),
+    Ident(Spanned<Ident>),
     /// An item (e.g., `fn foo() { }`, `struct Bar;`).
     Item(P<Item>),
     /// A lifetime (e.g., `'a`).
-    Lftm(Name),
+    Lftm(Spanned<Name>),
     /// A literal (e.g., `322`, `'a'`, `"foo"`).
     Lit(Lit),
     /// A "meta" item, as found in attributes (e.g., `cfg(target_os = "windows")`).
@@ -75,19 +75,19 @@ pub enum Match {
     /// A pattern (e.g., `Some(t)`, `(17, 'a')`, `_`).
     Pat(P<Pat>),
     /// A qualified name (e.g., `T::SpecialA`).
-    Path(Path),
+    Path(Spanned<Path>),
     /// A single statement (e.g., `let x = 3`).
     Stmt(Stmt),
     /// A type (e.g., `i32`, `Vec<(char, String)>`, `&T`).
     Ty(P<Ty>),
     /// A single token.
-    Tok(Token),
+    Tok(Spanned<Token>),
     /// A single token tree.
     Tt(TokenTree),
     /// A sequence which may either contain sequence matches or subsequences.
     Sequence(Vec<Match>),
     /// A count of named sequence repetitions.
-    NamedSequence(usize),
+    NamedSequence(Spanned<usize>),
 }
 
 impl Match {
@@ -110,7 +110,7 @@ impl Match {
     /// # Panics
     ///
     /// * this match is not a binary operator
-    pub fn as_bin_op(&self) -> BinOpToken {
+    pub fn as_bin_op(&self) -> Spanned<BinOpToken> {
         match *self {
             Match::BinOp(binop) => binop,
             _ => panic!("this match is not a binary operator"),
@@ -134,7 +134,7 @@ impl Match {
     /// # Panics
     ///
     /// * this match is not a delimited sequence of token trees
-    pub fn as_delim(&self) -> Rc<Delimited> {
+    pub fn as_delim(&self) -> Spanned<Rc<Delimited>> {
         match *self {
             Match::Delim(ref delimited) => delimited.clone(),
             _ => panic!("this match is not a delimited sequence of token trees"),
@@ -158,7 +158,7 @@ impl Match {
     /// # Panics
     ///
     /// * this match is not an identifier
-    pub fn as_ident(&self) -> Ident {
+    pub fn as_ident(&self) -> Spanned<Ident> {
         match *self {
             Match::Ident(ident) => ident,
             _ => panic!("this match is not an identifier"),
@@ -182,7 +182,7 @@ impl Match {
     /// # Panics
     ///
     /// * this match is not a lifetime
-    pub fn as_lftm(&self) -> Name {
+    pub fn as_lftm(&self) -> Spanned<Name> {
         match *self {
             Match::Lftm(lftm) => lftm,
             _ => panic!("this match is not a lifetime"),
@@ -230,7 +230,7 @@ impl Match {
     /// # Panics
     ///
     /// * this match is not a path
-    pub fn as_path(&self) -> Path {
+    pub fn as_path(&self) -> Spanned<Path> {
         match *self {
             Match::Path(ref path) => path.clone(),
             _ => panic!("this match is not a path"),
@@ -266,7 +266,7 @@ impl Match {
     /// # Panics
     ///
     /// * this match is not a token
-    pub fn as_tok(&self) -> Token {
+    pub fn as_tok(&self) -> Spanned<Token> {
         match *self {
             Match::Tok(ref tok) => tok.clone(),
             _ => panic!("this match is not a token"),
@@ -302,7 +302,7 @@ impl Match {
     /// # Panics
     ///
     /// * this match is not a count of named sequence reptitions
-    pub fn as_named_sequence(&self) -> usize {
+    pub fn as_named_sequence(&self) -> Spanned<usize> {
         match *self {
             Match::NamedSequence(count) => count,
             _ => panic!("this match is not a count of named sequence reptitions"),
@@ -314,33 +314,33 @@ impl Match {
     /// # Panics
     ///
     /// * this match is not a count of named sequence reptitions
-    pub fn as_named_sequence_bool(&self) -> bool {
+    pub fn as_named_sequence_bool(&self) -> Spanned<bool> {
         match *self {
-            Match::NamedSequence(count) => count != 0,
+            Match::NamedSequence(count) => codemap::respan(count.span, count.node != 0),
             _ => panic!("this match is not a count of named sequence reptitions"),
         }
     }
 }
 
 from!(as_attr, Attribute);
-from!(as_bin_op, BinOpToken);
+from!(as_bin_op, Spanned<BinOpToken>);
 from!(as_block, P<Block>);
-from!(as_delim, Rc<Delimited>);
+from!(as_delim, Spanned<Rc<Delimited>>);
 from!(as_expr, P<Expr>);
-from!(as_ident, Ident);
+from!(as_ident, Spanned<Ident>);
 from!(as_item, P<Item>);
-from!(as_lftm, Name);
+from!(as_lftm, Spanned<Name>);
 from!(as_lit, Lit);
 from!(as_meta, P<MetaItem>);
 from!(as_pat, P<Pat>);
-from!(as_path, Path);
+from!(as_path, Spanned<Path>);
 from!(as_stmt, Stmt);
 from!(as_ty, P<Ty>);
-from!(as_tok, Token);
+from!(as_tok, Spanned<Token>);
 from!(as_tt, TokenTree);
 from!(as_sequence, Vec<Match>);
-from!(as_named_sequence, usize);
-from!(as_named_sequence_bool, bool);
+from!(as_named_sequence, Spanned<usize>);
+from!(as_named_sequence_bool, Spanned<bool>);
 
 //================================================
 // Structs
@@ -461,12 +461,22 @@ impl<'s> ArgumentParser<'s> {
             });
         }
 
+        macro_rules! insert_spanned {
+            ($variant:ident, $parse:ident$(.$field:ident)*, $name:expr) => ({
+                let open = self.parser.get_last_span();
+                let match_ = try!(self.parser.$parse($name))$(.$field)*;
+                let spanned = codemap::spanned(open.lo, self.parser.get_last_span().hi, match_);
+                matches.insert($name.clone(), Match::$variant(spanned));
+            });
+        }
+
         for specifier in specification {
             match *specifier {
                 Specifier::Attr(ref name) => insert!(Attr, parse_attribute, name),
                 Specifier::BinOp(ref name) => match try!(self.expect_token()) {
                     Token::BinOp(binop) | Token::BinOpEq(binop) => {
-                        matches.insert(name.clone(), Match::BinOp(binop));
+                        let spanned = codemap::respan(self.parser.get_last_span(), binop);
+                        matches.insert(name.clone(), Match::BinOp(spanned));
                     },
                     _ => {
                         let error = format!("expected binop: '{}'", name);
@@ -475,22 +485,26 @@ impl<'s> ArgumentParser<'s> {
                 },
                 Specifier::Block(ref name) => insert!(Block, parse_block, name),
                 Specifier::Delim(ref name) => {
+                    let open = self.parser.get_last_span();
                     let delim = try!(self.parse_delim());
-                    matches.insert(name.clone(), Match::Delim(delim));
+                    let spanned = codemap::spanned(open.lo, delim.close_span.hi, delim);
+                    matches.insert(name.clone(), Match::Delim(spanned));
                 },
                 Specifier::Expr(ref name) => insert!(Expr, parse_expr, name),
-                Specifier::Ident(ref name) => insert!(Ident, parse_ident, name),
+                Specifier::Ident(ref name) => insert_spanned!(Ident, parse_ident, name),
                 Specifier::Item(ref name) => insert!(Item, parse_item, name),
-                Specifier::Lftm(ref name) => insert!(Lftm, parse_lifetime.name, name),
+                Specifier::Lftm(ref name) => insert_spanned!(Lftm, parse_lifetime.name, name),
                 Specifier::Lit(ref name) => insert!(Lit, parse_lit, name),
                 Specifier::Meta(ref name) => insert!(Meta, parse_meta_item, name),
                 Specifier::Pat(ref name) => insert!(Pat, parse_pat, name),
-                Specifier::Path(ref name) => insert!(Path, parse_path, name),
+                Specifier::Path(ref name) => insert_spanned!(Path, parse_path, name),
                 Specifier::Stmt(ref name) => insert!(Stmt, parse_stmt, name),
                 Specifier::Ty(ref name) => insert!(Ty, parse_ty, name),
                 Specifier::Tok(ref name) => {
+                    let open = self.parser.get_last_span();
                     let tok = try!(self.expect_token());
-                    matches.insert(name.clone(), Match::Tok(tok));
+                    let spanned = codemap::spanned(open.lo, self.parser.get_last_span().hi, tok);
+                    matches.insert(name.clone(), Match::Tok(spanned));
                 },
                 Specifier::Tt(ref name) => insert!(Tt, parse_token_tree, name),
                 Specifier::Specific(ref expected) => try!(self.expect_specific_token(expected)),
@@ -503,9 +517,12 @@ impl<'s> ArgumentParser<'s> {
                     try!(self.parse_sequence(amount, separator.as_ref(), specification, matches));
                 },
                 Specifier::NamedSequence(ref name, amount, ref separator, ref specification) => {
+                    let open = self.parser.get_last_span();
                     let separator = separator.as_ref();
                     let count = self.parse_sequence(amount, separator, specification, matches);
-                    matches.insert(name.clone(), Match::NamedSequence(try!(count)));
+                    let close = self.parser.get_last_span();
+                    let spanned = codemap::spanned(open.lo, close.hi, try!(count));
+                    matches.insert(name.clone(), Match::NamedSequence(spanned));
                 },
             }
         }
@@ -652,24 +669,24 @@ mod tests {
             assert_eq!(m.len(), 16);
 
             check!(attribute_to_string, get!(m, attr, as_attr), "#[cfg(target_os = \"windows\")]");
-            assert_eq!(m.get("binop").unwrap().as_bin_op(), BinOpToken::Plus);
+            assert_eq!(m.get("binop").unwrap().as_bin_op().node, BinOpToken::Plus);
             check!(block_to_string, &get!(m, block, as_block), "{ let a = 322; a }");
 
             let delim = get!(m, delim, as_delim);
-            assert_eq!(delim.delim, DelimToken::Bracket);
-            check!(tts_to_string, delim.tts, "1 , 2 , 3");
+            assert_eq!(delim.node.delim, DelimToken::Bracket);
+            check!(tts_to_string, delim.node.tts, "1 , 2 , 3");
 
             check!(expr_to_string, &get!(m, expr, as_expr), "2 + 2");
-            assert_eq!(&*get!(m, ident, as_ident).name.as_str(), "foo");
+            assert_eq!(&*get!(m, ident, as_ident).node.name.as_str(), "foo");
             check!(item_to_string, &get!(m, item, as_item), "struct Bar;");
-            assert_eq!(&*get!(m, lftm, as_lftm).as_str(), "'baz");
+            assert_eq!(&*get!(m, lftm, as_lftm).node.as_str(), "'baz");
             check!(lit_to_string, get!(m, lit, as_lit), "322");
             check!(meta_item_to_string, &get!(m, meta, as_meta), r#"cfg(target_os = "windows")"#);
             check!(pat_to_string, &get!(m, pat, as_pat), r#"(foo, "bar")"#);
-            check!(path_to_string, get!(m, path, as_path), "::std::vec::Vec<i32>");
+            check!(path_to_string, get!(m, path, as_path).node, "::std::vec::Vec<i32>");
             check!(stmt_to_string, &get!(m, stmt, as_stmt), "let a = 322;");
             check!(ty_to_string, &get!(m, ty, as_ty), "i32");
-            check!(token_to_string, get!(m, tok, as_tok), "~");
+            check!(token_to_string, get!(m, tok, as_tok).node, "~");
             check!(tt_to_string, get!(m, tt, as_tt), "!");
         });
 
@@ -682,9 +699,9 @@ mod tests {
             let a = get!(m, a, as_sequence, as_ident);
             assert_eq!(a.len(), 3);
 
-            assert_eq!(a[0].name.as_str(), "a");
-            assert_eq!(a[1].name.as_str(), "b");
-            assert_eq!(a[2].name.as_str(), "d");
+            assert_eq!(a[0].node.name.as_str(), "a");
+            assert_eq!(a[1].node.name.as_str(), "b");
+            assert_eq!(a[2].node.name.as_str(), "d");
 
             let b = get!(m, b, as_sequence, as_sequence, as_ident);
             assert_eq!(b.len(), 3);
@@ -692,11 +709,11 @@ mod tests {
             assert_eq!(b[0].len(), 0);
 
             assert_eq!(b[1].len(), 1);
-            assert_eq!(b[1][0].name.as_str(), "c");
+            assert_eq!(b[1][0].node.name.as_str(), "c");
 
             assert_eq!(b[2].len(), 2);
-            assert_eq!(b[2][0].name.as_str(), "e");
-            assert_eq!(b[2][1].name.as_str(), "f");
+            assert_eq!(b[2][0].node.name.as_str(), "e");
+            assert_eq!(b[2][1].node.name.as_str(), "f");
 
             let c = get!(m, c, as_sequence, as_ident);
             assert_eq!(c.len(), 0);
@@ -704,7 +721,7 @@ mod tests {
             let d = get!(m, d, as_sequence, as_ident);
             assert_eq!(d.len(), 1);
 
-            assert_eq!(d[0].name.as_str(), "g");
+            assert_eq!(d[0].node.name.as_str(), "g");
         });
 
         let arguments = "1 a 2 b 3";
@@ -722,8 +739,8 @@ mod tests {
             let b = get!(m, b, as_sequence, as_ident);
             assert_eq!(b.len(), 2);
 
-            assert_eq!(b[0].name.as_str(), "a");
-            assert_eq!(b[1].name.as_str(), "b");
+            assert_eq!(b[0].node.name.as_str(), "a");
+            assert_eq!(b[1].node.name.as_str(), "b");
 
             check!(lit_to_string, get!(m, c, as_lit), "3");
         });
@@ -737,13 +754,13 @@ mod tests {
             let a = get!(m, a, as_sequence, as_named_sequence);
             assert_eq!(a.len(), 3);
 
-            assert_eq!(a[0], 0);
-            assert_eq!(a[1], 1);
-            assert_eq!(a[2], 2);
+            assert_eq!(a[0].node, 0);
+            assert_eq!(a[1].node, 1);
+            assert_eq!(a[2].node, 2);
 
-            assert_eq!(get!(m, b, as_named_sequence), 3);
-            assert_eq!(get!(m, c, as_named_sequence), 0);
-            assert_eq!(get!(m, d, as_named_sequence), 1);
+            assert_eq!(get!(m, b, as_named_sequence).node, 3);
+            assert_eq!(get!(m, c, as_named_sequence_bool).node, false);
+            assert_eq!(get!(m, d, as_named_sequence_bool).node, true);
         });
 
         let arguments = "a, b, c,";
@@ -755,9 +772,9 @@ mod tests {
             let a = get!(m, a, as_sequence, as_ident);
             assert_eq!(a.len(), 3);
 
-            assert_eq!(a[0].name.as_str(), "a");
-            assert_eq!(a[1].name.as_str(), "b");
-            assert_eq!(a[2].name.as_str(), "c");
+            assert_eq!(a[0].node.name.as_str(), "a");
+            assert_eq!(a[1].node.name.as_str(), "b");
+            assert_eq!(a[2].node.name.as_str(), "c");
         });
     }
 }

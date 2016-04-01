@@ -74,3 +74,7 @@
 
 ### Added
 - Added `Specification` struct
+
+### Changed
+- Wrapped `binop`, `delim`, `ident`, `lftm`, `path`, `tok`, and named sequence values in
+  `syntax::codemap::Spanned`
