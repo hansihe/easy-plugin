@@ -504,10 +504,20 @@ fn expand_enum_easy_plugin(
 
         let stmt = if variants.peek().is_some() {
             quote_stmt!(context,
-                if let Ok(result) = $parse(context.parse_sess, arguments).and_then(|a| {
-                    $inner(context, span, $arguments::$constructor(a))
-                }) {
-                    return result;
+                if let Ok(arguments) = $parse(context.parse_sess, arguments) {
+                    return match $inner(context, span, $arguments::$constructor(arguments)) {
+                        Ok(result) => result,
+                        Err((subspan, message)) => {
+                            let span = if subspan == ::syntax::codemap::DUMMY_SP {
+                                span
+                            } else {
+                                subspan
+                            };
+
+                            context.span_err(span, &message);
+                            ::syntax::ext::base::DummyResult::any(span)
+                        }
+                    };
                 }
             )
         } else {
