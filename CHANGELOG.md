@@ -65,7 +65,7 @@
 ### Changed
 - Improved error reporting
 
-## [0.2.10] - UNRELEASED
+## [0.2.10] - 2016-4-1
 
 ### Fixed
 - Improved error reporting
