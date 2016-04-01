@@ -19,5 +19,5 @@ plugin = true
 
 [dependencies.clippy]
 
-version = "0.0.58"
+version = "0.0.60"
 optional = true
