@@ -70,7 +70,7 @@
 ### Fixed
 - Improved error reporting
 
-## [0.3.0] - UNRELEASED
+## [0.3.0] - 2016-4-2
 
 ### Added
 - Added `Specification` struct
