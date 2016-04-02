@@ -43,29 +43,29 @@
 
     <section id='main' class="content enum">
 <h1 class='fqn'><span class='in-band'>Enum <a href='index.html'>easy_plugin</a>::<wbr><a class='enum' href=''>Match</a></span><span class='out-of-band'><span id='render-detail'>
-            <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
-                [<span class='inner'>&#x2212;</span>]
-            </a>
-        </span><a id='src-415' class='srclink' href='../src/easy_plugin/src/arguments.rs.html#24-61' title='goto source code'>[src]</a></span></h1>
+                   <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
+                       [<span class='inner'>&#x2212;</span>]
+                   </a>
+               </span><a id='src-414' class='srclink' href='../src/easy_plugin/src/arguments.rs.html#54-91' title='goto source code'>[src]</a></span></h1>
 <pre class='rust enum'>pub enum Match {
     Attr(<a class='type' href='https://doc.rust-lang.org/nightly/syntax/ast/type.Attribute.html' title='syntax::ast::Attribute'>Attribute</a>),
-    BinOp(<a class='enum' href='https://doc.rust-lang.org/nightly/syntax/parse/token/enum.BinOpToken.html' title='syntax::parse::token::BinOpToken'>BinOpToken</a>),
+    BinOp(<a class='struct' href='https://doc.rust-lang.org/nightly/syntax/codemap/struct.Spanned.html' title='syntax::codemap::Spanned'>Spanned</a>&lt;<a class='enum' href='https://doc.rust-lang.org/nightly/syntax/parse/token/enum.BinOpToken.html' title='syntax::parse::token::BinOpToken'>BinOpToken</a>&gt;),
     Block(<a class='struct' href='https://doc.rust-lang.org/nightly/syntax/ptr/struct.P.html' title='syntax::ptr::P'>P</a>&lt;<a class='struct' href='https://doc.rust-lang.org/nightly/syntax/ast/struct.Block.html' title='syntax::ast::Block'>Block</a>&gt;),
-    Delim(<a class='struct' href='https://doc.rust-lang.org/nightly/alloc/rc/struct.Rc.html' title='alloc::rc::Rc'>Rc</a>&lt;<a class='struct' href='https://doc.rust-lang.org/nightly/syntax/ast/struct.Delimited.html' title='syntax::ast::Delimited'>Delimited</a>&gt;),
+    Delim(<a class='struct' href='https://doc.rust-lang.org/nightly/syntax/codemap/struct.Spanned.html' title='syntax::codemap::Spanned'>Spanned</a>&lt;<a class='struct' href='https://doc.rust-lang.org/nightly/alloc/rc/struct.Rc.html' title='alloc::rc::Rc'>Rc</a>&lt;<a class='struct' href='https://doc.rust-lang.org/nightly/syntax/ast/struct.Delimited.html' title='syntax::ast::Delimited'>Delimited</a>&gt;&gt;),
     Expr(<a class='struct' href='https://doc.rust-lang.org/nightly/syntax/ptr/struct.P.html' title='syntax::ptr::P'>P</a>&lt;<a class='struct' href='https://doc.rust-lang.org/nightly/syntax/ast/struct.Expr.html' title='syntax::ast::Expr'>Expr</a>&gt;),
-    Ident(<a class='struct' href='https://doc.rust-lang.org/nightly/syntax/ast/struct.Ident.html' title='syntax::ast::Ident'>Ident</a>),
+    Ident(<a class='struct' href='https://doc.rust-lang.org/nightly/syntax/codemap/struct.Spanned.html' title='syntax::codemap::Spanned'>Spanned</a>&lt;<a class='struct' href='https://doc.rust-lang.org/nightly/syntax/ast/struct.Ident.html' title='syntax::ast::Ident'>Ident</a>&gt;),
     Item(<a class='struct' href='https://doc.rust-lang.org/nightly/syntax/ptr/struct.P.html' title='syntax::ptr::P'>P</a>&lt;<a class='struct' href='https://doc.rust-lang.org/nightly/syntax/ast/struct.Item.html' title='syntax::ast::Item'>Item</a>&gt;),
-    Lftm(<a class='struct' href='https://doc.rust-lang.org/nightly/syntax/ast/struct.Name.html' title='syntax::ast::Name'>Name</a>),
+    Lftm(<a class='struct' href='https://doc.rust-lang.org/nightly/syntax/codemap/struct.Spanned.html' title='syntax::codemap::Spanned'>Spanned</a>&lt;<a class='struct' href='https://doc.rust-lang.org/nightly/syntax/ast/struct.Name.html' title='syntax::ast::Name'>Name</a>&gt;),
     Lit(<a class='type' href='https://doc.rust-lang.org/nightly/syntax/ast/type.Lit.html' title='syntax::ast::Lit'>Lit</a>),
     Meta(<a class='struct' href='https://doc.rust-lang.org/nightly/syntax/ptr/struct.P.html' title='syntax::ptr::P'>P</a>&lt;<a class='type' href='https://doc.rust-lang.org/nightly/syntax/ast/type.MetaItem.html' title='syntax::ast::MetaItem'>MetaItem</a>&gt;),
     Pat(<a class='struct' href='https://doc.rust-lang.org/nightly/syntax/ptr/struct.P.html' title='syntax::ptr::P'>P</a>&lt;<a class='struct' href='https://doc.rust-lang.org/nightly/syntax/ast/struct.Pat.html' title='syntax::ast::Pat'>Pat</a>&gt;),
-    Path(<a class='struct' href='https://doc.rust-lang.org/nightly/syntax/ast/struct.Path.html' title='syntax::ast::Path'>Path</a>),
+    Path(<a class='struct' href='https://doc.rust-lang.org/nightly/syntax/codemap/struct.Spanned.html' title='syntax::codemap::Spanned'>Spanned</a>&lt;<a class='struct' href='https://doc.rust-lang.org/nightly/syntax/ast/struct.Path.html' title='syntax::ast::Path'>Path</a>&gt;),
     Stmt(<a class='type' href='https://doc.rust-lang.org/nightly/syntax/ast/type.Stmt.html' title='syntax::ast::Stmt'>Stmt</a>),
     Ty(<a class='struct' href='https://doc.rust-lang.org/nightly/syntax/ptr/struct.P.html' title='syntax::ptr::P'>P</a>&lt;<a class='struct' href='https://doc.rust-lang.org/nightly/syntax/ast/struct.Ty.html' title='syntax::ast::Ty'>Ty</a>&gt;),
-    Tok(<a class='enum' href='https://doc.rust-lang.org/nightly/syntax/parse/token/enum.Token.html' title='syntax::parse::token::Token'>Token</a>),
+    Tok(<a class='struct' href='https://doc.rust-lang.org/nightly/syntax/codemap/struct.Spanned.html' title='syntax::codemap::Spanned'>Spanned</a>&lt;<a class='enum' href='https://doc.rust-lang.org/nightly/syntax/parse/token/enum.Token.html' title='syntax::parse::token::Token'>Token</a>&gt;),
     Tt(<a class='enum' href='https://doc.rust-lang.org/nightly/syntax/ast/enum.TokenTree.html' title='syntax::ast::TokenTree'>TokenTree</a>),
     Sequence(<a class='struct' href='https://doc.rust-lang.org/nightly/collections/vec/struct.Vec.html' title='collections::vec::Vec'>Vec</a>&lt;<a class='enum' href='../easy_plugin/enum.Match.html' title='easy_plugin::Match'>Match</a>&gt;),
-    NamedSequence(<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.usize.html'>usize</a>),
+    NamedSequence(<a class='struct' href='https://doc.rust-lang.org/nightly/syntax/codemap/struct.Spanned.html' title='syntax::codemap::Spanned'>Spanned</a>&lt;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.usize.html'>usize</a>&gt;),
 }</pre><div class='docblock'><p>A plugin argument that has been matched with a named specifier.</p>
 </div><h2 class='variants'>Variants</h2>
 <table class='variants_table'><tr><td id='variant.Attr'><code>Attr</code></td><td><div class='docblock'><p>An attribute (e.g., <code>#[cfg(target_os = &quot;windows&quot;)]</code>).</p>
@@ -93,7 +93,7 @@
 <ul>
 <li>this match is not an attribute</li>
 </ul>
-</div><h4 id='method.as_binop' class='method'><code>fn <a href='#method.as_binop' class='fnname'>as_binop</a>(&amp;self) -&gt; <a class='enum' href='https://doc.rust-lang.org/nightly/syntax/parse/token/enum.BinOpToken.html' title='syntax::parse::token::BinOpToken'>BinOpToken</a></code></h4>
+</div><h4 id='method.as_bin_op' class='method'><code>fn <a href='#method.as_bin_op' class='fnname'>as_bin_op</a>(&amp;self) -&gt; <a class='struct' href='https://doc.rust-lang.org/nightly/syntax/codemap/struct.Spanned.html' title='syntax::codemap::Spanned'>Spanned</a>&lt;<a class='enum' href='https://doc.rust-lang.org/nightly/syntax/parse/token/enum.BinOpToken.html' title='syntax::parse::token::BinOpToken'>BinOpToken</a>&gt;</code></h4>
 <div class='docblock'><p>Returns this binary operator match.</p>
 
 <h1 id='panics-1' class='section-header'><a href='#panics-1'>Panics</a></h1>
@@ -107,7 +107,7 @@
 <ul>
 <li>this match is not a block</li>
 </ul>
-</div><h4 id='method.as_delim' class='method'><code>fn <a href='#method.as_delim' class='fnname'>as_delim</a>(&amp;self) -&gt; <a class='struct' href='https://doc.rust-lang.org/nightly/alloc/rc/struct.Rc.html' title='alloc::rc::Rc'>Rc</a>&lt;<a class='struct' href='https://doc.rust-lang.org/nightly/syntax/ast/struct.Delimited.html' title='syntax::ast::Delimited'>Delimited</a>&gt;</code></h4>
+</div><h4 id='method.as_delim' class='method'><code>fn <a href='#method.as_delim' class='fnname'>as_delim</a>(&amp;self) -&gt; <a class='struct' href='https://doc.rust-lang.org/nightly/syntax/codemap/struct.Spanned.html' title='syntax::codemap::Spanned'>Spanned</a>&lt;<a class='struct' href='https://doc.rust-lang.org/nightly/alloc/rc/struct.Rc.html' title='alloc::rc::Rc'>Rc</a>&lt;<a class='struct' href='https://doc.rust-lang.org/nightly/syntax/ast/struct.Delimited.html' title='syntax::ast::Delimited'>Delimited</a>&gt;&gt;</code></h4>
 <div class='docblock'><p>Returns this delimited match.</p>
 
 <h1 id='panics-3' class='section-header'><a href='#panics-3'>Panics</a></h1>
@@ -121,7 +121,7 @@
 <ul>
 <li>this match is not an expression</li>
 </ul>
-</div><h4 id='method.as_ident' class='method'><code>fn <a href='#method.as_ident' class='fnname'>as_ident</a>(&amp;self) -&gt; <a class='struct' href='https://doc.rust-lang.org/nightly/syntax/ast/struct.Ident.html' title='syntax::ast::Ident'>Ident</a></code></h4>
+</div><h4 id='method.as_ident' class='method'><code>fn <a href='#method.as_ident' class='fnname'>as_ident</a>(&amp;self) -&gt; <a class='struct' href='https://doc.rust-lang.org/nightly/syntax/codemap/struct.Spanned.html' title='syntax::codemap::Spanned'>Spanned</a>&lt;<a class='struct' href='https://doc.rust-lang.org/nightly/syntax/ast/struct.Ident.html' title='syntax::ast::Ident'>Ident</a>&gt;</code></h4>
 <div class='docblock'><p>Returns this identifier match.</p>
 
 <h1 id='panics-5' class='section-header'><a href='#panics-5'>Panics</a></h1>
@@ -135,7 +135,7 @@
 <ul>
 <li>this match is not an item</li>
 </ul>
-</div><h4 id='method.as_lftm' class='method'><code>fn <a href='#method.as_lftm' class='fnname'>as_lftm</a>(&amp;self) -&gt; <a class='struct' href='https://doc.rust-lang.org/nightly/syntax/ast/struct.Name.html' title='syntax::ast::Name'>Name</a></code></h4>
+</div><h4 id='method.as_lftm' class='method'><code>fn <a href='#method.as_lftm' class='fnname'>as_lftm</a>(&amp;self) -&gt; <a class='struct' href='https://doc.rust-lang.org/nightly/syntax/codemap/struct.Spanned.html' title='syntax::codemap::Spanned'>Spanned</a>&lt;<a class='struct' href='https://doc.rust-lang.org/nightly/syntax/ast/struct.Name.html' title='syntax::ast::Name'>Name</a>&gt;</code></h4>
 <div class='docblock'><p>Returns this lifetime match.</p>
 
 <h1 id='panics-7' class='section-header'><a href='#panics-7'>Panics</a></h1>
@@ -163,7 +163,7 @@
 <ul>
 <li>this match is not a pattern</li>
 </ul>
-</div><h4 id='method.as_path' class='method'><code>fn <a href='#method.as_path' class='fnname'>as_path</a>(&amp;self) -&gt; <a class='struct' href='https://doc.rust-lang.org/nightly/syntax/ast/struct.Path.html' title='syntax::ast::Path'>Path</a></code></h4>
+</div><h4 id='method.as_path' class='method'><code>fn <a href='#method.as_path' class='fnname'>as_path</a>(&amp;self) -&gt; <a class='struct' href='https://doc.rust-lang.org/nightly/syntax/codemap/struct.Spanned.html' title='syntax::codemap::Spanned'>Spanned</a>&lt;<a class='struct' href='https://doc.rust-lang.org/nightly/syntax/ast/struct.Path.html' title='syntax::ast::Path'>Path</a>&gt;</code></h4>
 <div class='docblock'><p>Returns this path match.</p>
 
 <h1 id='panics-11' class='section-header'><a href='#panics-11'>Panics</a></h1>
@@ -184,7 +184,7 @@
 <ul>
 <li>this match is not a type</li>
 </ul>
-</div><h4 id='method.as_tok' class='method'><code>fn <a href='#method.as_tok' class='fnname'>as_tok</a>(&amp;self) -&gt; <a class='enum' href='https://doc.rust-lang.org/nightly/syntax/parse/token/enum.Token.html' title='syntax::parse::token::Token'>Token</a></code></h4>
+</div><h4 id='method.as_tok' class='method'><code>fn <a href='#method.as_tok' class='fnname'>as_tok</a>(&amp;self) -&gt; <a class='struct' href='https://doc.rust-lang.org/nightly/syntax/codemap/struct.Spanned.html' title='syntax::codemap::Spanned'>Spanned</a>&lt;<a class='enum' href='https://doc.rust-lang.org/nightly/syntax/parse/token/enum.Token.html' title='syntax::parse::token::Token'>Token</a>&gt;</code></h4>
 <div class='docblock'><p>Returns this token match.</p>
 
 <h1 id='panics-14' class='section-header'><a href='#panics-14'>Panics</a></h1>
@@ -205,24 +205,24 @@
 <ul>
 <li>this match is not a collection of sequence matches or subsequences</li>
 </ul>
-</div><h4 id='method.as_named_sequence' class='method'><code>fn <a href='#method.as_named_sequence' class='fnname'>as_named_sequence</a>(&amp;self) -&gt; <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.usize.html'>usize</a></code></h4>
+</div><h4 id='method.as_named_sequence' class='method'><code>fn <a href='#method.as_named_sequence' class='fnname'>as_named_sequence</a>(&amp;self) -&gt; <a class='struct' href='https://doc.rust-lang.org/nightly/syntax/codemap/struct.Spanned.html' title='syntax::codemap::Spanned'>Spanned</a>&lt;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.usize.html'>usize</a>&gt;</code></h4>
 <div class='docblock'><p>Returns this count of named sequence repetitions.</p>
 
 <h1 id='panics-17' class='section-header'><a href='#panics-17'>Panics</a></h1>
 <ul>
 <li>this match is not a count of named sequence reptitions</li>
 </ul>
-</div><h4 id='method.as_named_sequence_bool' class='method'><code>fn <a href='#method.as_named_sequence_bool' class='fnname'>as_named_sequence_bool</a>(&amp;self) -&gt; <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.bool.html'>bool</a></code></h4>
+</div><h4 id='method.as_named_sequence_bool' class='method'><code>fn <a href='#method.as_named_sequence_bool' class='fnname'>as_named_sequence_bool</a>(&amp;self) -&gt; <a class='struct' href='https://doc.rust-lang.org/nightly/syntax/codemap/struct.Spanned.html' title='syntax::codemap::Spanned'>Spanned</a>&lt;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.bool.html'>bool</a>&gt;</code></h4>
 <div class='docblock'><p>Returns whether this count of named sequence repetitions is non-zero.</p>
 
 <h1 id='panics-18' class='section-header'><a href='#panics-18'>Panics</a></h1>
 <ul>
 <li>this match is not a count of named sequence reptitions</li>
 </ul>
-</div></div><h2 id='implementations'>Trait Implementations</h2><h3 id='derived_implementations'>Derived Implementations </h3><h3 class='impl'><code>impl <a class='trait' href='https://doc.rust-lang.org/nightly/core/cmp/trait.Eq.html' title='core::cmp::Eq'>Eq</a> for <a class='enum' href='../easy_plugin/enum.Match.html' title='easy_plugin::Match'>Match</a></code></h3><div class='impl-items'></div><h3 class='impl'><code>impl <a class='trait' href='https://doc.rust-lang.org/nightly/core/cmp/trait.PartialEq.html' title='core::cmp::PartialEq'>PartialEq</a> for <a class='enum' href='../easy_plugin/enum.Match.html' title='easy_plugin::Match'>Match</a></code></h3><div class='impl-items'><h4 id='method.eq' class='method'><code>fn <a href='https://doc.rust-lang.org/nightly/core/cmp/trait.PartialEq.html#method.eq' class='fnname'>eq</a>(&amp;self, __arg_0: &amp;<a class='enum' href='../easy_plugin/enum.Match.html' title='easy_plugin::Match'>Match</a>) -&gt; <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.bool.html'>bool</a></code></h4>
+</div></div><h2 id='implementations'>Trait Implementations</h2><h3 id='derived_implementations'>Derived Implementations </h3><h3 class='impl'><code>impl <a class='trait' href='https://doc.rust-lang.org/nightly/core/cmp/trait.Eq.html' title='core::cmp::Eq'>Eq</a> for <a class='enum' href='../easy_plugin/enum.Match.html' title='easy_plugin::Match'>Match</a></code></h3><div class='impl-items'></div><h3 class='impl'><code>impl <a class='trait' href='https://doc.rust-lang.org/nightly/core/cmp/trait.PartialEq.html' title='core::cmp::PartialEq'>PartialEq</a> for <a class='enum' href='../easy_plugin/enum.Match.html' title='easy_plugin::Match'>Match</a></code></h3><div class='impl-items'><h4 id='method.eq' class='method'><code>fn <a href='https://doc.rust-lang.org/nightly/core/cmp/trait.PartialEq.html#tymethod.eq' class='fnname'>eq</a>(&amp;self, __arg_0: &amp;<a class='enum' href='../easy_plugin/enum.Match.html' title='easy_plugin::Match'>Match</a>) -&gt; <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.bool.html'>bool</a></code></h4>
 <h4 id='method.ne' class='method'><code>fn <a href='https://doc.rust-lang.org/nightly/core/cmp/trait.PartialEq.html#method.ne' class='fnname'>ne</a>(&amp;self, __arg_0: &amp;<a class='enum' href='../easy_plugin/enum.Match.html' title='easy_plugin::Match'>Match</a>) -&gt; <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.bool.html'>bool</a></code></h4>
-</div><h3 class='impl'><code>impl <a class='trait' href='https://doc.rust-lang.org/nightly/core/fmt/trait.Debug.html' title='core::fmt::Debug'>Debug</a> for <a class='enum' href='../easy_plugin/enum.Match.html' title='easy_plugin::Match'>Match</a></code></h3><div class='impl-items'><h4 id='method.fmt' class='method'><code>fn <a href='https://doc.rust-lang.org/nightly/core/fmt/trait.Debug.html#method.fmt' class='fnname'>fmt</a>(&amp;self, __arg_0: &amp;mut <a class='struct' href='https://doc.rust-lang.org/nightly/core/fmt/struct.Formatter.html' title='core::fmt::Formatter'>Formatter</a>) -&gt; <a class='type' href='https://doc.rust-lang.org/nightly/core/fmt/type.Result.html' title='core::fmt::Result'>Result</a></code></h4>
-</div><h3 class='impl'><code>impl <a class='trait' href='https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html' title='core::clone::Clone'>Clone</a> for <a class='enum' href='../easy_plugin/enum.Match.html' title='easy_plugin::Match'>Match</a></code></h3><div class='impl-items'><h4 id='method.clone' class='method'><code>fn <a href='https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html#method.clone' class='fnname'>clone</a>(&amp;self) -&gt; <a class='enum' href='../easy_plugin/enum.Match.html' title='easy_plugin::Match'>Match</a></code></h4>
+</div><h3 class='impl'><code>impl <a class='trait' href='https://doc.rust-lang.org/nightly/core/fmt/trait.Debug.html' title='core::fmt::Debug'>Debug</a> for <a class='enum' href='../easy_plugin/enum.Match.html' title='easy_plugin::Match'>Match</a></code></h3><div class='impl-items'><h4 id='method.fmt' class='method'><code>fn <a href='https://doc.rust-lang.org/nightly/core/fmt/trait.Debug.html#tymethod.fmt' class='fnname'>fmt</a>(&amp;self, __arg_0: &amp;mut <a class='struct' href='https://doc.rust-lang.org/nightly/core/fmt/struct.Formatter.html' title='core::fmt::Formatter'>Formatter</a>) -&gt; <a class='type' href='https://doc.rust-lang.org/nightly/core/fmt/type.Result.html' title='core::fmt::Result'>Result</a></code></h4>
+</div><h3 class='impl'><code>impl <a class='trait' href='https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html' title='core::clone::Clone'>Clone</a> for <a class='enum' href='../easy_plugin/enum.Match.html' title='easy_plugin::Match'>Match</a></code></h3><div class='impl-items'><h4 id='method.clone' class='method'><code>fn <a href='https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html#tymethod.clone' class='fnname'>clone</a>(&amp;self) -&gt; <a class='enum' href='../easy_plugin/enum.Match.html' title='easy_plugin::Match'>Match</a></code></h4>
 <h4 id='method.clone_from' class='method'><span class="since">1.0.0</span><code>fn <a href='https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html#method.clone_from' class='fnname'>clone_from</a>(&amp;mut self, source: &amp;Self)</code></h4>
 </div></section>
     <section id='search' class="content hidden"></section>

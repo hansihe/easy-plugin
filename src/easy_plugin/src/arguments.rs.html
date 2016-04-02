@@ -754,12 +754,93 @@
 <span id="711">711</span>
 <span id="712">712</span>
 <span id="713">713</span>
+<span id="714">714</span>
+<span id="715">715</span>
+<span id="716">716</span>
+<span id="717">717</span>
+<span id="718">718</span>
+<span id="719">719</span>
+<span id="720">720</span>
+<span id="721">721</span>
+<span id="722">722</span>
+<span id="723">723</span>
+<span id="724">724</span>
+<span id="725">725</span>
+<span id="726">726</span>
+<span id="727">727</span>
+<span id="728">728</span>
+<span id="729">729</span>
+<span id="730">730</span>
+<span id="731">731</span>
+<span id="732">732</span>
+<span id="733">733</span>
+<span id="734">734</span>
+<span id="735">735</span>
+<span id="736">736</span>
+<span id="737">737</span>
+<span id="738">738</span>
+<span id="739">739</span>
+<span id="740">740</span>
+<span id="741">741</span>
+<span id="742">742</span>
+<span id="743">743</span>
+<span id="744">744</span>
+<span id="745">745</span>
+<span id="746">746</span>
+<span id="747">747</span>
+<span id="748">748</span>
+<span id="749">749</span>
+<span id="750">750</span>
+<span id="751">751</span>
+<span id="752">752</span>
+<span id="753">753</span>
+<span id="754">754</span>
+<span id="755">755</span>
+<span id="756">756</span>
+<span id="757">757</span>
+<span id="758">758</span>
+<span id="759">759</span>
+<span id="760">760</span>
+<span id="761">761</span>
+<span id="762">762</span>
+<span id="763">763</span>
+<span id="764">764</span>
+<span id="765">765</span>
+<span id="766">766</span>
+<span id="767">767</span>
+<span id="768">768</span>
+<span id="769">769</span>
+<span id="770">770</span>
+<span id="771">771</span>
+<span id="772">772</span>
+<span id="773">773</span>
+<span id="774">774</span>
+<span id="775">775</span>
+<span id="776">776</span>
+<span id="777">777</span>
+<span id="778">778</span>
+<span id="779">779</span>
+<span id="780">780</span>
 </pre><pre class='rust '>
+<span class='comment'>// Copyright 2016 Kyle Mayes</span>
+<span class='comment'>//</span>
+<span class='comment'>// Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
+<span class='comment'>// you may not use this file except in compliance with the License.</span>
+<span class='comment'>// You may obtain a copy of the License at</span>
+<span class='comment'>//</span>
+<span class='comment'>//     http://www.apache.org/licenses/LICENSE-2.0</span>
+<span class='comment'>//</span>
+<span class='comment'>// Unless required by applicable law or agreed to in writing, software</span>
+<span class='comment'>// distributed under the License is distributed on an &quot;AS IS&quot; BASIS,</span>
+<span class='comment'>// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
+<span class='comment'>// See the License for the specific language governing permissions and</span>
+<span class='comment'>// limitations under the License.</span>
+
 <span class='kw'>use</span> <span class='ident'>std</span>::<span class='ident'>collections</span>::{<span class='ident'>HashMap</span>};
 <span class='kw'>use</span> <span class='ident'>std</span>::<span class='ident'>rc</span>::{<span class='ident'>Rc</span>};
 
 <span class='kw'>use</span> <span class='ident'>syntax</span>::<span class='ident'>ast</span>::<span class='op'>*</span>;
-<span class='kw'>use</span> <span class='ident'>syntax</span>::<span class='ident'>codemap</span>::{<span class='ident'>DUMMY_SP</span>, <span class='ident'>CodeMap</span>, <span class='ident'>Span</span>};
+<span class='kw'>use</span> <span class='ident'>syntax</span>::<span class='ident'>codemap</span>::{<span class='self'>self</span>, <span class='ident'>DUMMY_SP</span>, <span class='ident'>CodeMap</span>, <span class='ident'>Span</span>, <span class='ident'>Spanned</span>};
 <span class='kw'>use</span> <span class='ident'>syntax</span>::<span class='ident'>errors</span>::{<span class='ident'>Handler</span>};
 <span class='kw'>use</span> <span class='ident'>syntax</span>::<span class='ident'>parse</span>::{<span class='ident'>ParseSess</span>};
 <span class='kw'>use</span> <span class='ident'>syntax</span>::<span class='ident'>parse</span>::<span class='ident'>common</span>::{<span class='ident'>SeqSep</span>};
@@ -769,6 +850,22 @@
 
 <span class='kw'>use</span> <span class='ident'>super</span>::{<span class='ident'>Amount</span>, <span class='ident'>PluginResult</span>, <span class='ident'>Specifier</span>};
 <span class='kw'>use</span> <span class='ident'>super</span>::<span class='ident'>utility</span>::{<span class='ident'>SaveEmitter</span>, <span class='ident'>ToError</span>, <span class='ident'>TransactionParser</span>};
+
+<span class='comment'>//================================================</span>
+<span class='comment'>// Macros</span>
+<span class='comment'>//================================================</span>
+
+<span class='comment'>// from! _________________________________________</span>
+
+<span class='macro'>macro_rules</span><span class='macro'>!</span> <span class='ident'>from</span> {
+    (<span class='macro-nonterminal'>$</span><span class='macro-nonterminal'>method</span>:<span class='ident'>ident</span>, <span class='macro-nonterminal'>$</span><span class='macro-nonterminal'>ty</span>:<span class='ident'>ty</span>) <span class='op'>=&gt;</span> {
+        <span class='kw'>impl</span><span class='op'>&lt;</span><span class='lifetime'>&#39;a</span><span class='op'>&gt;</span> <span class='ident'>From</span><span class='op'>&lt;</span><span class='kw-2'>&amp;</span><span class='lifetime'>&#39;a</span> <span class='ident'>Match</span><span class='op'>&gt;</span> <span class='kw'>for</span> <span class='macro-nonterminal'>$</span><span class='macro-nonterminal'>ty</span> {
+            <span class='kw'>fn</span> <span class='ident'>from</span>(<span class='ident'>match_</span>: <span class='kw-2'>&amp;</span><span class='lifetime'>&#39;a</span> <span class='ident'>Match</span>) <span class='op'>-&gt;</span> <span class='macro-nonterminal'>$</span><span class='macro-nonterminal'>ty</span> {
+                <span class='ident'>match_</span>.<span class='macro-nonterminal'>$</span><span class='macro-nonterminal'>method</span>()
+            }
+        }
+    };
+}
 
 <span class='comment'>//================================================</span>
 <span class='comment'>// Enums</span>
@@ -782,19 +879,19 @@
     <span class='doccomment'>/// An attribute (e.g., `#[cfg(target_os = &quot;windows&quot;)]`).</span>
     <span class='ident'>Attr</span>(<span class='ident'>Attribute</span>),
     <span class='doccomment'>/// A binary operator (e.g., `+`, `*`).</span>
-    <span class='ident'>BinOp</span>(<span class='ident'>BinOpToken</span>),
+    <span class='ident'>BinOp</span>(<span class='ident'>Spanned</span><span class='op'>&lt;</span><span class='ident'>BinOpToken</span><span class='op'>&gt;</span>),
     <span class='doccomment'>/// A brace-delimited sequence of statements (e.g., `{ log(error, &quot;hi&quot;); return 12; }`).</span>
     <span class='ident'>Block</span>(<span class='ident'>P</span><span class='op'>&lt;</span><span class='ident'>Block</span><span class='op'>&gt;</span>),
     <span class='doccomment'>/// A delimited sequence of token trees (e.g., `()`, `[foo - &quot;bar&quot;]`).</span>
-    <span class='ident'>Delim</span>(<span class='ident'>Rc</span><span class='op'>&lt;</span><span class='ident'>Delimited</span><span class='op'>&gt;</span>),
+    <span class='ident'>Delim</span>(<span class='ident'>Spanned</span><span class='op'>&lt;</span><span class='ident'>Rc</span><span class='op'>&lt;</span><span class='ident'>Delimited</span><span class='op'>&gt;&gt;</span>),
     <span class='doccomment'>/// An expression (e.g., `2 + 2`, `if true { 1 } else { 2 }`, `f(42)`).</span>
     <span class='ident'>Expr</span>(<span class='ident'>P</span><span class='op'>&lt;</span><span class='ident'>Expr</span><span class='op'>&gt;</span>),
     <span class='doccomment'>/// An identifier (e.g., `x`, `foo`).</span>
-    <span class='ident'>Ident</span>(<span class='ident'>Ident</span>),
+    <span class='ident'>Ident</span>(<span class='ident'>Spanned</span><span class='op'>&lt;</span><span class='ident'>Ident</span><span class='op'>&gt;</span>),
     <span class='doccomment'>/// An item (e.g., `fn foo() { }`, `struct Bar;`).</span>
     <span class='ident'>Item</span>(<span class='ident'>P</span><span class='op'>&lt;</span><span class='ident'>Item</span><span class='op'>&gt;</span>),
     <span class='doccomment'>/// A lifetime (e.g., `&#39;a`).</span>
-    <span class='ident'>Lftm</span>(<span class='ident'>Name</span>),
+    <span class='ident'>Lftm</span>(<span class='ident'>Spanned</span><span class='op'>&lt;</span><span class='ident'>Name</span><span class='op'>&gt;</span>),
     <span class='doccomment'>/// A literal (e.g., `322`, `&#39;a&#39;`, `&quot;foo&quot;`).</span>
     <span class='ident'>Lit</span>(<span class='ident'>Lit</span>),
     <span class='doccomment'>/// A &quot;meta&quot; item, as found in attributes (e.g., `cfg(target_os = &quot;windows&quot;)`).</span>
@@ -802,19 +899,19 @@
     <span class='doccomment'>/// A pattern (e.g., `Some(t)`, `(17, &#39;a&#39;)`, `_`).</span>
     <span class='ident'>Pat</span>(<span class='ident'>P</span><span class='op'>&lt;</span><span class='ident'>Pat</span><span class='op'>&gt;</span>),
     <span class='doccomment'>/// A qualified name (e.g., `T::SpecialA`).</span>
-    <span class='ident'>Path</span>(<span class='ident'>Path</span>),
+    <span class='ident'>Path</span>(<span class='ident'>Spanned</span><span class='op'>&lt;</span><span class='ident'>Path</span><span class='op'>&gt;</span>),
     <span class='doccomment'>/// A single statement (e.g., `let x = 3`).</span>
     <span class='ident'>Stmt</span>(<span class='ident'>Stmt</span>),
     <span class='doccomment'>/// A type (e.g., `i32`, `Vec&lt;(char, String)&gt;`, `&amp;T`).</span>
     <span class='ident'>Ty</span>(<span class='ident'>P</span><span class='op'>&lt;</span><span class='ident'>Ty</span><span class='op'>&gt;</span>),
     <span class='doccomment'>/// A single token.</span>
-    <span class='ident'>Tok</span>(<span class='ident'>Token</span>),
+    <span class='ident'>Tok</span>(<span class='ident'>Spanned</span><span class='op'>&lt;</span><span class='ident'>Token</span><span class='op'>&gt;</span>),
     <span class='doccomment'>/// A single token tree.</span>
     <span class='ident'>Tt</span>(<span class='ident'>TokenTree</span>),
     <span class='doccomment'>/// A sequence which may either contain sequence matches or subsequences.</span>
     <span class='ident'>Sequence</span>(<span class='ident'>Vec</span><span class='op'>&lt;</span><span class='ident'>Match</span><span class='op'>&gt;</span>),
     <span class='doccomment'>/// A count of named sequence repetitions.</span>
-    <span class='ident'>NamedSequence</span>(<span class='ident'>usize</span>),
+    <span class='ident'>NamedSequence</span>(<span class='ident'>Spanned</span><span class='op'>&lt;</span><span class='ident'>usize</span><span class='op'>&gt;</span>),
 }
 
 <span class='kw'>impl</span> <span class='ident'>Match</span> {
@@ -837,7 +934,7 @@
     <span class='doccomment'>/// # Panics</span>
     <span class='doccomment'>///</span>
     <span class='doccomment'>/// * this match is not a binary operator</span>
-    <span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>as_binop</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>) <span class='op'>-&gt;</span> <span class='ident'>BinOpToken</span> {
+    <span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>as_bin_op</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>) <span class='op'>-&gt;</span> <span class='ident'>Spanned</span><span class='op'>&lt;</span><span class='ident'>BinOpToken</span><span class='op'>&gt;</span> {
         <span class='kw'>match</span> <span class='op'>*</span><span class='self'>self</span> {
             <span class='ident'>Match</span>::<span class='ident'>BinOp</span>(<span class='ident'>binop</span>) <span class='op'>=&gt;</span> <span class='ident'>binop</span>,
             _ <span class='op'>=&gt;</span> <span class='macro'>panic</span><span class='macro'>!</span>(<span class='string'>&quot;this match is not a binary operator&quot;</span>),
@@ -861,7 +958,7 @@
     <span class='doccomment'>/// # Panics</span>
     <span class='doccomment'>///</span>
     <span class='doccomment'>/// * this match is not a delimited sequence of token trees</span>
-    <span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>as_delim</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>) <span class='op'>-&gt;</span> <span class='ident'>Rc</span><span class='op'>&lt;</span><span class='ident'>Delimited</span><span class='op'>&gt;</span> {
+    <span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>as_delim</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>) <span class='op'>-&gt;</span> <span class='ident'>Spanned</span><span class='op'>&lt;</span><span class='ident'>Rc</span><span class='op'>&lt;</span><span class='ident'>Delimited</span><span class='op'>&gt;&gt;</span> {
         <span class='kw'>match</span> <span class='op'>*</span><span class='self'>self</span> {
             <span class='ident'>Match</span>::<span class='ident'>Delim</span>(<span class='kw-2'>ref</span> <span class='ident'>delimited</span>) <span class='op'>=&gt;</span> <span class='ident'>delimited</span>.<span class='ident'>clone</span>(),
             _ <span class='op'>=&gt;</span> <span class='macro'>panic</span><span class='macro'>!</span>(<span class='string'>&quot;this match is not a delimited sequence of token trees&quot;</span>),
@@ -885,7 +982,7 @@
     <span class='doccomment'>/// # Panics</span>
     <span class='doccomment'>///</span>
     <span class='doccomment'>/// * this match is not an identifier</span>
-    <span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>as_ident</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>) <span class='op'>-&gt;</span> <span class='ident'>Ident</span> {
+    <span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>as_ident</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>) <span class='op'>-&gt;</span> <span class='ident'>Spanned</span><span class='op'>&lt;</span><span class='ident'>Ident</span><span class='op'>&gt;</span> {
         <span class='kw'>match</span> <span class='op'>*</span><span class='self'>self</span> {
             <span class='ident'>Match</span>::<span class='ident'>Ident</span>(<span class='ident'>ident</span>) <span class='op'>=&gt;</span> <span class='ident'>ident</span>,
             _ <span class='op'>=&gt;</span> <span class='macro'>panic</span><span class='macro'>!</span>(<span class='string'>&quot;this match is not an identifier&quot;</span>),
@@ -909,7 +1006,7 @@
     <span class='doccomment'>/// # Panics</span>
     <span class='doccomment'>///</span>
     <span class='doccomment'>/// * this match is not a lifetime</span>
-    <span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>as_lftm</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>) <span class='op'>-&gt;</span> <span class='ident'>Name</span> {
+    <span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>as_lftm</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>) <span class='op'>-&gt;</span> <span class='ident'>Spanned</span><span class='op'>&lt;</span><span class='ident'>Name</span><span class='op'>&gt;</span> {
         <span class='kw'>match</span> <span class='op'>*</span><span class='self'>self</span> {
             <span class='ident'>Match</span>::<span class='ident'>Lftm</span>(<span class='ident'>lftm</span>) <span class='op'>=&gt;</span> <span class='ident'>lftm</span>,
             _ <span class='op'>=&gt;</span> <span class='macro'>panic</span><span class='macro'>!</span>(<span class='string'>&quot;this match is not a lifetime&quot;</span>),
@@ -957,7 +1054,7 @@
     <span class='doccomment'>/// # Panics</span>
     <span class='doccomment'>///</span>
     <span class='doccomment'>/// * this match is not a path</span>
-    <span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>as_path</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>) <span class='op'>-&gt;</span> <span class='ident'>Path</span> {
+    <span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>as_path</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>) <span class='op'>-&gt;</span> <span class='ident'>Spanned</span><span class='op'>&lt;</span><span class='ident'>Path</span><span class='op'>&gt;</span> {
         <span class='kw'>match</span> <span class='op'>*</span><span class='self'>self</span> {
             <span class='ident'>Match</span>::<span class='ident'>Path</span>(<span class='kw-2'>ref</span> <span class='ident'>path</span>) <span class='op'>=&gt;</span> <span class='ident'>path</span>.<span class='ident'>clone</span>(),
             _ <span class='op'>=&gt;</span> <span class='macro'>panic</span><span class='macro'>!</span>(<span class='string'>&quot;this match is not a path&quot;</span>),
@@ -993,7 +1090,7 @@
     <span class='doccomment'>/// # Panics</span>
     <span class='doccomment'>///</span>
     <span class='doccomment'>/// * this match is not a token</span>
-    <span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>as_tok</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>) <span class='op'>-&gt;</span> <span class='ident'>Token</span> {
+    <span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>as_tok</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>) <span class='op'>-&gt;</span> <span class='ident'>Spanned</span><span class='op'>&lt;</span><span class='ident'>Token</span><span class='op'>&gt;</span> {
         <span class='kw'>match</span> <span class='op'>*</span><span class='self'>self</span> {
             <span class='ident'>Match</span>::<span class='ident'>Tok</span>(<span class='kw-2'>ref</span> <span class='ident'>tok</span>) <span class='op'>=&gt;</span> <span class='ident'>tok</span>.<span class='ident'>clone</span>(),
             _ <span class='op'>=&gt;</span> <span class='macro'>panic</span><span class='macro'>!</span>(<span class='string'>&quot;this match is not a token&quot;</span>),
@@ -1029,7 +1126,7 @@
     <span class='doccomment'>/// # Panics</span>
     <span class='doccomment'>///</span>
     <span class='doccomment'>/// * this match is not a count of named sequence reptitions</span>
-    <span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>as_named_sequence</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>) <span class='op'>-&gt;</span> <span class='ident'>usize</span> {
+    <span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>as_named_sequence</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>) <span class='op'>-&gt;</span> <span class='ident'>Spanned</span><span class='op'>&lt;</span><span class='ident'>usize</span><span class='op'>&gt;</span> {
         <span class='kw'>match</span> <span class='op'>*</span><span class='self'>self</span> {
             <span class='ident'>Match</span>::<span class='ident'>NamedSequence</span>(<span class='ident'>count</span>) <span class='op'>=&gt;</span> <span class='ident'>count</span>,
             _ <span class='op'>=&gt;</span> <span class='macro'>panic</span><span class='macro'>!</span>(<span class='string'>&quot;this match is not a count of named sequence reptitions&quot;</span>),
@@ -1041,13 +1138,33 @@
     <span class='doccomment'>/// # Panics</span>
     <span class='doccomment'>///</span>
     <span class='doccomment'>/// * this match is not a count of named sequence reptitions</span>
-    <span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>as_named_sequence_bool</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>) <span class='op'>-&gt;</span> <span class='ident'>bool</span> {
+    <span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>as_named_sequence_bool</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>) <span class='op'>-&gt;</span> <span class='ident'>Spanned</span><span class='op'>&lt;</span><span class='ident'>bool</span><span class='op'>&gt;</span> {
         <span class='kw'>match</span> <span class='op'>*</span><span class='self'>self</span> {
-            <span class='ident'>Match</span>::<span class='ident'>NamedSequence</span>(<span class='ident'>count</span>) <span class='op'>=&gt;</span> <span class='ident'>count</span> <span class='op'>!=</span> <span class='number'>0</span>,
+            <span class='ident'>Match</span>::<span class='ident'>NamedSequence</span>(<span class='ident'>count</span>) <span class='op'>=&gt;</span> <span class='ident'>codemap</span>::<span class='ident'>respan</span>(<span class='ident'>count</span>.<span class='ident'>span</span>, <span class='ident'>count</span>.<span class='ident'>node</span> <span class='op'>!=</span> <span class='number'>0</span>),
             _ <span class='op'>=&gt;</span> <span class='macro'>panic</span><span class='macro'>!</span>(<span class='string'>&quot;this match is not a count of named sequence reptitions&quot;</span>),
         }
     }
 }
+
+<span class='macro'>from</span><span class='macro'>!</span>(<span class='ident'>as_attr</span>, <span class='ident'>Attribute</span>);
+<span class='macro'>from</span><span class='macro'>!</span>(<span class='ident'>as_bin_op</span>, <span class='ident'>Spanned</span><span class='op'>&lt;</span><span class='ident'>BinOpToken</span><span class='op'>&gt;</span>);
+<span class='macro'>from</span><span class='macro'>!</span>(<span class='ident'>as_block</span>, <span class='ident'>P</span><span class='op'>&lt;</span><span class='ident'>Block</span><span class='op'>&gt;</span>);
+<span class='macro'>from</span><span class='macro'>!</span>(<span class='ident'>as_delim</span>, <span class='ident'>Spanned</span><span class='op'>&lt;</span><span class='ident'>Rc</span><span class='op'>&lt;</span><span class='ident'>Delimited</span><span class='op'>&gt;&gt;</span>);
+<span class='macro'>from</span><span class='macro'>!</span>(<span class='ident'>as_expr</span>, <span class='ident'>P</span><span class='op'>&lt;</span><span class='ident'>Expr</span><span class='op'>&gt;</span>);
+<span class='macro'>from</span><span class='macro'>!</span>(<span class='ident'>as_ident</span>, <span class='ident'>Spanned</span><span class='op'>&lt;</span><span class='ident'>Ident</span><span class='op'>&gt;</span>);
+<span class='macro'>from</span><span class='macro'>!</span>(<span class='ident'>as_item</span>, <span class='ident'>P</span><span class='op'>&lt;</span><span class='ident'>Item</span><span class='op'>&gt;</span>);
+<span class='macro'>from</span><span class='macro'>!</span>(<span class='ident'>as_lftm</span>, <span class='ident'>Spanned</span><span class='op'>&lt;</span><span class='ident'>Name</span><span class='op'>&gt;</span>);
+<span class='macro'>from</span><span class='macro'>!</span>(<span class='ident'>as_lit</span>, <span class='ident'>Lit</span>);
+<span class='macro'>from</span><span class='macro'>!</span>(<span class='ident'>as_meta</span>, <span class='ident'>P</span><span class='op'>&lt;</span><span class='ident'>MetaItem</span><span class='op'>&gt;</span>);
+<span class='macro'>from</span><span class='macro'>!</span>(<span class='ident'>as_pat</span>, <span class='ident'>P</span><span class='op'>&lt;</span><span class='ident'>Pat</span><span class='op'>&gt;</span>);
+<span class='macro'>from</span><span class='macro'>!</span>(<span class='ident'>as_path</span>, <span class='ident'>Spanned</span><span class='op'>&lt;</span><span class='ident'>Path</span><span class='op'>&gt;</span>);
+<span class='macro'>from</span><span class='macro'>!</span>(<span class='ident'>as_stmt</span>, <span class='ident'>Stmt</span>);
+<span class='macro'>from</span><span class='macro'>!</span>(<span class='ident'>as_ty</span>, <span class='ident'>P</span><span class='op'>&lt;</span><span class='ident'>Ty</span><span class='op'>&gt;</span>);
+<span class='macro'>from</span><span class='macro'>!</span>(<span class='ident'>as_tok</span>, <span class='ident'>Spanned</span><span class='op'>&lt;</span><span class='ident'>Token</span><span class='op'>&gt;</span>);
+<span class='macro'>from</span><span class='macro'>!</span>(<span class='ident'>as_tt</span>, <span class='ident'>TokenTree</span>);
+<span class='macro'>from</span><span class='macro'>!</span>(<span class='ident'>as_sequence</span>, <span class='ident'>Vec</span><span class='op'>&lt;</span><span class='ident'>Match</span><span class='op'>&gt;</span>);
+<span class='macro'>from</span><span class='macro'>!</span>(<span class='ident'>as_named_sequence</span>, <span class='ident'>Spanned</span><span class='op'>&lt;</span><span class='ident'>usize</span><span class='op'>&gt;</span>);
+<span class='macro'>from</span><span class='macro'>!</span>(<span class='ident'>as_named_sequence_bool</span>, <span class='ident'>Spanned</span><span class='op'>&lt;</span><span class='ident'>bool</span><span class='op'>&gt;</span>);
 
 <span class='comment'>//================================================</span>
 <span class='comment'>// Structs</span>
@@ -1168,12 +1285,22 @@
             });
         }
 
+        <span class='macro'>macro_rules</span><span class='macro'>!</span> <span class='ident'>insert_spanned</span> {
+            (<span class='macro-nonterminal'>$</span><span class='macro-nonterminal'>variant</span>:<span class='ident'>ident</span>, <span class='macro-nonterminal'>$</span><span class='macro-nonterminal'>parse</span>:<span class='ident'>ident</span>$(.<span class='macro-nonterminal'>$</span><span class='macro-nonterminal'>field</span>:<span class='ident'>ident</span>)<span class='op'>*</span>, <span class='macro-nonterminal'>$</span><span class='macro-nonterminal'>name</span>:<span class='ident'>expr</span>) <span class='op'>=&gt;</span> ({
+                <span class='kw'>let</span> <span class='ident'>open</span> <span class='op'>=</span> <span class='self'>self</span>.<span class='ident'>parser</span>.<span class='ident'>get_last_span</span>();
+                <span class='kw'>let</span> <span class='ident'>match_</span> <span class='op'>=</span> <span class='macro'>try</span><span class='macro'>!</span>(<span class='self'>self</span>.<span class='ident'>parser</span>.<span class='macro-nonterminal'>$</span><span class='macro-nonterminal'>parse</span>(<span class='macro-nonterminal'>$</span><span class='macro-nonterminal'>name</span>))$(.<span class='macro-nonterminal'>$</span><span class='macro-nonterminal'>field</span>)<span class='op'>*</span>;
+                <span class='kw'>let</span> <span class='ident'>spanned</span> <span class='op'>=</span> <span class='ident'>codemap</span>::<span class='ident'>spanned</span>(<span class='ident'>open</span>.<span class='ident'>lo</span>, <span class='self'>self</span>.<span class='ident'>parser</span>.<span class='ident'>get_last_span</span>().<span class='ident'>hi</span>, <span class='ident'>match_</span>);
+                <span class='ident'>matches</span>.<span class='ident'>insert</span>(<span class='macro-nonterminal'>$</span><span class='macro-nonterminal'>name</span>.<span class='ident'>clone</span>(), <span class='ident'>Match</span>::<span class='macro-nonterminal'>$</span><span class='macro-nonterminal'>variant</span>(<span class='ident'>spanned</span>));
+            });
+        }
+
         <span class='kw'>for</span> <span class='ident'>specifier</span> <span class='kw'>in</span> <span class='ident'>specification</span> {
             <span class='kw'>match</span> <span class='op'>*</span><span class='ident'>specifier</span> {
                 <span class='ident'>Specifier</span>::<span class='ident'>Attr</span>(<span class='kw-2'>ref</span> <span class='ident'>name</span>) <span class='op'>=&gt;</span> <span class='macro'>insert</span><span class='macro'>!</span>(<span class='ident'>Attr</span>, <span class='ident'>parse_attribute</span>, <span class='ident'>name</span>),
                 <span class='ident'>Specifier</span>::<span class='ident'>BinOp</span>(<span class='kw-2'>ref</span> <span class='ident'>name</span>) <span class='op'>=&gt;</span> <span class='kw'>match</span> <span class='macro'>try</span><span class='macro'>!</span>(<span class='self'>self</span>.<span class='ident'>expect_token</span>()) {
                     <span class='ident'>Token</span>::<span class='ident'>BinOp</span>(<span class='ident'>binop</span>) <span class='op'>|</span> <span class='ident'>Token</span>::<span class='ident'>BinOpEq</span>(<span class='ident'>binop</span>) <span class='op'>=&gt;</span> {
-                        <span class='ident'>matches</span>.<span class='ident'>insert</span>(<span class='ident'>name</span>.<span class='ident'>clone</span>(), <span class='ident'>Match</span>::<span class='ident'>BinOp</span>(<span class='ident'>binop</span>));
+                        <span class='kw'>let</span> <span class='ident'>spanned</span> <span class='op'>=</span> <span class='ident'>codemap</span>::<span class='ident'>respan</span>(<span class='self'>self</span>.<span class='ident'>parser</span>.<span class='ident'>get_last_span</span>(), <span class='ident'>binop</span>);
+                        <span class='ident'>matches</span>.<span class='ident'>insert</span>(<span class='ident'>name</span>.<span class='ident'>clone</span>(), <span class='ident'>Match</span>::<span class='ident'>BinOp</span>(<span class='ident'>spanned</span>));
                     },
                     _ <span class='op'>=&gt;</span> {
                         <span class='kw'>let</span> <span class='ident'>error</span> <span class='op'>=</span> <span class='macro'>format</span><span class='macro'>!</span>(<span class='string'>&quot;expected binop: &#39;{}&#39;&quot;</span>, <span class='ident'>name</span>);
@@ -1182,22 +1309,26 @@
                 },
                 <span class='ident'>Specifier</span>::<span class='ident'>Block</span>(<span class='kw-2'>ref</span> <span class='ident'>name</span>) <span class='op'>=&gt;</span> <span class='macro'>insert</span><span class='macro'>!</span>(<span class='ident'>Block</span>, <span class='ident'>parse_block</span>, <span class='ident'>name</span>),
                 <span class='ident'>Specifier</span>::<span class='ident'>Delim</span>(<span class='kw-2'>ref</span> <span class='ident'>name</span>) <span class='op'>=&gt;</span> {
+                    <span class='kw'>let</span> <span class='ident'>open</span> <span class='op'>=</span> <span class='self'>self</span>.<span class='ident'>parser</span>.<span class='ident'>get_last_span</span>();
                     <span class='kw'>let</span> <span class='ident'>delim</span> <span class='op'>=</span> <span class='macro'>try</span><span class='macro'>!</span>(<span class='self'>self</span>.<span class='ident'>parse_delim</span>());
-                    <span class='ident'>matches</span>.<span class='ident'>insert</span>(<span class='ident'>name</span>.<span class='ident'>clone</span>(), <span class='ident'>Match</span>::<span class='ident'>Delim</span>(<span class='ident'>delim</span>));
+                    <span class='kw'>let</span> <span class='ident'>spanned</span> <span class='op'>=</span> <span class='ident'>codemap</span>::<span class='ident'>spanned</span>(<span class='ident'>open</span>.<span class='ident'>lo</span>, <span class='ident'>delim</span>.<span class='ident'>close_span</span>.<span class='ident'>hi</span>, <span class='ident'>delim</span>);
+                    <span class='ident'>matches</span>.<span class='ident'>insert</span>(<span class='ident'>name</span>.<span class='ident'>clone</span>(), <span class='ident'>Match</span>::<span class='ident'>Delim</span>(<span class='ident'>spanned</span>));
                 },
                 <span class='ident'>Specifier</span>::<span class='ident'>Expr</span>(<span class='kw-2'>ref</span> <span class='ident'>name</span>) <span class='op'>=&gt;</span> <span class='macro'>insert</span><span class='macro'>!</span>(<span class='ident'>Expr</span>, <span class='ident'>parse_expr</span>, <span class='ident'>name</span>),
-                <span class='ident'>Specifier</span>::<span class='ident'>Ident</span>(<span class='kw-2'>ref</span> <span class='ident'>name</span>) <span class='op'>=&gt;</span> <span class='macro'>insert</span><span class='macro'>!</span>(<span class='ident'>Ident</span>, <span class='ident'>parse_ident</span>, <span class='ident'>name</span>),
+                <span class='ident'>Specifier</span>::<span class='ident'>Ident</span>(<span class='kw-2'>ref</span> <span class='ident'>name</span>) <span class='op'>=&gt;</span> <span class='macro'>insert_spanned</span><span class='macro'>!</span>(<span class='ident'>Ident</span>, <span class='ident'>parse_ident</span>, <span class='ident'>name</span>),
                 <span class='ident'>Specifier</span>::<span class='ident'>Item</span>(<span class='kw-2'>ref</span> <span class='ident'>name</span>) <span class='op'>=&gt;</span> <span class='macro'>insert</span><span class='macro'>!</span>(<span class='ident'>Item</span>, <span class='ident'>parse_item</span>, <span class='ident'>name</span>),
-                <span class='ident'>Specifier</span>::<span class='ident'>Lftm</span>(<span class='kw-2'>ref</span> <span class='ident'>name</span>) <span class='op'>=&gt;</span> <span class='macro'>insert</span><span class='macro'>!</span>(<span class='ident'>Lftm</span>, <span class='ident'>parse_lifetime</span>.<span class='ident'>name</span>, <span class='ident'>name</span>),
+                <span class='ident'>Specifier</span>::<span class='ident'>Lftm</span>(<span class='kw-2'>ref</span> <span class='ident'>name</span>) <span class='op'>=&gt;</span> <span class='macro'>insert_spanned</span><span class='macro'>!</span>(<span class='ident'>Lftm</span>, <span class='ident'>parse_lifetime</span>.<span class='ident'>name</span>, <span class='ident'>name</span>),
                 <span class='ident'>Specifier</span>::<span class='ident'>Lit</span>(<span class='kw-2'>ref</span> <span class='ident'>name</span>) <span class='op'>=&gt;</span> <span class='macro'>insert</span><span class='macro'>!</span>(<span class='ident'>Lit</span>, <span class='ident'>parse_lit</span>, <span class='ident'>name</span>),
                 <span class='ident'>Specifier</span>::<span class='ident'>Meta</span>(<span class='kw-2'>ref</span> <span class='ident'>name</span>) <span class='op'>=&gt;</span> <span class='macro'>insert</span><span class='macro'>!</span>(<span class='ident'>Meta</span>, <span class='ident'>parse_meta_item</span>, <span class='ident'>name</span>),
                 <span class='ident'>Specifier</span>::<span class='ident'>Pat</span>(<span class='kw-2'>ref</span> <span class='ident'>name</span>) <span class='op'>=&gt;</span> <span class='macro'>insert</span><span class='macro'>!</span>(<span class='ident'>Pat</span>, <span class='ident'>parse_pat</span>, <span class='ident'>name</span>),
-                <span class='ident'>Specifier</span>::<span class='ident'>Path</span>(<span class='kw-2'>ref</span> <span class='ident'>name</span>) <span class='op'>=&gt;</span> <span class='macro'>insert</span><span class='macro'>!</span>(<span class='ident'>Path</span>, <span class='ident'>parse_path</span>, <span class='ident'>name</span>),
+                <span class='ident'>Specifier</span>::<span class='ident'>Path</span>(<span class='kw-2'>ref</span> <span class='ident'>name</span>) <span class='op'>=&gt;</span> <span class='macro'>insert_spanned</span><span class='macro'>!</span>(<span class='ident'>Path</span>, <span class='ident'>parse_path</span>, <span class='ident'>name</span>),
                 <span class='ident'>Specifier</span>::<span class='ident'>Stmt</span>(<span class='kw-2'>ref</span> <span class='ident'>name</span>) <span class='op'>=&gt;</span> <span class='macro'>insert</span><span class='macro'>!</span>(<span class='ident'>Stmt</span>, <span class='ident'>parse_stmt</span>, <span class='ident'>name</span>),
                 <span class='ident'>Specifier</span>::<span class='ident'>Ty</span>(<span class='kw-2'>ref</span> <span class='ident'>name</span>) <span class='op'>=&gt;</span> <span class='macro'>insert</span><span class='macro'>!</span>(<span class='ident'>Ty</span>, <span class='ident'>parse_ty</span>, <span class='ident'>name</span>),
                 <span class='ident'>Specifier</span>::<span class='ident'>Tok</span>(<span class='kw-2'>ref</span> <span class='ident'>name</span>) <span class='op'>=&gt;</span> {
+                    <span class='kw'>let</span> <span class='ident'>open</span> <span class='op'>=</span> <span class='self'>self</span>.<span class='ident'>parser</span>.<span class='ident'>get_last_span</span>();
                     <span class='kw'>let</span> <span class='ident'>tok</span> <span class='op'>=</span> <span class='macro'>try</span><span class='macro'>!</span>(<span class='self'>self</span>.<span class='ident'>expect_token</span>());
-                    <span class='ident'>matches</span>.<span class='ident'>insert</span>(<span class='ident'>name</span>.<span class='ident'>clone</span>(), <span class='ident'>Match</span>::<span class='ident'>Tok</span>(<span class='ident'>tok</span>));
+                    <span class='kw'>let</span> <span class='ident'>spanned</span> <span class='op'>=</span> <span class='ident'>codemap</span>::<span class='ident'>spanned</span>(<span class='ident'>open</span>.<span class='ident'>lo</span>, <span class='self'>self</span>.<span class='ident'>parser</span>.<span class='ident'>get_last_span</span>().<span class='ident'>hi</span>, <span class='ident'>tok</span>);
+                    <span class='ident'>matches</span>.<span class='ident'>insert</span>(<span class='ident'>name</span>.<span class='ident'>clone</span>(), <span class='ident'>Match</span>::<span class='ident'>Tok</span>(<span class='ident'>spanned</span>));
                 },
                 <span class='ident'>Specifier</span>::<span class='ident'>Tt</span>(<span class='kw-2'>ref</span> <span class='ident'>name</span>) <span class='op'>=&gt;</span> <span class='macro'>insert</span><span class='macro'>!</span>(<span class='ident'>Tt</span>, <span class='ident'>parse_token_tree</span>, <span class='ident'>name</span>),
                 <span class='ident'>Specifier</span>::<span class='ident'>Specific</span>(<span class='kw-2'>ref</span> <span class='ident'>expected</span>) <span class='op'>=&gt;</span> <span class='macro'>try</span><span class='macro'>!</span>(<span class='self'>self</span>.<span class='ident'>expect_specific_token</span>(<span class='ident'>expected</span>)),
@@ -1210,9 +1341,12 @@
                     <span class='macro'>try</span><span class='macro'>!</span>(<span class='self'>self</span>.<span class='ident'>parse_sequence</span>(<span class='ident'>amount</span>, <span class='ident'>separator</span>.<span class='ident'>as_ref</span>(), <span class='ident'>specification</span>, <span class='ident'>matches</span>));
                 },
                 <span class='ident'>Specifier</span>::<span class='ident'>NamedSequence</span>(<span class='kw-2'>ref</span> <span class='ident'>name</span>, <span class='ident'>amount</span>, <span class='kw-2'>ref</span> <span class='ident'>separator</span>, <span class='kw-2'>ref</span> <span class='ident'>specification</span>) <span class='op'>=&gt;</span> {
+                    <span class='kw'>let</span> <span class='ident'>open</span> <span class='op'>=</span> <span class='self'>self</span>.<span class='ident'>parser</span>.<span class='ident'>get_last_span</span>();
                     <span class='kw'>let</span> <span class='ident'>separator</span> <span class='op'>=</span> <span class='ident'>separator</span>.<span class='ident'>as_ref</span>();
                     <span class='kw'>let</span> <span class='ident'>count</span> <span class='op'>=</span> <span class='self'>self</span>.<span class='ident'>parse_sequence</span>(<span class='ident'>amount</span>, <span class='ident'>separator</span>, <span class='ident'>specification</span>, <span class='ident'>matches</span>);
-                    <span class='ident'>matches</span>.<span class='ident'>insert</span>(<span class='ident'>name</span>.<span class='ident'>clone</span>(), <span class='ident'>Match</span>::<span class='ident'>NamedSequence</span>(<span class='macro'>try</span><span class='macro'>!</span>(<span class='ident'>count</span>)));
+                    <span class='kw'>let</span> <span class='ident'>close</span> <span class='op'>=</span> <span class='self'>self</span>.<span class='ident'>parser</span>.<span class='ident'>get_last_span</span>();
+                    <span class='kw'>let</span> <span class='ident'>spanned</span> <span class='op'>=</span> <span class='ident'>codemap</span>::<span class='ident'>spanned</span>(<span class='ident'>open</span>.<span class='ident'>lo</span>, <span class='ident'>close</span>.<span class='ident'>hi</span>, <span class='macro'>try</span><span class='macro'>!</span>(<span class='ident'>count</span>));
+                    <span class='ident'>matches</span>.<span class='ident'>insert</span>(<span class='ident'>name</span>.<span class='ident'>clone</span>(), <span class='ident'>Match</span>::<span class='ident'>NamedSequence</span>(<span class='ident'>spanned</span>));
                 },
             }
         }
@@ -1359,24 +1493,24 @@
             <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>m</span>.<span class='ident'>len</span>(), <span class='number'>16</span>);
 
             <span class='macro'>check</span><span class='macro'>!</span>(<span class='ident'>attribute_to_string</span>, <span class='macro'>get</span><span class='macro'>!</span>(<span class='ident'>m</span>, <span class='ident'>attr</span>, <span class='ident'>as_attr</span>), <span class='string'>&quot;#[cfg(target_os = \&quot;windows\&quot;)]&quot;</span>);
-            <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>m</span>.<span class='ident'>get</span>(<span class='string'>&quot;binop&quot;</span>).<span class='ident'>unwrap</span>().<span class='ident'>as_binop</span>(), <span class='ident'>BinOpToken</span>::<span class='ident'>Plus</span>);
+            <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>m</span>.<span class='ident'>get</span>(<span class='string'>&quot;binop&quot;</span>).<span class='ident'>unwrap</span>().<span class='ident'>as_bin_op</span>().<span class='ident'>node</span>, <span class='ident'>BinOpToken</span>::<span class='ident'>Plus</span>);
             <span class='macro'>check</span><span class='macro'>!</span>(<span class='ident'>block_to_string</span>, <span class='kw-2'>&amp;</span><span class='macro'>get</span><span class='macro'>!</span>(<span class='ident'>m</span>, <span class='ident'>block</span>, <span class='ident'>as_block</span>), <span class='string'>&quot;{ let a = 322; a }&quot;</span>);
 
             <span class='kw'>let</span> <span class='ident'>delim</span> <span class='op'>=</span> <span class='macro'>get</span><span class='macro'>!</span>(<span class='ident'>m</span>, <span class='ident'>delim</span>, <span class='ident'>as_delim</span>);
-            <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>delim</span>.<span class='ident'>delim</span>, <span class='ident'>DelimToken</span>::<span class='ident'>Bracket</span>);
-            <span class='macro'>check</span><span class='macro'>!</span>(<span class='ident'>tts_to_string</span>, <span class='ident'>delim</span>.<span class='ident'>tts</span>, <span class='string'>&quot;1 , 2 , 3&quot;</span>);
+            <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>delim</span>.<span class='ident'>node</span>.<span class='ident'>delim</span>, <span class='ident'>DelimToken</span>::<span class='ident'>Bracket</span>);
+            <span class='macro'>check</span><span class='macro'>!</span>(<span class='ident'>tts_to_string</span>, <span class='ident'>delim</span>.<span class='ident'>node</span>.<span class='ident'>tts</span>, <span class='string'>&quot;1 , 2 , 3&quot;</span>);
 
             <span class='macro'>check</span><span class='macro'>!</span>(<span class='ident'>expr_to_string</span>, <span class='kw-2'>&amp;</span><span class='macro'>get</span><span class='macro'>!</span>(<span class='ident'>m</span>, <span class='ident'>expr</span>, <span class='ident'>as_expr</span>), <span class='string'>&quot;2 + 2&quot;</span>);
-            <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='kw-2'>&amp;</span><span class='op'>*</span><span class='macro'>get</span><span class='macro'>!</span>(<span class='ident'>m</span>, <span class='ident'>ident</span>, <span class='ident'>as_ident</span>).<span class='ident'>name</span>.<span class='ident'>as_str</span>(), <span class='string'>&quot;foo&quot;</span>);
+            <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='kw-2'>&amp;</span><span class='op'>*</span><span class='macro'>get</span><span class='macro'>!</span>(<span class='ident'>m</span>, <span class='ident'>ident</span>, <span class='ident'>as_ident</span>).<span class='ident'>node</span>.<span class='ident'>name</span>.<span class='ident'>as_str</span>(), <span class='string'>&quot;foo&quot;</span>);
             <span class='macro'>check</span><span class='macro'>!</span>(<span class='ident'>item_to_string</span>, <span class='kw-2'>&amp;</span><span class='macro'>get</span><span class='macro'>!</span>(<span class='ident'>m</span>, <span class='ident'>item</span>, <span class='ident'>as_item</span>), <span class='string'>&quot;struct Bar;&quot;</span>);
-            <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='kw-2'>&amp;</span><span class='op'>*</span><span class='macro'>get</span><span class='macro'>!</span>(<span class='ident'>m</span>, <span class='ident'>lftm</span>, <span class='ident'>as_lftm</span>).<span class='ident'>as_str</span>(), <span class='string'>&quot;&#39;baz&quot;</span>);
+            <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='kw-2'>&amp;</span><span class='op'>*</span><span class='macro'>get</span><span class='macro'>!</span>(<span class='ident'>m</span>, <span class='ident'>lftm</span>, <span class='ident'>as_lftm</span>).<span class='ident'>node</span>.<span class='ident'>as_str</span>(), <span class='string'>&quot;&#39;baz&quot;</span>);
             <span class='macro'>check</span><span class='macro'>!</span>(<span class='ident'>lit_to_string</span>, <span class='macro'>get</span><span class='macro'>!</span>(<span class='ident'>m</span>, <span class='ident'>lit</span>, <span class='ident'>as_lit</span>), <span class='string'>&quot;322&quot;</span>);
             <span class='macro'>check</span><span class='macro'>!</span>(<span class='ident'>meta_item_to_string</span>, <span class='kw-2'>&amp;</span><span class='macro'>get</span><span class='macro'>!</span>(<span class='ident'>m</span>, <span class='ident'>meta</span>, <span class='ident'>as_meta</span>), <span class='string'>r#&quot;cfg(target_os = &quot;windows&quot;)&quot;#</span>);
             <span class='macro'>check</span><span class='macro'>!</span>(<span class='ident'>pat_to_string</span>, <span class='kw-2'>&amp;</span><span class='macro'>get</span><span class='macro'>!</span>(<span class='ident'>m</span>, <span class='ident'>pat</span>, <span class='ident'>as_pat</span>), <span class='string'>r#&quot;(foo, &quot;bar&quot;)&quot;#</span>);
-            <span class='macro'>check</span><span class='macro'>!</span>(<span class='ident'>path_to_string</span>, <span class='macro'>get</span><span class='macro'>!</span>(<span class='ident'>m</span>, <span class='ident'>path</span>, <span class='ident'>as_path</span>), <span class='string'>&quot;::std::vec::Vec&lt;i32&gt;&quot;</span>);
+            <span class='macro'>check</span><span class='macro'>!</span>(<span class='ident'>path_to_string</span>, <span class='macro'>get</span><span class='macro'>!</span>(<span class='ident'>m</span>, <span class='ident'>path</span>, <span class='ident'>as_path</span>).<span class='ident'>node</span>, <span class='string'>&quot;::std::vec::Vec&lt;i32&gt;&quot;</span>);
             <span class='macro'>check</span><span class='macro'>!</span>(<span class='ident'>stmt_to_string</span>, <span class='kw-2'>&amp;</span><span class='macro'>get</span><span class='macro'>!</span>(<span class='ident'>m</span>, <span class='ident'>stmt</span>, <span class='ident'>as_stmt</span>), <span class='string'>&quot;let a = 322;&quot;</span>);
             <span class='macro'>check</span><span class='macro'>!</span>(<span class='ident'>ty_to_string</span>, <span class='kw-2'>&amp;</span><span class='macro'>get</span><span class='macro'>!</span>(<span class='ident'>m</span>, <span class='ident'>ty</span>, <span class='ident'>as_ty</span>), <span class='string'>&quot;i32&quot;</span>);
-            <span class='macro'>check</span><span class='macro'>!</span>(<span class='ident'>token_to_string</span>, <span class='macro'>get</span><span class='macro'>!</span>(<span class='ident'>m</span>, <span class='ident'>tok</span>, <span class='ident'>as_tok</span>), <span class='string'>&quot;~&quot;</span>);
+            <span class='macro'>check</span><span class='macro'>!</span>(<span class='ident'>token_to_string</span>, <span class='macro'>get</span><span class='macro'>!</span>(<span class='ident'>m</span>, <span class='ident'>tok</span>, <span class='ident'>as_tok</span>).<span class='ident'>node</span>, <span class='string'>&quot;~&quot;</span>);
             <span class='macro'>check</span><span class='macro'>!</span>(<span class='ident'>tt_to_string</span>, <span class='macro'>get</span><span class='macro'>!</span>(<span class='ident'>m</span>, <span class='ident'>tt</span>, <span class='ident'>as_tt</span>), <span class='string'>&quot;!&quot;</span>);
         });
 
@@ -1389,9 +1523,9 @@
             <span class='kw'>let</span> <span class='ident'>a</span> <span class='op'>=</span> <span class='macro'>get</span><span class='macro'>!</span>(<span class='ident'>m</span>, <span class='ident'>a</span>, <span class='ident'>as_sequence</span>, <span class='ident'>as_ident</span>);
             <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>a</span>.<span class='ident'>len</span>(), <span class='number'>3</span>);
 
-            <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>a</span>[<span class='number'>0</span>].<span class='ident'>name</span>.<span class='ident'>as_str</span>(), <span class='string'>&quot;a&quot;</span>);
-            <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>a</span>[<span class='number'>1</span>].<span class='ident'>name</span>.<span class='ident'>as_str</span>(), <span class='string'>&quot;b&quot;</span>);
-            <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>a</span>[<span class='number'>2</span>].<span class='ident'>name</span>.<span class='ident'>as_str</span>(), <span class='string'>&quot;d&quot;</span>);
+            <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>a</span>[<span class='number'>0</span>].<span class='ident'>node</span>.<span class='ident'>name</span>.<span class='ident'>as_str</span>(), <span class='string'>&quot;a&quot;</span>);
+            <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>a</span>[<span class='number'>1</span>].<span class='ident'>node</span>.<span class='ident'>name</span>.<span class='ident'>as_str</span>(), <span class='string'>&quot;b&quot;</span>);
+            <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>a</span>[<span class='number'>2</span>].<span class='ident'>node</span>.<span class='ident'>name</span>.<span class='ident'>as_str</span>(), <span class='string'>&quot;d&quot;</span>);
 
             <span class='kw'>let</span> <span class='ident'>b</span> <span class='op'>=</span> <span class='macro'>get</span><span class='macro'>!</span>(<span class='ident'>m</span>, <span class='ident'>b</span>, <span class='ident'>as_sequence</span>, <span class='ident'>as_sequence</span>, <span class='ident'>as_ident</span>);
             <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>b</span>.<span class='ident'>len</span>(), <span class='number'>3</span>);
@@ -1399,11 +1533,11 @@
             <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>b</span>[<span class='number'>0</span>].<span class='ident'>len</span>(), <span class='number'>0</span>);
 
             <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>b</span>[<span class='number'>1</span>].<span class='ident'>len</span>(), <span class='number'>1</span>);
-            <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>b</span>[<span class='number'>1</span>][<span class='number'>0</span>].<span class='ident'>name</span>.<span class='ident'>as_str</span>(), <span class='string'>&quot;c&quot;</span>);
+            <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>b</span>[<span class='number'>1</span>][<span class='number'>0</span>].<span class='ident'>node</span>.<span class='ident'>name</span>.<span class='ident'>as_str</span>(), <span class='string'>&quot;c&quot;</span>);
 
             <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>b</span>[<span class='number'>2</span>].<span class='ident'>len</span>(), <span class='number'>2</span>);
-            <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>b</span>[<span class='number'>2</span>][<span class='number'>0</span>].<span class='ident'>name</span>.<span class='ident'>as_str</span>(), <span class='string'>&quot;e&quot;</span>);
-            <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>b</span>[<span class='number'>2</span>][<span class='number'>1</span>].<span class='ident'>name</span>.<span class='ident'>as_str</span>(), <span class='string'>&quot;f&quot;</span>);
+            <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>b</span>[<span class='number'>2</span>][<span class='number'>0</span>].<span class='ident'>node</span>.<span class='ident'>name</span>.<span class='ident'>as_str</span>(), <span class='string'>&quot;e&quot;</span>);
+            <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>b</span>[<span class='number'>2</span>][<span class='number'>1</span>].<span class='ident'>node</span>.<span class='ident'>name</span>.<span class='ident'>as_str</span>(), <span class='string'>&quot;f&quot;</span>);
 
             <span class='kw'>let</span> <span class='ident'>c</span> <span class='op'>=</span> <span class='macro'>get</span><span class='macro'>!</span>(<span class='ident'>m</span>, <span class='ident'>c</span>, <span class='ident'>as_sequence</span>, <span class='ident'>as_ident</span>);
             <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>c</span>.<span class='ident'>len</span>(), <span class='number'>0</span>);
@@ -1411,7 +1545,7 @@
             <span class='kw'>let</span> <span class='ident'>d</span> <span class='op'>=</span> <span class='macro'>get</span><span class='macro'>!</span>(<span class='ident'>m</span>, <span class='ident'>d</span>, <span class='ident'>as_sequence</span>, <span class='ident'>as_ident</span>);
             <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>d</span>.<span class='ident'>len</span>(), <span class='number'>1</span>);
 
-            <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>d</span>[<span class='number'>0</span>].<span class='ident'>name</span>.<span class='ident'>as_str</span>(), <span class='string'>&quot;g&quot;</span>);
+            <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>d</span>[<span class='number'>0</span>].<span class='ident'>node</span>.<span class='ident'>name</span>.<span class='ident'>as_str</span>(), <span class='string'>&quot;g&quot;</span>);
         });
 
         <span class='kw'>let</span> <span class='ident'>arguments</span> <span class='op'>=</span> <span class='string'>&quot;1 a 2 b 3&quot;</span>;
@@ -1429,8 +1563,8 @@
             <span class='kw'>let</span> <span class='ident'>b</span> <span class='op'>=</span> <span class='macro'>get</span><span class='macro'>!</span>(<span class='ident'>m</span>, <span class='ident'>b</span>, <span class='ident'>as_sequence</span>, <span class='ident'>as_ident</span>);
             <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>b</span>.<span class='ident'>len</span>(), <span class='number'>2</span>);
 
-            <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>b</span>[<span class='number'>0</span>].<span class='ident'>name</span>.<span class='ident'>as_str</span>(), <span class='string'>&quot;a&quot;</span>);
-            <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>b</span>[<span class='number'>1</span>].<span class='ident'>name</span>.<span class='ident'>as_str</span>(), <span class='string'>&quot;b&quot;</span>);
+            <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>b</span>[<span class='number'>0</span>].<span class='ident'>node</span>.<span class='ident'>name</span>.<span class='ident'>as_str</span>(), <span class='string'>&quot;a&quot;</span>);
+            <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>b</span>[<span class='number'>1</span>].<span class='ident'>node</span>.<span class='ident'>name</span>.<span class='ident'>as_str</span>(), <span class='string'>&quot;b&quot;</span>);
 
             <span class='macro'>check</span><span class='macro'>!</span>(<span class='ident'>lit_to_string</span>, <span class='macro'>get</span><span class='macro'>!</span>(<span class='ident'>m</span>, <span class='ident'>c</span>, <span class='ident'>as_lit</span>), <span class='string'>&quot;3&quot;</span>);
         });
@@ -1444,13 +1578,13 @@
             <span class='kw'>let</span> <span class='ident'>a</span> <span class='op'>=</span> <span class='macro'>get</span><span class='macro'>!</span>(<span class='ident'>m</span>, <span class='ident'>a</span>, <span class='ident'>as_sequence</span>, <span class='ident'>as_named_sequence</span>);
             <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>a</span>.<span class='ident'>len</span>(), <span class='number'>3</span>);
 
-            <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>a</span>[<span class='number'>0</span>], <span class='number'>0</span>);
-            <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>a</span>[<span class='number'>1</span>], <span class='number'>1</span>);
-            <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>a</span>[<span class='number'>2</span>], <span class='number'>2</span>);
+            <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>a</span>[<span class='number'>0</span>].<span class='ident'>node</span>, <span class='number'>0</span>);
+            <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>a</span>[<span class='number'>1</span>].<span class='ident'>node</span>, <span class='number'>1</span>);
+            <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>a</span>[<span class='number'>2</span>].<span class='ident'>node</span>, <span class='number'>2</span>);
 
-            <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='macro'>get</span><span class='macro'>!</span>(<span class='ident'>m</span>, <span class='ident'>b</span>, <span class='ident'>as_named_sequence</span>), <span class='number'>3</span>);
-            <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='macro'>get</span><span class='macro'>!</span>(<span class='ident'>m</span>, <span class='ident'>c</span>, <span class='ident'>as_named_sequence</span>), <span class='number'>0</span>);
-            <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='macro'>get</span><span class='macro'>!</span>(<span class='ident'>m</span>, <span class='ident'>d</span>, <span class='ident'>as_named_sequence</span>), <span class='number'>1</span>);
+            <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='macro'>get</span><span class='macro'>!</span>(<span class='ident'>m</span>, <span class='ident'>b</span>, <span class='ident'>as_named_sequence</span>).<span class='ident'>node</span>, <span class='number'>3</span>);
+            <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='macro'>get</span><span class='macro'>!</span>(<span class='ident'>m</span>, <span class='ident'>c</span>, <span class='ident'>as_named_sequence_bool</span>).<span class='ident'>node</span>, <span class='boolval'>false</span>);
+            <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='macro'>get</span><span class='macro'>!</span>(<span class='ident'>m</span>, <span class='ident'>d</span>, <span class='ident'>as_named_sequence_bool</span>).<span class='ident'>node</span>, <span class='boolval'>true</span>);
         });
 
         <span class='kw'>let</span> <span class='ident'>arguments</span> <span class='op'>=</span> <span class='string'>&quot;a, b, c,&quot;</span>;
@@ -1462,9 +1596,9 @@
             <span class='kw'>let</span> <span class='ident'>a</span> <span class='op'>=</span> <span class='macro'>get</span><span class='macro'>!</span>(<span class='ident'>m</span>, <span class='ident'>a</span>, <span class='ident'>as_sequence</span>, <span class='ident'>as_ident</span>);
             <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>a</span>.<span class='ident'>len</span>(), <span class='number'>3</span>);
 
-            <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>a</span>[<span class='number'>0</span>].<span class='ident'>name</span>.<span class='ident'>as_str</span>(), <span class='string'>&quot;a&quot;</span>);
-            <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>a</span>[<span class='number'>1</span>].<span class='ident'>name</span>.<span class='ident'>as_str</span>(), <span class='string'>&quot;b&quot;</span>);
-            <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>a</span>[<span class='number'>2</span>].<span class='ident'>name</span>.<span class='ident'>as_str</span>(), <span class='string'>&quot;c&quot;</span>);
+            <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>a</span>[<span class='number'>0</span>].<span class='ident'>node</span>.<span class='ident'>name</span>.<span class='ident'>as_str</span>(), <span class='string'>&quot;a&quot;</span>);
+            <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>a</span>[<span class='number'>1</span>].<span class='ident'>node</span>.<span class='ident'>name</span>.<span class='ident'>as_str</span>(), <span class='string'>&quot;b&quot;</span>);
+            <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>a</span>[<span class='number'>2</span>].<span class='ident'>node</span>.<span class='ident'>name</span>.<span class='ident'>as_str</span>(), <span class='string'>&quot;c&quot;</span>);
         });
     }
 }
