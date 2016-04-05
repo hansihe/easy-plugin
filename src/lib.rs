@@ -262,11 +262,15 @@ fn expand_struct(
     let fields = specification.iter().flat_map(|s| {
         s.to_struct_fields(context, span).into_iter()
     }).collect::<Vec<_>>();
-    if fields.is_empty() {
+    let struct_ = if fields.is_empty() {
         quote_item!(context, struct $name;).unwrap()
     } else {
         context.item_struct(span, name, VariantData::Struct(fields, DUMMY_NODE_ID))
-    }
+    };
+    struct_.map(|mut s| {
+        s.attrs = vec![quote_attr!(context, #[derive(Clone, Debug)])];
+        s
+    })
 }
 
 fn expand_structs(
@@ -370,7 +374,10 @@ fn expand_enum_easy_plugin_(
     let variants = names.iter().map(|n| {
         context.variant(span, *n, vec![quote_ty!(context, $n)])
     }).collect();
-    let enum_ = context.item_enum(span, arguments, EnumDef { variants: variants });
+    let enum_ = context.item_enum(span, arguments, EnumDef { variants: variants }).map(|mut e| {
+        e.attrs = vec![quote_attr!(context, #[derive(Clone, Debug)])];
+        e
+    });
 
     let item = quote_item!(context,
         fn $identifier(

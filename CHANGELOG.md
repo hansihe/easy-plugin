@@ -78,3 +78,8 @@
 ### Changed
 - Wrapped `binop`, `delim`, `ident`, `lftm`, `path`, `tok`, and named sequence values in
   `syntax::codemap::Spanned`
+
+## [0.3.1] - UNRELEASED
+
+### Changed
+- Implemented `Clone` and `Debug` for argument enums and structs
