@@ -562,6 +562,13 @@
 <span id="519">519</span>
 <span id="520">520</span>
 <span id="521">521</span>
+<span id="522">522</span>
+<span id="523">523</span>
+<span id="524">524</span>
+<span id="525">525</span>
+<span id="526">526</span>
+<span id="527">527</span>
+<span id="528">528</span>
 </pre><pre class='rust '>
 <span class='comment'>// Copyright 2016 Kyle Mayes</span>
 <span class='comment'>//</span>
@@ -827,11 +834,15 @@
     <span class='kw'>let</span> <span class='ident'>fields</span> <span class='op'>=</span> <span class='ident'>specification</span>.<span class='ident'>iter</span>().<span class='ident'>flat_map</span>(<span class='op'>|</span><span class='ident'>s</span><span class='op'>|</span> {
         <span class='ident'>s</span>.<span class='ident'>to_struct_fields</span>(<span class='ident'>context</span>, <span class='ident'>span</span>).<span class='ident'>into_iter</span>()
     }).<span class='ident'>collect</span>::<span class='op'>&lt;</span><span class='ident'>Vec</span><span class='op'>&lt;</span>_<span class='op'>&gt;&gt;</span>();
-    <span class='kw'>if</span> <span class='ident'>fields</span>.<span class='ident'>is_empty</span>() {
+    <span class='kw'>let</span> <span class='ident'>struct_</span> <span class='op'>=</span> <span class='kw'>if</span> <span class='ident'>fields</span>.<span class='ident'>is_empty</span>() {
         <span class='macro'>quote_item</span><span class='macro'>!</span>(<span class='ident'>context</span>, <span class='kw'>struct</span> <span class='macro-nonterminal'>$</span><span class='macro-nonterminal'>name</span>;).<span class='ident'>unwrap</span>()
     } <span class='kw'>else</span> {
         <span class='ident'>context</span>.<span class='ident'>item_struct</span>(<span class='ident'>span</span>, <span class='ident'>name</span>, <span class='ident'>VariantData</span>::<span class='ident'>Struct</span>(<span class='ident'>fields</span>, <span class='ident'>DUMMY_NODE_ID</span>))
-    }
+    };
+    <span class='ident'>struct_</span>.<span class='ident'>map</span>(<span class='op'>|</span><span class='kw-2'>mut</span> <span class='ident'>s</span><span class='op'>|</span> {
+        <span class='ident'>s</span>.<span class='ident'>attrs</span> <span class='op'>=</span> <span class='macro'>vec</span><span class='macro'>!</span>[<span class='macro'>quote_attr</span><span class='macro'>!</span>(<span class='ident'>context</span>, <span class='attribute'>#[<span class='ident'>derive</span>(<span class='ident'>Clone</span>, <span class='ident'>Debug</span>)]</span>)];
+        <span class='ident'>s</span>
+    })
 }
 
 <span class='kw'>fn</span> <span class='ident'>expand_structs</span>(
@@ -935,7 +946,10 @@
     <span class='kw'>let</span> <span class='ident'>variants</span> <span class='op'>=</span> <span class='ident'>names</span>.<span class='ident'>iter</span>().<span class='ident'>map</span>(<span class='op'>|</span><span class='ident'>n</span><span class='op'>|</span> {
         <span class='ident'>context</span>.<span class='ident'>variant</span>(<span class='ident'>span</span>, <span class='op'>*</span><span class='ident'>n</span>, <span class='macro'>vec</span><span class='macro'>!</span>[<span class='macro'>quote_ty</span><span class='macro'>!</span>(<span class='ident'>context</span>, <span class='macro-nonterminal'>$</span><span class='macro-nonterminal'>n</span>)])
     }).<span class='ident'>collect</span>();
-    <span class='kw'>let</span> <span class='ident'>enum_</span> <span class='op'>=</span> <span class='ident'>context</span>.<span class='ident'>item_enum</span>(<span class='ident'>span</span>, <span class='ident'>arguments</span>, <span class='ident'>EnumDef</span> { <span class='ident'>variants</span>: <span class='ident'>variants</span> });
+    <span class='kw'>let</span> <span class='ident'>enum_</span> <span class='op'>=</span> <span class='ident'>context</span>.<span class='ident'>item_enum</span>(<span class='ident'>span</span>, <span class='ident'>arguments</span>, <span class='ident'>EnumDef</span> { <span class='ident'>variants</span>: <span class='ident'>variants</span> }).<span class='ident'>map</span>(<span class='op'>|</span><span class='kw-2'>mut</span> <span class='ident'>e</span><span class='op'>|</span> {
+        <span class='ident'>e</span>.<span class='ident'>attrs</span> <span class='op'>=</span> <span class='macro'>vec</span><span class='macro'>!</span>[<span class='macro'>quote_attr</span><span class='macro'>!</span>(<span class='ident'>context</span>, <span class='attribute'>#[<span class='ident'>derive</span>(<span class='ident'>Clone</span>, <span class='ident'>Debug</span>)]</span>)];
+        <span class='ident'>e</span>
+    });
 
     <span class='kw'>let</span> <span class='ident'>item</span> <span class='op'>=</span> <span class='macro'>quote_item</span><span class='macro'>!</span>(<span class='ident'>context</span>,
         <span class='kw'>fn</span> <span class='macro-nonterminal'>$</span><span class='macro-nonterminal'>identifier</span>(
