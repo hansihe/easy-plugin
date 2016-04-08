@@ -83,3 +83,8 @@
 
 ### Changed
 - Implemented `Clone` and `Debug` for argument enums and structs
+
+## [0.3.2] - UNRELEASED
+
+### Fixed
+- Updated for latest nightly

@@ -245,7 +245,7 @@ fn strip_function(
     context: &mut ExtCtxt, function: P<Item>
 ) -> (P<Item>, Ident, Visibility, Vec<Attribute>) {
     let ident = function.ident;
-    let visibility = function.vis;
+    let visibility = function.vis.clone();
     let attributes = function.attrs.clone();
     let function = function.map(|mut f| {
         f.ident = context.ident_of(&format!("{}_", ident.name));

@@ -19,7 +19,7 @@ use syntax::parse::token;
 use syntax::ast::*;
 use syntax::ext::base::{DummyResult, ExtCtxt, MacEager, MacResult};
 use syntax::ext::build::{AstBuilder};
-use syntax::codemap::{self, DUMMY_SP, Span};
+use syntax::codemap::{DUMMY_SP, Span};
 use syntax::parse::token::{BinOpToken, DelimToken, IdentStyle, Token};
 use syntax::ptr::{P};
 
@@ -196,11 +196,15 @@ impl Specifier {
     pub fn to_struct_fields(&self, context: &mut ExtCtxt, span: Span) -> Vec<StructField> {
         macro_rules! field {
             ($name:expr, $($variant:tt)*) => ({
-                let ident = context.ident_of($name);
-                let kind = StructFieldKind::NamedField(ident, Visibility::Inherited);
-                let ty = quote_ty!(context, $($variant)*);
-                let field = StructField_ { kind: kind, id: DUMMY_NODE_ID, ty: ty, attrs: vec![] };
-                vec![codemap::respan(span, field)]
+                let field = StructField {
+                    span: span,
+                    ident: Some(context.ident_of($name)),
+                    vis: Visibility::Public,
+                    id: DUMMY_NODE_ID,
+                    ty: quote_ty!(context, $($variant)*),
+                    attrs: vec![],
+                };
+                vec![field]
             });
         }
 
@@ -233,11 +237,11 @@ impl Specifier {
             Specifier::Sequence(amount, _, ref subspecification) => {
                 let mut subfields = subspecification.to_struct_fields(context, span);
                 for subfield in &mut subfields {
-                    let ty = subfield.node.ty.clone();
+                    let ty = subfield.ty.clone();
                     if amount == Amount::ZeroOrOne {
-                        subfield.node.ty = quote_ty!(context, ::std::option::Option<$ty>);
+                        subfield.ty = quote_ty!(context, ::std::option::Option<$ty>);
                     } else {
-                        subfield.node.ty = quote_ty!(context, ::std::vec::Vec<$ty>);
+                        subfield.ty = quote_ty!(context, ::std::vec::Vec<$ty>);
                     }
                 }
                 subfields
