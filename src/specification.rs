@@ -20,7 +20,7 @@ use syntax::ast::*;
 use syntax::ext::base::{DummyResult, ExtCtxt, MacEager, MacResult};
 use syntax::ext::build::{AstBuilder};
 use syntax::codemap::{DUMMY_SP, Span};
-use syntax::parse::token::{BinOpToken, DelimToken, IdentStyle, Token};
+use syntax::parse::token::{BinOpToken, DelimToken, Token};
 use syntax::ptr::{P};
 
 use super::{PluginResult};
@@ -116,7 +116,7 @@ impl Specifier {
     /// Returns a new `Specifier` corresponding to the given identifier.
     pub fn specific_ident(ident: &str) -> Specifier {
         let ident = Ident::with_empty_ctxt(token::intern(ident));
-        Specifier::Specific(Token::Ident(ident, IdentStyle::Plain))
+        Specifier::Specific(Token::Ident(ident))
     }
 
     /// Returns a new `Specifier` corresponding to the given lifetime.
@@ -343,7 +343,7 @@ fn parse_dollar<'i, I>(
     span: Span, tts: &mut TtsIterator<'i, I>, names: &mut HashSet<String>
 ) -> PluginResult<Specifier> where I: Iterator<Item=&'i TokenTree> {
     match try!(tts.expect()) {
-        &TokenTree::Token(subspan, Token::Ident(ref ident, _)) => {
+        &TokenTree::Token(subspan, Token::Ident(ref ident)) => {
             let name = ident.name.as_str().to_string();
             if names.insert(name.clone()) {
                 parse_named_specifier(tts, name)
@@ -371,7 +371,7 @@ fn parse_named_specifier<'i, I>(
             let (amount, separator) = try!(parse_sequence_suffix(tts));
             Ok(Specifier::NamedSequence(name, amount, separator, subspecification))
         },
-        &TokenTree::Token(subspan, Token::Ident(ref ident, _)) => match &*ident.name.as_str() {
+        &TokenTree::Token(subspan, Token::Ident(ref ident)) => match &*ident.name.as_str() {
             "attr" => Ok(Specifier::Attr(name)),
             "binop" => Ok(Specifier::BinOp(name)),
             "block" => Ok(Specifier::Block(name)),

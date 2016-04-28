@@ -25,8 +25,8 @@ use syntax::ext::base::{ExtCtxt};
 use syntax::ext::build::{AstBuilder};
 use syntax::parse::{ParseSess, PResult};
 use syntax::parse::lexer::{Reader, TokenAndSpan};
-use syntax::parse::parser::{Parser, PathParsingMode};
-use syntax::parse::token::{BinOpToken, DelimToken, IdentStyle, Token};
+use syntax::parse::parser::{Parser, PathStyle};
+use syntax::parse::token::{BinOpToken, DelimToken, Token};
 use syntax::ptr::{P};
 
 use super::{PluginResult};
@@ -116,12 +116,6 @@ impl ToExpr for Ident {
     }
 }
 
-impl ToExpr for IdentStyle {
-    fn to_expr(&self, context: &mut ExtCtxt, span: Span) -> P<Expr> {
-        mk_expr_path(context, span, token!["IdentStyle", &format!("{:?}", self)])
-    }
-}
-
 impl ToExpr for token::Lit {
     fn to_expr(&self, context: &mut ExtCtxt, span: Span) -> P<Expr> {
         macro_rules! expr {
@@ -176,15 +170,15 @@ impl ToExpr for Token {
             Token::BinOp(binop) => expr!("BinOp", binop),
             Token::BinOpEq(binop) => expr!("BinOpEq", binop),
             Token::Literal(lit, suffix) => expr!("Literal", lit, suffix),
-            Token::Ident(ref ident, style) => expr!("Ident", ident, style),
+            Token::Ident(ref ident) => expr!("Ident", ident),
             Token::Lifetime(ref lifetime) => expr!("Lifetime", lifetime),
             Token::DocComment(comment) => expr!("DocComment", comment),
             Token::OpenDelim(_) |
             Token::CloseDelim(_) |
             Token::Shebang(_) |
             Token::Interpolated(_) |
-            Token::MatchNt(_, _, _, _) |
-            Token::SubstNt(_, _) |
+            Token::MatchNt(_, _) |
+            Token::SubstNt(_) |
             Token::SpecialVarNt(_) => unreachable!(),
             _ => mk_expr_path(context, span, token!["Token", &format!("{:?}", self)]),
         }
@@ -264,6 +258,10 @@ impl<'s> Reader for TokenReader<'s> {
         self.index + 1 == self.tokens.len()
     }
 
+    fn try_next_token(&mut self) -> Result<TokenAndSpan, ()> {
+        Ok(self.next_token())
+    }
+
     fn next_token(&mut self) -> TokenAndSpan {
         let next = self.tokens[self.index].clone();
         if !self.is_eof() {
@@ -279,6 +277,8 @@ impl<'s> Reader for TokenReader<'s> {
     fn err(&self, message: &str) {
         self.session.span_diagnostic.span_err(self.peek().sp, message);
     }
+
+    fn emit_fatal_errors(&mut self) { }
 
     fn peek(&self) -> TokenAndSpan {
         self.tokens[self.index].clone()
@@ -372,7 +372,7 @@ impl<'s> TransactionParser<'s> {
     parse!(parse_lit(), "literal", Lit);
     parse!(parse_meta_item(), "meta item", P<MetaItem>);
     parse!(parse_pat(), "pattern", P<Pat>);
-    parse!(parse_path(PathParsingMode::LifetimeAndTypesWithoutColons), "path", Path);
+    parse!(parse_path(PathStyle::Type), "path", Path);
     parse!(OPTION: parse_stmt(), "statement", Stmt);
     parse!(parse_ty(), "type", P<Ty>);
     parse!(parse_token_tree(), "token tree", TokenTree);

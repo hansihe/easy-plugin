@@ -498,7 +498,7 @@ fn expand_easy_plugin_(
         return span.to_error("unexpected end of arguments");
     }
     match arguments[0] {
-        TokenTree::Token(_, Token::Ident(ref ident, _)) => match &*ident.name.as_str() {
+        TokenTree::Token(_, Token::Ident(ref ident)) => match &*ident.name.as_str() {
             "enum" => expand_enum_easy_plugin(context, span, arguments),
             "struct" => expand_struct_easy_plugin(context, span, arguments),
             _ => arguments[0].to_error("expected `enum` or `struct`"),
