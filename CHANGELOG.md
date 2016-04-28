@@ -89,7 +89,7 @@
 ### Fixed
 - Updated for latest nightly
 
-## [0.3.3] - UNRELEASED
+## [0.3.3] - 2016-4-28
 
 ### Fixed
 - Updated for latest nightly
