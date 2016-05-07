@@ -93,3 +93,8 @@
 
 ### Fixed
 - Updated for latest nightly
+
+## [0.3.4] - UNRELEASED
+
+### Fixed
+- Updated for latest nightly
