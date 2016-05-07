@@ -19,7 +19,7 @@ use syntax::ext::tt::transcribe;
 use syntax::parse::token;
 use syntax::ast::*;
 use syntax::codemap::{DUMMY_SP, MultiSpan, Span};
-use syntax::errors::{FatalError, Level, RenderSpan};
+use syntax::errors::{FatalError, Level, DiagnosticBuilder};
 use syntax::errors::emitter::{Emitter};
 use syntax::ext::base::{ExtCtxt};
 use syntax::ext::build::{AstBuilder};
@@ -225,14 +225,14 @@ thread_local! { static ERROR: RefCell<Option<(Span, String)>> = RefCell::default
 pub struct SaveEmitter;
 
 impl Emitter for SaveEmitter {
-    fn emit(&mut self, cs: Option<&MultiSpan>, message: &str, _: Option<&str>, level: Level) {
+    fn emit(&mut self, cs: &MultiSpan, message: &str, _: Option<&str>, level: Level) {
         if level == Level::Fatal {
-            let span = cs.map_or(DUMMY_SP, |ms| ms.to_span_bounds());
+            let span = cs.primary_span().unwrap_or(DUMMY_SP);
             ERROR.with(|e| *e.borrow_mut() = Some((span, message.into())));
         }
     }
 
-    fn custom_emit(&mut self, _: &RenderSpan, _: &str, _: Level) { }
+    fn emit_struct(&mut self, _db: &DiagnosticBuilder) { }
 }
 
 // TokenReader ___________________________________
