@@ -94,7 +94,7 @@
 ### Fixed
 - Updated for latest nightly
 
-## [0.3.4] - UNRELEASED
+## [0.3.4] - 2016-5-7
 
 ### Fixed
 - Updated for latest nightly
