@@ -309,7 +309,7 @@ impl Specification {
 
     /// Returns `Field`s that would initialize values matched by this specification.
     pub fn to_fields(&self, context: &mut ExtCtxt, span: Span, stack: &[Amount]) -> Vec<Field> {
-        self.iter().flat_map(|s| s.to_fields(context, span, &stack).into_iter()).collect()
+        self.iter().flat_map(|s| s.to_fields(context, span, stack).into_iter()).collect()
     }
 
     /// Returns `StructField`s that could contain values matched by this specification.

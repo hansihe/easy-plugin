@@ -358,7 +358,7 @@ impl<'s> ArgumentParser<'s> {
     //- Constructors -----------------------------
 
     fn new(session: &'s ParseSess, tts: &'s [TokenTree], span: Span) -> ArgumentParser<'s> {
-        ArgumentParser { span: span, parser: TransactionParser::new(&session, tts.into()) }
+        ArgumentParser { span: span, parser: TransactionParser::new(session, tts.into()) }
     }
 
     //- Mutators ---------------------------------
@@ -405,7 +405,7 @@ impl<'s> ArgumentParser<'s> {
             }
 
             let mut submatches = HashMap::new();
-            match self.parse_arguments(&specification, &mut submatches) {
+            match self.parse_arguments(specification, &mut submatches) {
                 Ok(()) => { },
                 Err(error) => if count == 0 && required {
                     return Err(error);
