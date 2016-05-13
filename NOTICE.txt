@@ -1,2 +1,0 @@
-easy-plugin
-Copyright 2016 Kyle Mayes
