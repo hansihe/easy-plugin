@@ -103,3 +103,6 @@
 
 ### Added
 - Added `convert` module
+
+### Changed
+- Changed `path` storage type to `Path`

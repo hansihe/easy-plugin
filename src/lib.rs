@@ -128,24 +128,24 @@
 //! writing for macros. There are two primary differences: no restrictions on ordering and
 //! additional types of named specifiers.
 //!
-//! | Name    | Description                           |  Storage Type            |
-//! |:--------|:--------------------------------------|:-------------------------|
-//! | `attr`  | An attribute                          | `Attribute`              |
-//! | `binop` | A binary operator                     | `Spanned<BinOpToken>`    |
-//! | `block` | A brace-delimited statement sequence  | `P<Block>`               |
-//! | `delim` | A delimited token tree sequence       | `Spanned<Rc<Delimited>>` |
-//! | `expr`  | An expression                         | `P<Expr>`                |
-//! | `ident` | An identifier                         | `Spanned<Ident>`         |
-//! | `item`  | An item                               | `P<Item>`                |
-//! | `lftm`  | A lifetime                            | `Spanned<Name>`          |
-//! | `lit`   | A literal                             | `Lit`                    |
-//! | `meta`  | A "meta" item, as found in attributes | `P<MetaItem>`            |
-//! | `pat`   | A pattern                             | `P<Pat>`                 |
-//! | `path`  | A qualified name                      | `Spanned<Path>`          |
-//! | `stmt`  | A single statement                    | `P<Stmt>`                |
-//! | `ty`    | A type                                | `P<Ty>`                  |
-//! | `tok`   | A single token                        | `Spanned<Token>`         |
-//! | `tt`    | A single token tree                   | `TokenTree`              |
+//! | Name    | Description                            |  Storage Type            |
+//! |:--------|:---------------------------------------|:-------------------------|
+//! | `attr`  | An attribute.                          | `Attribute`              |
+//! | `binop` | A binary operator.                     | `Spanned<BinOpToken>`    |
+//! | `block` | A brace-delimited statement sequence.  | `P<Block>`               |
+//! | `delim` | A delimited token tree sequence.       | `Spanned<Rc<Delimited>>` |
+//! | `expr`  | An expression.                         | `P<Expr>`                |
+//! | `ident` | An identifier.                         | `Spanned<Ident>`         |
+//! | `item`  | An item.                               | `P<Item>`                |
+//! | `lftm`  | A lifetime.                            | `Spanned<Name>`          |
+//! | `lit`   | A literal.                             | `Lit`                    |
+//! | `meta`  | A "meta" item, as found in attributes. | `P<MetaItem>`            |
+//! | `pat`   | A pattern.                             | `P<Pat>`                 |
+//! | `path`  | A qualified name.                      | `Path`                   |
+//! | `stmt`  | A single statement.                    | `P<Stmt>`                |
+//! | `ty`    | A type.                                | `P<Ty>`                  |
+//! | `tok`   | A single token.                        | `Spanned<Token>`         |
+//! | `tt`    | A single token tree.                   | `TokenTree`              |
 //!
 //! ## Sequences
 //!

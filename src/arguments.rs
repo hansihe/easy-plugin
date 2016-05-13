@@ -75,7 +75,7 @@ pub enum Match {
     /// A pattern (e.g., `Some(t)`, `(17, 'a')`, `_`).
     Pat(P<Pat>),
     /// A qualified name (e.g., `T::SpecialA`).
-    Path(Spanned<Path>),
+    Path(Path),
     /// A single statement (e.g., `let x = 3`).
     Stmt(Stmt),
     /// A type (e.g., `i32`, `Vec<(char, String)>`, `&T`).
@@ -230,7 +230,7 @@ impl Match {
     /// # Panics
     ///
     /// * this match is not a path
-    pub fn as_path(&self) -> Spanned<Path> {
+    pub fn as_path(&self) -> Path {
         match *self {
             Match::Path(ref path) => path.clone(),
             _ => panic!("this match is not a path"),
@@ -333,7 +333,7 @@ from!(as_lftm, Spanned<Name>);
 from!(as_lit, Lit);
 from!(as_meta, P<MetaItem>);
 from!(as_pat, P<Pat>);
-from!(as_path, Spanned<Path>);
+from!(as_path, Path);
 from!(as_stmt, Stmt);
 from!(as_ty, P<Ty>);
 from!(as_tok, Spanned<Token>);
@@ -497,7 +497,7 @@ impl<'s> ArgumentParser<'s> {
                 Specifier::Lit(ref name) => insert!(Lit, parse_lit, name),
                 Specifier::Meta(ref name) => insert!(Meta, parse_meta_item, name),
                 Specifier::Pat(ref name) => insert!(Pat, parse_pat, name),
-                Specifier::Path(ref name) => insert_spanned!(Path, parse_path, name),
+                Specifier::Path(ref name) => insert!(Path, parse_path, name),
                 Specifier::Stmt(ref name) => insert!(Stmt, parse_stmt, name),
                 Specifier::Ty(ref name) => insert!(Ty, parse_ty, name),
                 Specifier::Tok(ref name) => {
@@ -683,7 +683,7 @@ mod tests {
             check!(lit_to_string, get!(m, lit, as_lit), "322");
             check!(meta_item_to_string, &get!(m, meta, as_meta), r#"cfg(target_os = "windows")"#);
             check!(pat_to_string, &get!(m, pat, as_pat), r#"(foo, "bar")"#);
-            check!(path_to_string, get!(m, path, as_path).node, "::std::vec::Vec<i32>");
+            check!(path_to_string, get!(m, path, as_path), "::std::vec::Vec<i32>");
             check!(stmt_to_string, &get!(m, stmt, as_stmt), "let a = 322;");
             check!(ty_to_string, &get!(m, ty, as_ty), "i32");
             check!(token_to_string, get!(m, tok, as_tok).node, "~");

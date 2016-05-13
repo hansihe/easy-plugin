@@ -227,7 +227,7 @@ impl Specifier {
             Specifier::Lit(ref name) => field!(name, ::syntax::ast::Lit),
             Specifier::Meta(ref name) => field!(name, ::syntax::ptr::P<::syntax::ast::MetaItem>),
             Specifier::Pat(ref name) => field!(name, ::syntax::ptr::P<::syntax::ast::Pat>),
-            Specifier::Path(ref name) => field_spanned!(name, ::syntax::ast::Path),
+            Specifier::Path(ref name) => field!(name, ::syntax::ast::Path),
             Specifier::Stmt(ref name) => field!(name, ::syntax::ast::Stmt),
             Specifier::Ty(ref name) => field!(name, ::syntax::ptr::P<::syntax::ast::Ty>),
             Specifier::Tok(ref name) => field_spanned!(name, ::syntax::parse::token::Token),

@@ -157,7 +157,7 @@ easy_plugin! {
         check!(lit_to_string, arguments.lit, "322");
         check!(meta_item_to_string, arguments.meta, r#"cfg(target_os = "windows")"#);
         check!(pat_to_string, arguments.pat, r#"(foo, "bar")"#);
-        check!(path_to_string, arguments.path.node, "::std::vec::Vec<i32>");
+        check!(path_to_string, arguments.path, "::std::vec::Vec<i32>");
         check!(stmt_to_string, arguments.stmt, "let a = 322;");
         check!(ty_to_string, arguments.ty, "i32");
         check!(token_to_string, arguments.tok.node, "~");
