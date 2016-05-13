@@ -1,3 +1,5 @@
+//! Plugins used internally by `easy-plugin`.
+
 #![feature(plugin_registrar, quote, rustc_private)]
 
 extern crate rustc_plugin;
@@ -70,6 +72,7 @@ fn to_snake_case(ident: Ident) -> String {
     snake
 }
 
+#[doc(hidden)]
 pub fn expand_convert(
     context: &mut ExtCtxt, span: Span, arguments: &[TokenTree]
 ) -> Box<MacResult + 'static> {
@@ -149,6 +152,7 @@ pub fn expand_convert(
     MacEager::items(SmallVector::many(items))
 }
 
+#[doc(hidden)]
 #[plugin_registrar]
 pub fn plugin_registrar(registry: &mut Registry) {
     registry.register_macro("convert", expand_convert);
