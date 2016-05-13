@@ -34,10 +34,20 @@ use super::utility::{SaveEmitter, ToError, TransactionParser};
 // from! _________________________________________
 
 macro_rules! from {
-    ($method:ident, $ty:ty) => {
+    ($name:ident, $variant:ident, $ty:ty) => {
+        impl Match {
+            #[allow(missing_docs)]
+            pub fn $name(&self) -> $ty {
+                match *self {
+                    Match::$variant(ref value) => value.clone(),
+                    _ => panic!("expected `Match::{}`", stringify!($variant)),
+                }
+            }
+        }
+
         impl<'a> From<&'a Match> for $ty {
             fn from(match_: &'a Match) -> $ty {
-                match_.$method()
+                match_.$name()
             }
         }
     };
@@ -93,254 +103,52 @@ pub enum Match {
 impl Match {
     //- Accessors --------------------------------
 
-    /// Returns this attribute match.
-    ///
-    /// # Panics
-    ///
-    /// * this match is not an attribute
-    pub fn as_attr(&self) -> Attribute {
-        match *self {
-            Match::Attr(ref attr) => attr.clone(),
-            _ => panic!("this match is not an attribute"),
-        }
-    }
-
-    /// Returns this binary operator match.
-    ///
-    /// # Panics
-    ///
-    /// * this match is not a binary operator
-    pub fn as_bin_op(&self) -> Spanned<BinOpToken> {
-        match *self {
-            Match::BinOp(binop) => binop,
-            _ => panic!("this match is not a binary operator"),
-        }
-    }
-
-    /// Returns this block match.
-    ///
-    /// # Panics
-    ///
-    /// * this match is not a block
-    pub fn as_block(&self) -> P<Block> {
-        match *self {
-            Match::Block(ref block) => block.clone(),
-            _ => panic!("this match is not a block"),
-        }
-    }
-
-    /// Returns this delimited match.
-    ///
-    /// # Panics
-    ///
-    /// * this match is not a delimited sequence of token trees
-    pub fn as_delim(&self) -> Spanned<Rc<Delimited>> {
-        match *self {
-            Match::Delim(ref delimited) => delimited.clone(),
-            _ => panic!("this match is not a delimited sequence of token trees"),
-        }
-    }
-
-    /// Returns this expression match.
-    ///
-    /// # Panics
-    ///
-    /// * this match is not an expression
-    pub fn as_expr(&self) -> P<Expr> {
-        match *self {
-            Match::Expr(ref expr) => expr.clone(),
-            _ => panic!("this match is not an expression"),
-        }
-    }
-
-    /// Returns this identifier match.
-    ///
-    /// # Panics
-    ///
-    /// * this match is not an identifier
-    pub fn as_ident(&self) -> Spanned<Ident> {
-        match *self {
-            Match::Ident(ident) => ident,
-            _ => panic!("this match is not an identifier"),
-        }
-    }
-
-    /// Returns this item match.
-    ///
-    /// # Panics
-    ///
-    /// * this match is not an item
-    pub fn as_item(&self) -> P<Item> {
-        match *self {
-            Match::Item(ref item) => item.clone(),
-            _ => panic!("this match is not an item"),
-        }
-    }
-
-    /// Returns this lifetime match.
-    ///
-    /// # Panics
-    ///
-    /// * this match is not a lifetime
-    pub fn as_lftm(&self) -> Spanned<Name> {
-        match *self {
-            Match::Lftm(lftm) => lftm,
-            _ => panic!("this match is not a lifetime"),
-        }
-    }
-
-    /// Returns this literal match.
-    ///
-    /// # Panics
-    ///
-    /// * this match is not a literal
-    pub fn as_lit(&self) -> Lit {
-        match *self {
-            Match::Lit(ref lit) => lit.clone(),
-            _ => panic!("this match is not a literal"),
-        }
-    }
-
-    /// Returns this "meta" item match.
-    ///
-    /// # Panics
-    ///
-    /// * this match is not a "meta" item
-    pub fn as_meta(&self) -> P<MetaItem> {
-        match *self {
-            Match::Meta(ref meta) => meta.clone(),
-            _ => panic!("this match is not a \"meta\" item"),
-        }
-    }
-
-    /// Returns this pattern match.
-    ///
-    /// # Panics
-    ///
-    /// * this match is not a pattern
-    pub fn as_pat(&self) -> P<Pat> {
-        match *self {
-            Match::Pat(ref pat) => pat.clone(),
-            _ => panic!("this match is not a pattern"),
-        }
-    }
-
-    /// Returns this path match.
-    ///
-    /// # Panics
-    ///
-    /// * this match is not a path
-    pub fn as_path(&self) -> Path {
-        match *self {
-            Match::Path(ref path) => path.clone(),
-            _ => panic!("this match is not a path"),
-        }
-    }
-
-    /// Returns this statement match.
-    ///
-    /// # Panics
-    ///
-    /// * this match is not a statement
-    pub fn as_stmt(&self) -> Stmt {
-        match *self {
-            Match::Stmt(ref stmt) => stmt.clone(),
-            _ => panic!("this match is not a statement"),
-        }
-    }
-
-    /// Returns this type match.
-    ///
-    /// # Panics
-    ///
-    /// * this match is not a type
-    pub fn as_ty(&self) -> P<Ty> {
-        match *self {
-            Match::Ty(ref ty) => ty.clone(),
-            _ => panic!("this match is not a type"),
-        }
-    }
-
-    /// Returns this token match.
-    ///
-    /// # Panics
-    ///
-    /// * this match is not a token
-    pub fn as_tok(&self) -> Spanned<Token> {
-        match *self {
-            Match::Tok(ref tok) => tok.clone(),
-            _ => panic!("this match is not a token"),
-        }
-    }
-
-    /// Returns this token tree match.
-    ///
-    /// # Panics
-    ///
-    /// * this match is not a token tree
-    pub fn as_tt(&self) -> TokenTree {
-        match *self {
-            Match::Tt(ref tt) => tt.clone(),
-            _ => panic!("this match is not a token tree"),
-        }
-    }
-
-    /// Returns this collection of sequence matches or subsequences.
-    ///
-    /// # Panics
-    ///
-    /// * this match is not a collection of sequence matches or subsequences
-    pub fn as_sequence(&self) -> Vec<Match> {
-        match *self {
-            Match::Sequence(ref sequence) => sequence.clone(),
-            _ => panic!("this match is not a collection of sequence matches or subsequences"),
-        }
-    }
-
-    /// Returns this count of named sequence repetitions.
-    ///
-    /// # Panics
-    ///
-    /// * this match is not a count of named sequence reptitions
+    #[allow(missing_docs)]
     pub fn as_named_sequence(&self) -> Spanned<usize> {
         match *self {
             Match::NamedSequence(count) => count,
-            _ => panic!("this match is not a count of named sequence reptitions"),
+            _ => unreachable!(),
         }
     }
 
-    /// Returns whether this count of named sequence repetitions is non-zero.
-    ///
-    /// # Panics
-    ///
-    /// * this match is not a count of named sequence reptitions
+    #[allow(missing_docs)]
     pub fn as_named_sequence_bool(&self) -> Spanned<bool> {
         match *self {
             Match::NamedSequence(count) => codemap::respan(count.span, count.node != 0),
-            _ => panic!("this match is not a count of named sequence reptitions"),
+            _ => unreachable!(),
         }
     }
 }
 
-from!(as_attr, Attribute);
-from!(as_bin_op, Spanned<BinOpToken>);
-from!(as_block, P<Block>);
-from!(as_delim, Spanned<Rc<Delimited>>);
-from!(as_expr, P<Expr>);
-from!(as_ident, Spanned<Ident>);
-from!(as_item, P<Item>);
-from!(as_lftm, Spanned<Name>);
-from!(as_lit, Lit);
-from!(as_meta, P<MetaItem>);
-from!(as_pat, P<Pat>);
-from!(as_path, Path);
-from!(as_stmt, Stmt);
-from!(as_ty, P<Ty>);
-from!(as_tok, Spanned<Token>);
-from!(as_tt, TokenTree);
-from!(as_sequence, Vec<Match>);
-from!(as_named_sequence, Spanned<usize>);
-from!(as_named_sequence_bool, Spanned<bool>);
+from!(as_attr, Attr, Attribute);
+from!(as_bin_op, BinOp, Spanned<BinOpToken>);
+from!(as_block, Block, P<Block>);
+from!(as_delim, Delim, Spanned<Rc<Delimited>>);
+from!(as_expr, Expr, P<Expr>);
+from!(as_ident, Ident, Spanned<Ident>);
+from!(as_item, Item, P<Item>);
+from!(as_lftm, Lftm, Spanned<Name>);
+from!(as_lit, Lit, Lit);
+from!(as_meta, Meta, P<MetaItem>);
+from!(as_pat, Pat, P<Pat>);
+from!(as_path, Path, Path);
+from!(as_stmt, Stmt, Stmt);
+from!(as_ty, Ty, P<Ty>);
+from!(as_tok, Tok, Spanned<Token>);
+from!(as_tt, Tt, TokenTree);
+from!(as_sequence, Sequence, Vec<Match>);
+
+impl<'a> From<&'a Match> for Spanned<usize> {
+    fn from(match_: &'a Match) -> Spanned<usize> {
+        match_.as_named_sequence()
+    }
+}
+
+impl<'a> From<&'a Match> for Spanned<bool> {
+    fn from(match_: &'a Match) -> Spanned<bool> {
+        match_.as_named_sequence_bool()
+    }
+}
 
 //================================================
 // Structs
@@ -348,7 +156,6 @@ from!(as_named_sequence_bool, Spanned<bool>);
 
 // ArgumentParser ________________________________
 
-/// Parses arguments.
 struct ArgumentParser<'s> {
     parser: TransactionParser<'s>,
     span: Span,
@@ -358,13 +165,13 @@ impl<'s> ArgumentParser<'s> {
     //- Constructors -----------------------------
 
     fn new(session: &'s ParseSess, tts: &'s [TokenTree], span: Span) -> ArgumentParser<'s> {
-        ArgumentParser { span: span, parser: TransactionParser::new(session, tts.into()) }
+        ArgumentParser { parser: TransactionParser::new(session, tts.into()), span: span }
     }
 
     //- Mutators ---------------------------------
 
     fn expect_token(&mut self) -> PluginResult<Token> {
-        match self.parser.apply(|p| p.bump_and_get()) {
+        match self.parser.bump_and_get() {
             Token::Eof => self.span.to_error("unexpected end of arguments"),
             token => Ok(token),
         }
@@ -399,7 +206,7 @@ impl<'s> ArgumentParser<'s> {
         loop {
             self.parser.start();
             if let Some(ref separator) = separator {
-                if count != 0 && !self.parser.apply(|p| p.eat(separator)) {
+                if count != 0 && !self.parser.eat(separator) {
                     return Ok(count);
                 }
             }
@@ -536,7 +343,9 @@ impl<'s> ArgumentParser<'s> {
         if self.parser.is_empty() {
             Ok(matches)
         } else {
-            self.span.to_error("too many arguments")
+            let start = self.parser.get_span();
+            let span = Span { lo: start.lo, hi: self.span.hi, expn_id: self.span.expn_id };
+            span.to_error("too many arguments")
         }
     }
 }

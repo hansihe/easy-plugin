@@ -113,13 +113,13 @@ pub enum Specifier {
 impl Specifier {
     //- Constructors -----------------------------
 
-    /// Returns a new `Specifier` corresponding to the given identifier.
+    /// Returns a new `Specifier` for the given identifier.
     pub fn specific_ident(ident: &str) -> Specifier {
         let ident = Ident::with_empty_ctxt(token::intern(ident));
         Specifier::Specific(Token::Ident(ident))
     }
 
-    /// Returns a new `Specifier` corresponding to the given lifetime.
+    /// Returns a new `Specifier` for the given lifetime.
     pub fn specific_lftm(lftm: &str) -> Specifier {
         let lftm = Ident::with_empty_ctxt(token::intern(lftm));
         Specifier::Specific(Token::Lifetime(lftm))

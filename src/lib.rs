@@ -316,7 +316,7 @@ fn expand_parses(
     specifications.iter().map(|&(n, ref s)| expand_parse(context, span, n, s, true)).collect()
 }
 
-fn expand_enum_easy_plugin_(
+fn expand_easy_plugin_enum_(
     context: &mut ExtCtxt,
     span: Span,
     arguments: Ident,
@@ -402,7 +402,7 @@ fn expand_enum_easy_plugin_(
     Ok(MacEager::items(SmallVector::one(item)))
 }
 
-fn expand_enum_easy_plugin(
+fn expand_easy_plugin_enum(
     context: &mut ExtCtxt, span: Span, arguments: &[TokenTree]
 ) -> PluginResult<Box<MacResult + 'static>> {
     let specification = &[
@@ -430,10 +430,10 @@ fn expand_enum_easy_plugin(
         s.as_sequence().into_iter().map(|s| s.as_tt()).collect::<Vec<_>>()
     }).collect();
     let function = matches.get("function").unwrap().as_item();
-    expand_enum_easy_plugin_(context, span, arguments, names, ttss, function)
+    expand_easy_plugin_enum_(context, span, arguments, names, ttss, function)
 }
 
-fn expand_struct_easy_plugin_(
+fn expand_easy_plugin_struct_(
     context: &mut ExtCtxt, span: Span, arguments: Ident, tts: Vec<TokenTree>, function: P<Item>
 ) -> PluginResult<Box<MacResult + 'static>> {
     let specification = try!(parse_specification(&tts));
@@ -472,7 +472,7 @@ fn expand_struct_easy_plugin_(
     Ok(MacEager::items(SmallVector::one(item)))
 }
 
-fn expand_struct_easy_plugin(
+fn expand_easy_plugin_struct(
     context: &mut ExtCtxt, span: Span, arguments: &[TokenTree]
 ) -> PluginResult<Box<MacResult + 'static>> {
     let specification = &[
@@ -491,7 +491,7 @@ fn expand_struct_easy_plugin(
         s.as_tt()
     }).collect::<Vec<_>>();
     let function = matches.get("function").unwrap().as_item();
-    expand_struct_easy_plugin_(context, span, arguments, tts, function)
+    expand_easy_plugin_struct_(context, span, arguments, tts, function)
 }
 
 fn expand_easy_plugin_(
@@ -502,8 +502,8 @@ fn expand_easy_plugin_(
     }
     match arguments[0] {
         TokenTree::Token(_, Token::Ident(ref ident)) => match &*ident.name.as_str() {
-            "enum" => expand_enum_easy_plugin(context, span, arguments),
-            "struct" => expand_struct_easy_plugin(context, span, arguments),
+            "enum" => expand_easy_plugin_enum(context, span, arguments),
+            "struct" => expand_easy_plugin_struct(context, span, arguments),
             _ => arguments[0].to_error("expected `enum` or `struct`"),
         },
         _ => arguments[0].to_error("expected `enum` or `struct`"),
