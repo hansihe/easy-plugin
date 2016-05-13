@@ -202,11 +202,12 @@
 //! Because named sequences are counted, the storage types are simply `usize` for `*` and `+` named
 //! sequences and `bool` for `?`named sequences.
 
-#![feature(plugin_registrar, quote, rustc_private)]
+#![feature(plugin, plugin_registrar, quote, rustc_private)]
+
+#![plugin(easy_plugin_plugins)]
 
 #![warn(missing_copy_implementations, missing_debug_implementations, missing_docs)]
 
-#![cfg_attr(feature="clippy", feature(plugin))]
 #![cfg_attr(feature="clippy", plugin(clippy))]
 #![cfg_attr(feature="clippy", warn(clippy))]
 #![cfg_attr(feature="clippy", allow(similar_names, used_underscore_binding))]
@@ -223,6 +224,8 @@ use syntax::ext::build::{AstBuilder};
 use syntax::parse::token::{DelimToken, Token};
 use syntax::ptr::{P};
 use syntax::util::small_vector::{SmallVector};
+
+pub mod convert;
 
 mod utility;
 use utility::{ToError, ToExpr};

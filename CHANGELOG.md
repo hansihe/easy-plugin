@@ -98,3 +98,8 @@
 
 ### Fixed
 - Updated for latest nightly
+
+## [0.4.0] - UNRELEASED
+
+### Added
+- Added `convert` module

@@ -17,7 +17,11 @@ repository = "https://github.com/KyleMayes/easy-plugin"
 
 plugin = true
 
+[dependencies]
+
+easy-plugin-plugins = { path = "plugins" }
+
 [dependencies.clippy]
 
-version = "0.0.66"
+version = "0.0.67"
 optional = true
