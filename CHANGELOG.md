@@ -106,3 +106,6 @@
 
 ### Changed
 - Changed `path` storage type to `Path`
+
+### Fixed
+- Improved generated spans

@@ -270,7 +270,7 @@ impl<'s> ArgumentParser<'s> {
 
         macro_rules! insert_spanned {
             ($variant:ident, $parse:ident$(.$field:ident)*, $name:expr) => ({
-                let open = self.parser.get_last_span();
+                let open = self.parser.get_span();
                 let match_ = try!(self.parser.$parse($name))$(.$field)*;
                 let spanned = codemap::spanned(open.lo, self.parser.get_last_span().hi, match_);
                 matches.insert($name.clone(), Match::$variant(spanned));
@@ -292,7 +292,7 @@ impl<'s> ArgumentParser<'s> {
                 },
                 Specifier::Block(ref name) => insert!(Block, parse_block, name),
                 Specifier::Delim(ref name) => {
-                    let open = self.parser.get_last_span();
+                    let open = self.parser.get_span();
                     let delim = try!(self.parse_delim());
                     let spanned = codemap::spanned(open.lo, delim.close_span.hi, delim);
                     matches.insert(name.clone(), Match::Delim(spanned));
@@ -302,15 +302,20 @@ impl<'s> ArgumentParser<'s> {
                 Specifier::Item(ref name) => insert!(Item, parse_item, name),
                 Specifier::Lftm(ref name) => insert_spanned!(Lftm, parse_lifetime.name, name),
                 Specifier::Lit(ref name) => insert!(Lit, parse_lit, name),
-                Specifier::Meta(ref name) => insert!(Meta, parse_meta_item, name),
+                Specifier::Meta(ref name) => {
+                    let meta = try!(self.parser.parse_meta_item(name)).map(|mut m| {
+                        m.span.hi = self.parser.get_last_span().hi;
+                        m
+                    });
+                    matches.insert(name.clone(), Match::Meta(meta));
+                },
                 Specifier::Pat(ref name) => insert!(Pat, parse_pat, name),
                 Specifier::Path(ref name) => insert!(Path, parse_path, name),
                 Specifier::Stmt(ref name) => insert!(Stmt, parse_stmt, name),
                 Specifier::Ty(ref name) => insert!(Ty, parse_ty, name),
                 Specifier::Tok(ref name) => {
-                    let open = self.parser.get_last_span();
                     let tok = try!(self.expect_token());
-                    let spanned = codemap::spanned(open.lo, self.parser.get_last_span().hi, tok);
+                    let spanned = codemap::respan(self.parser.get_last_span(), tok);
                     matches.insert(name.clone(), Match::Tok(spanned));
                 },
                 Specifier::Tt(ref name) => insert!(Tt, parse_token_tree, name),

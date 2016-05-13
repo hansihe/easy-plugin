@@ -139,6 +139,32 @@ easy_plugin! {
     pub fn expand_struct_all(
         context: &mut ExtCtxt, span: Span, arguments: Arguments
     ) -> PluginResult<Box<MacResult>> {
+        macro_rules! assert_span_eq {
+            ($span:expr, $sl:expr, $sc:expr, $el:expr, $ec:expr) => ({
+                let start = context.codemap().lookup_char_pos($span.lo);
+                assert_eq!((start.line, start.col.0), ($sl, $sc));
+                let end = context.codemap().lookup_char_pos($span.hi);
+                assert_eq!((end.line, end.col.0), ($el, $ec));
+            });
+        }
+
+        assert_span_eq!(arguments.attr.span, 2, 8, 2, 35);
+        assert_span_eq!(arguments.binop.span, 3, 8, 3, 9);
+        assert_span_eq!(arguments.block.span, 4, 8, 4, 26);
+        assert_span_eq!(arguments.delim.span, 5, 8, 5, 17);
+        assert_span_eq!(arguments.expr.span, 6, 8, 6, 13);
+        assert_span_eq!(arguments.ident.span, 7, 8, 7, 11);
+        assert_span_eq!(arguments.item.span, 8, 8, 8, 19);
+        assert_span_eq!(arguments.lftm.span, 9, 8, 9, 12);
+        assert_span_eq!(arguments.lit.span, 10, 8, 10, 11);
+        assert_span_eq!(arguments.meta.span, 11, 8, 11, 32);
+        assert_span_eq!(arguments.pat.span, 12, 8, 12, 20);
+        assert_span_eq!(arguments.path.span, 13, 8, 13, 28);
+        assert_span_eq!(arguments.stmt.span, 14, 8, 14, 19);
+        assert_span_eq!(arguments.ty.span, 15, 8, 15, 11);
+        assert_span_eq!(arguments.tok.span, 16, 8, 16, 9);
+        assert_span_eq!(arguments.tt.get_span(), 17, 8, 17, 9);
+
         macro_rules! check {
             ($print:ident, $actual:expr, $expected:expr) => ({
                 assert_eq!(::syntax::print::pprust::$print(&$actual), $expected);
