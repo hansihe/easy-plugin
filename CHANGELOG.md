@@ -99,7 +99,7 @@
 ### Fixed
 - Updated for latest nightly
 
-## [0.4.0] - UNRELEASED
+## [0.4.0] - 2016-5-13
 
 ### Added
 - Added `convert` module
