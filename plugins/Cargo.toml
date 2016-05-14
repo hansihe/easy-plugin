@@ -5,6 +5,10 @@ authors = ["Kyle Mayes <kyle@mayeses.com>"]
 
 version = "0.3.4"
 
+license = "Apache-2.0"
+
+description = "Compiler plugins used internally by the easy-plugin crate."
+
 [lib]
 
 path = "lib.rs"
