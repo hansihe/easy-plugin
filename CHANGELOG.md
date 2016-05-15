@@ -1,3 +1,8 @@
+## [0.5.0] - UNRELEASED
+
+### Changed
+- Made `ToError` trait public
+
 ## [0.4.0] - 2016-5-13
 
 ### Added

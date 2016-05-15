@@ -228,7 +228,8 @@ use syntax::util::small_vector::{SmallVector};
 pub mod convert;
 
 mod utility;
-use utility::{ToError, ToExpr};
+use utility::{ToExpr};
+pub use utility::{ToError};
 
 mod arguments;
 pub use self::arguments::*;
