@@ -14,11 +14,12 @@
 
 use std::cell::{RefCell};
 use std::marker::{PhantomData};
+use std::rc::{Rc};
 
 use syntax::ext::tt::transcribe;
 use syntax::parse::token;
 use syntax::ast::*;
-use syntax::codemap::{DUMMY_SP, Span};
+use syntax::codemap::{DUMMY_SP, Span, Spanned};
 use syntax::errors::{FatalError, Level, RenderSpan};
 use syntax::errors::emitter::{CoreEmitter};
 use syntax::ext::base::{ExtCtxt};
@@ -58,6 +59,18 @@ macro_rules! parse {
     };
 }
 
+// to_error! _____________________________________
+
+macro_rules! to_error {
+    ($ty:ty) => (
+        impl<T, S: Into<String>> ToError<T, S> for $ty {
+            fn to_error(&self, message: S) -> PluginResult<T> {
+                Err((self.span, message.into()))
+            }
+        }
+    );
+}
+
 // token! ________________________________________
 
 /// Prefixes a list of identifiers with `syntax`, `parse`, and `token`.
@@ -72,22 +85,38 @@ macro_rules! token {
 // ToError _______________________________________
 
 /// A type that can be extended into a `PluginResult<T>`.
-pub trait ToError<T, S> where S: AsRef<str> {
+pub trait ToError<T, S> where S: Into<String> {
     /// Returns an `Err` value with the span of this value and the supplied message.
     fn to_error(&self, message: S) -> PluginResult<T>;
 }
 
-impl<T, S: AsRef<str>> ToError<T, S> for Span {
+impl<T, S: Into<String>> ToError<T, S> for Span {
     fn to_error(&self, message: S) -> PluginResult<T> {
-        Err((*self, message.as_ref().into()))
+        Err((*self, message.into()))
     }
 }
 
-impl<T, S: AsRef<str>> ToError<T, S> for TokenTree {
+impl<T, S: Into<String>> ToError<T, S> for TokenTree {
     fn to_error(&self, message: S) -> PluginResult<T> {
-        Err((self.get_span(), message.as_ref().into()))
+        Err((self.get_span(), message.into()))
     }
 }
+
+to_error!(Attribute);
+to_error!(Spanned<BinOpToken>);
+to_error!(Block);
+to_error!(Spanned<Rc<Delimited>>);
+to_error!(Expr);
+to_error!(Spanned<Ident>);
+to_error!(Item);
+to_error!(Spanned<Name>);
+to_error!(Lit);
+to_error!(MetaItem);
+to_error!(Pat);
+to_error!(Path);
+to_error!(Stmt);
+to_error!(Ty);
+to_error!(Spanned<Token>);
 
 // ToExpr ________________________________________
 

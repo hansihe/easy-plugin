@@ -1,5 +1,8 @@
 ## [0.5.0] - UNRELEASED
 
+### Added
+- Added `ToError` trait implementations
+
 ### Changed
 - Made `ToError` trait public
 
