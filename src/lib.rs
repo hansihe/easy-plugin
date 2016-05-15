@@ -229,7 +229,7 @@ pub mod convert;
 
 mod utility;
 use utility::{ToExpr};
-pub use utility::{ToError};
+pub use utility::{PluginResultExt, ToError};
 
 mod arguments;
 pub use self::arguments::*;

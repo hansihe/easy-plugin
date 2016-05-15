@@ -1,10 +1,8 @@
 ## [0.5.0] - UNRELEASED
 
 ### Added
-- Added `ToError` trait implementations
-
-### Changed
-- Made `ToError` trait public
+- Added `PluginResultExt` trait
+- Added `ToError` trait
 
 ## [0.4.0] - 2016-5-13
 

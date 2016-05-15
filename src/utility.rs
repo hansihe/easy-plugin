@@ -60,6 +60,7 @@ macro_rules! parse {
 
 // to_error! _____________________________________
 
+/// Defines a `ToError` implementation.
 macro_rules! to_error {
     ($ty:ty) => (
         impl<T, S: Into<String>> ToError<T, S> for $ty {
@@ -80,6 +81,27 @@ macro_rules! token {
 //================================================
 // Traits
 //================================================
+
+// PluginResultExt _______________________________
+
+/// Extends `PluginResult<T>`.
+pub trait PluginResultExt<T> {
+    /// Returns this `PluginResult<T>` with a different span if it is an `Err`.
+    fn map_err_span(self, span: Span) -> PluginResult<T>;
+
+    /// Returns this `PluginResult<T>` with a different message if it is an `Err`.
+    fn map_err_message<S: Into<String>>(self, message: S) -> PluginResult<T>;
+}
+
+impl<T> PluginResultExt<T> for PluginResult<T> {
+    fn map_err_span(self, span: Span) -> PluginResult<T> {
+        self.map_err(|(_, m)| (span, m))
+    }
+
+    fn map_err_message<S: Into<String>>(self, message: S) -> PluginResult<T> {
+        self.map_err(|(s, _)| (s, message.into()))
+    }
+}
 
 // ToError _______________________________________
 
