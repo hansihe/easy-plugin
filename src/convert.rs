@@ -19,7 +19,7 @@ use std::rc::{Rc};
 use syntax::abi::{Abi};
 use syntax::ast::*;
 use syntax::attr::{ThinAttributes};
-use syntax::codemap::{Span, Spanned};
+use syntax::codemap::{self, Span, Spanned};
 use syntax::parse::token::{self, BinOpToken, DelimToken, Nonterminal};
 use syntax::parse::token::{SpecialMacroVar, Token};
 use syntax::ptr::{P};
@@ -194,8 +194,26 @@ convert!(tok: [Spanned<Token>](tok.node) -> Token, [
     Eof() -> (),
 ]);
 
-convert!(tt: TokenTree(*tt) -> TokenTree, [
-    Token(_, _) -> (Span, Token),
-    Delimited(_, _) -> (Span, Rc<Delimited>),
-    Sequence(_, _) -> (Span, Rc<SequenceRepetition>),
-]);
+/// Returns the `TokenTree::Delimited` value in the supplied `TokenTree`.
+pub fn tt_to_delimited(tt: &TokenTree) -> PluginResult<Rc<Delimited>> {
+    match *tt {
+        TokenTree::Delimited(_, ref delimited) => Ok(delimited.clone()),
+        _ => tt.to_error("expected `TokenTree::Delimited` tt"),
+    }
+}
+
+/// Returns the `TokenTree::Token` value in the supplied `TokenTree`.
+pub fn tt_to_token(tt: &TokenTree) -> PluginResult<Spanned<Token>> {
+    match *tt {
+        TokenTree::Token(span, ref token) => Ok(codemap::respan(span, token.clone())),
+        _ => tt.to_error("expected `TokenTree::Token` tt"),
+    }
+}
+
+/// Returns the `TokenTree::Sequence` value in the supplied `TokenTree`.
+pub fn tt_to_sequence(tt: &TokenTree) -> PluginResult<Rc<SequenceRepetition>> {
+    match *tt {
+        TokenTree::Sequence(_, ref sequence) => Ok(sequence.clone()),
+        _ => tt.to_error("expected `TokenTree::Sequence` tt"),
+    }
+}

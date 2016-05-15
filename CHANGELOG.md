@@ -4,6 +4,9 @@
 - Added `PluginResultExt` trait
 - Added `ToError` trait
 
+### Changed
+- Changed `convert` module `TokenTree` function interfaces
+
 ## [0.4.0] - 2016-5-13
 
 ### Added
