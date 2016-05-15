@@ -14,7 +14,6 @@
 
 use std::cell::{RefCell};
 use std::marker::{PhantomData};
-use std::rc::{Rc};
 
 use syntax::ext::tt::transcribe;
 use syntax::parse::token;
@@ -102,21 +101,18 @@ impl<T, S: Into<String>> ToError<T, S> for TokenTree {
     }
 }
 
-to_error!(Attribute);
-to_error!(Spanned<BinOpToken>);
+impl<T, U, S:Into<String>> ToError<T, S> for Spanned<U> {
+    fn to_error(&self, message: S) -> PluginResult<T> {
+        Err((self.span, message.into()))
+    }
+}
+
 to_error!(Block);
-to_error!(Spanned<Rc<Delimited>>);
 to_error!(Expr);
-to_error!(Spanned<Ident>);
 to_error!(Item);
-to_error!(Spanned<Name>);
-to_error!(Lit);
-to_error!(MetaItem);
 to_error!(Pat);
 to_error!(Path);
-to_error!(Stmt);
 to_error!(Ty);
-to_error!(Spanned<Token>);
 
 // ToExpr ________________________________________
 
