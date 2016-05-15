@@ -1,12 +1,3 @@
-#![feature(plugin, rustc_private)]
-#![plugin(easy_plugin)]
-
-#[allow(plugin_as_library)]
-#[macro_use]
-extern crate easy_plugin;
-
-extern crate syntax;
-
 use easy_plugin::{Amount, Specification, Specifier};
 
 use syntax::parse::token;

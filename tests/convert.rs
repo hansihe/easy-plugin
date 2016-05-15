@@ -1,21 +1,8 @@
-#![feature(plugin, rustc_private)]
-#![plugin(easy_plugin)]
-
-#[allow(plugin_as_library)]
-#[macro_use]
-extern crate easy_plugin;
-
-extern crate syntax;
-
 use easy_plugin::{PluginResult};
 use easy_plugin::convert::*;
 
-use syntax::ast::{TokenTree};
-use syntax::codemap::{Span, DUMMY_SP};
-use syntax::ext::base::{ExtCtxt, DummyResult, MacResult};
-use syntax::ext::expand::{ExpansionConfig};
-use syntax::ext::quote::rt::{ExtParseUtils};
-use syntax::parse::{ParseSess};
+use syntax::codemap::{Span};
+use syntax::ext::base::{DummyResult, ExtCtxt, MacResult};
 
 easy_plugin! {
     struct Arguments {
@@ -50,15 +37,6 @@ easy_plugin! {
 
 #[test]
 fn test_convert() {
-    fn with_tts<F>(source: &str, f: F) where F: Fn(&mut ExtCtxt, Span, &[TokenTree]) {
-        let session = ParseSess::new();
-        let config = ExpansionConfig::default("".into());
-        let mut cfgs = vec![];
-        let mut context = ExtCtxt::new(&session, vec![], config, &mut cfgs);
-        let tts = context.parse_tts(source.into());
-        f(&mut context, DUMMY_SP, &tts);
-    }
-
     let arguments = r#"
         #[cfg(target_os="windows")]
         [1, 2, 3]
@@ -72,7 +50,7 @@ fn test_convert() {
         (1, 2, 3)
     "#;
 
-    with_tts(arguments, |c, s, a| {
+    super::with_tts(arguments, |c, s, a| {
         expand_convert(c, s, a);
     });
 }
