@@ -24,7 +24,7 @@ use syntax::parse::token::{self, BinOpToken, DelimToken, Nonterminal};
 use syntax::parse::token::{SpecialMacroVar, Token};
 use syntax::ptr::{P};
 
-use super::{PluginResult};
+use super::{PluginResult, ToError};
 
 //================================================
 // Functions

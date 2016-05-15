@@ -171,18 +171,13 @@ fn expand_convert_fn(
     };
 
     let message = get_lit_str(span, &format!("expected `{}::{}` {}", dname, dvariant, pname));
-    let span = if pname.name.as_str() == "tt" {
-        quote_expr!(context, $pname.get_span())
-    } else {
-        quote_expr!(context, $pname.span)
-    };
 
     quote_item!(context,
         #[$doc]
         pub fn $name($pname: &$pty) -> PluginResult<$rty> {
             match $pexpr {
                 $pat => Ok($expr),
-                _ => Err(($span, $message.into())),
+                _ => $pname.to_error($message),
             }
         }
     ).unwrap()

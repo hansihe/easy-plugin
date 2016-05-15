@@ -34,16 +34,16 @@ easy_plugin! {
     pub fn expand_convert(
         _: &mut ExtCtxt, span: Span, arguments: Arguments
     ) -> PluginResult<Box<MacResult>> {
-        try!(attr_to_list(&arguments.attr_list));
-        try!(expr_to_vec(&arguments.expr_vec));
-        try!(item_to_fn(&arguments.item_fn));
-        try!(lit_to_str(&arguments.lit_str));
-        try!(meta_to_list(&arguments.meta_list));
-        try!(pat_to_ident(&arguments.pat_ident));
-        try!(stmt_to_decl(&arguments.stmt_decl));
-        try!(ty_to_vec(&arguments.ty_vec));
-        try!(tok_to_bin_op(&arguments.tok_bin_op));
-        try!(tt_to_delimited(&arguments.tt_delimited));
+        attr_to_list(&arguments.attr_list).unwrap();
+        expr_to_vec(&arguments.expr_vec).unwrap();
+        item_to_fn(&arguments.item_fn).unwrap();
+        lit_to_str(&arguments.lit_str).unwrap();
+        meta_to_list(&arguments.meta_list).unwrap();
+        pat_to_ident(&arguments.pat_ident).unwrap();
+        stmt_to_decl(&arguments.stmt_decl).unwrap();
+        ty_to_vec(&arguments.ty_vec).unwrap();
+        tok_to_bin_op(&arguments.tok_bin_op).unwrap();
+        tt_to_delimited(&arguments.tt_delimited).unwrap();
         Ok(DummyResult::any(span))
     }
 }
