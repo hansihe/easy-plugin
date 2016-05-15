@@ -1,4 +1,4 @@
-## [0.5.0] - UNRELEASED
+## [0.5.0] - 2016-5-15
 
 ### Added
 - Added `PluginResultExt` trait
