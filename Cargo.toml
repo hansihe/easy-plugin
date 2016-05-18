@@ -23,7 +23,7 @@ easy-plugin-plugins = { version = "0.5.0", path = "plugins" }
 
 [dependencies.clippy]
 
-version = "0.0.67"
+version = "0.0.68"
 optional = true
 
 [[test]]
