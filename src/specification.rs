@@ -127,7 +127,7 @@ impl Specifier {
 
     //- Accessors --------------------------------
 
-    /// Returns the name of this specifier, if applicable.
+    /// Returns the name of this specifier, if any.
     pub fn get_name(&self) -> Option<&String> {
         match *self {
             Specifier::Attr(ref name) |
@@ -151,30 +151,40 @@ impl Specifier {
         }
     }
 
-    fn to_fields_(&self, context: &mut ExtCtxt, span: Span, stack: &[Amount]) -> Vec<Field> {
+    /// Returns a `Field` that would initialize the value matched by this non-delimited and
+    /// non-sequence specifier if this specifier is named.
+    fn to_field(&self, context: &mut ExtCtxt, span: Span, stack: &[Amount]) -> Option<Field> {
         let name = match self.get_name() {
             Some(name) => name,
-            None => return vec![],
+            None => return None,
         };
 
         let mut expr = quote_expr!(context, _m.get($name).unwrap());
         if stack.is_empty() {
             expr =  quote_expr!(context, $expr.into());
-            vec![context.field_imm(span, context.ident_of(name), expr)]
+            Some(context.field_imm(span, context.ident_of(name), expr))
         } else {
             let f = stack.iter().skip(1).fold(quote_expr!(context, |s| s.into()), |f, a| {
                 if *a == Amount::ZeroOrOne {
-                    quote_expr!(context, |s| s.as_sequence().iter().map($f).next())
+                    quote_expr!(context,
+                        |s| s.to::<Vec<::easy_plugin::Match>>().iter().map($f).next()
+                    )
                 } else {
-                    quote_expr!(context, |s| s.as_sequence().iter().map($f).collect())
+                    quote_expr!(context,
+                        |s| s.to::<Vec<::easy_plugin::Match>>().iter().map($f).collect()
+                    )
                 }
             });
-            if stack[0] == Amount::ZeroOrOne {
-                expr = quote_expr!(context, $expr.as_sequence().iter().map($f).next());
+            expr = if stack[0] == Amount::ZeroOrOne {
+                quote_expr!(context,
+                    $expr.to::<Vec<::easy_plugin::Match>>().iter().map($f).next()
+                )
             } else {
-                expr = quote_expr!(context, $expr.as_sequence().iter().map($f).collect());
-            }
-            vec![context.field_imm(span, context.ident_of(name), expr)]
+                quote_expr!(context,
+                    $expr.to::<Vec<::easy_plugin::Match>>().iter().map($f).collect()
+                )
+            };
+            Some(context.field_imm(span, context.ident_of(name), expr))
         }
     }
 
@@ -188,7 +198,7 @@ impl Specifier {
                 stack.push(amount);
                 subspecification.to_fields(context, span, &stack)
             },
-            _ => self.to_fields_(context, span, stack),
+            _ => self.to_field(context, span, stack).into_iter().collect(),
         }
     }
 
@@ -338,7 +348,7 @@ impl ops::Deref for Specification {
 // Functions
 //================================================
 
-/// Parses a named specifier or a sequence (e.g., `$a:expr` or `$($b:expr), *`).
+/// Parses a named specifier or a sequence specification (e.g., `$a:expr` or `$($b:expr), *`).
 fn parse_dollar<'i, I>(
     span: Span, tts: &mut TtsIterator<'i, I>, names: &mut HashSet<String>
 ) -> PluginResult<Specifier> where I: Iterator<Item=&'i TokenTree> {
@@ -394,7 +404,7 @@ fn parse_named_specifier<'i, I>(
     }
 }
 
-/// Parses the suffix of a sequence (e.g., the `, *` in `$($b:expr), *`).
+/// Parses the suffix of a sequence specification (e.g., the `, *` in `$($b:expr), *`).
 fn parse_sequence_suffix<'i, I>(
     tts: &mut TtsIterator<'i, I>
 ) -> PluginResult<(Amount, Option<Token>)> where I: Iterator<Item=&'i TokenTree> {
@@ -410,7 +420,7 @@ fn parse_sequence_suffix<'i, I>(
     }
 }
 
-/// Parses a sequence (e.g., `$($b:expr), *`).
+/// Parses a sequence specification (e.g., `$($b:expr), *`).
 fn parse_sequence<'i, I>(
     span: Span, tts: &mut TtsIterator<'i, I>, subtts: &[TokenTree], names: &mut HashSet<String>
 ) -> PluginResult<Specifier> where I: Iterator<Item=&'i TokenTree> {
@@ -443,9 +453,11 @@ fn parse_specification_(
 
 /// Parses the supplied specification.
 pub fn parse_specification(tts: &[TokenTree]) -> PluginResult<Specification> {
+    // Build a span that spans the entire specification.
     let start = tts.iter().nth(0).map_or(DUMMY_SP, |s| s.get_span());
     let end = tts.iter().last().map_or(DUMMY_SP, |s| s.get_span());
     let span = Span { lo: start.lo, hi: end.hi, expn_id: start.expn_id };
+
     parse_specification_(span, tts, &mut HashSet::new())
 }
 
@@ -459,89 +471,5 @@ pub fn expand_parse_specification(
             context.span_err(span, &message);
             DummyResult::any(span)
         },
-    }
-}
-
-//================================================
-// Tests
-//================================================
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    use syntax::parse;
-    use syntax::ast::{TokenTree};
-    use syntax::parse::{ParseSess};
-    use syntax::parse::token::{DelimToken, Token};
-
-    fn with_tts<F>(source: &str, f: F) where F: Fn(Vec<TokenTree>) {
-        let session = ParseSess::new();
-        let source = source.into();
-        let mut parser = parse::new_parser_from_source_str(&session, vec![], "".into(), source);
-        f(parser.parse_all_token_trees().unwrap());
-    }
-
-    #[test]
-    fn test_parse_specification() {
-        with_tts("", |tts| {
-            assert_eq!(parse_specification(&tts).unwrap(), spec![]);
-        });
-
-        with_tts("$a:attr $b:tt", |tts| {
-            assert_eq!(parse_specification(&tts).unwrap(), spec![
-                Specifier::Attr("a".into()),
-                Specifier::Tt("b".into()),
-            ]);
-        });
-
-        with_tts("$($a:ident $($b:ident)*), + $($c:ident)?", |tts| {
-            assert_eq!(parse_specification(&tts).unwrap(), spec![
-                Specifier::Sequence(Amount::OneOrMore, Some(Token::Comma), spec![
-                    Specifier::Ident("a".into()),
-                    Specifier::Sequence(Amount::ZeroOrMore, None, spec![
-                        Specifier::Ident("b".into()),
-                    ]),
-                ]),
-                Specifier::Sequence(Amount::ZeroOrOne, None, spec![
-                    Specifier::Ident("c".into()),
-                ]),
-            ]);
-        });
-
-        with_tts("$a:(A)* $b:(B), + $c:(C)?", |tts| {
-            assert_eq!(parse_specification(&tts).unwrap(), spec![
-                Specifier::NamedSequence("a".into(), Amount::ZeroOrMore, None, spec![
-                    Specifier::specific_ident("A"),
-                ]),
-                Specifier::NamedSequence("b".into(), Amount::OneOrMore, Some(Token::Comma), spec![
-                    Specifier::specific_ident("B"),
-                ]),
-                Specifier::NamedSequence("c".into(), Amount::ZeroOrOne, None, spec![
-                    Specifier::specific_ident("C"),
-                ]),
-            ]);
-        });
-
-        with_tts("() [$a:ident] {$b:ident $c:ident}", |tts| {
-            assert_eq!(parse_specification(&tts).unwrap(), spec![
-                Specifier::Delimited(DelimToken::Paren, spec![]),
-                Specifier::Delimited(DelimToken::Bracket, spec![
-                    Specifier::Ident("a".into()),
-                ]),
-                Specifier::Delimited(DelimToken::Brace, spec![
-                    Specifier::Ident("b".into()),
-                    Specifier::Ident("c".into()),
-                ]),
-            ]);
-        });
-
-        with_tts("~ foo 'bar", |tts| {
-            assert_eq!(parse_specification(&tts).unwrap(), spec![
-                Specifier::Specific(Token::Tilde),
-                Specifier::specific_ident("foo"),
-                Specifier::specific_lftm("'bar"),
-            ]);
-        });
     }
 }

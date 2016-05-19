@@ -34,26 +34,26 @@ use syntax::util::small_vector::{SmallVector};
 // Enums
 //================================================
 
-// Conversion ____________________________________
+// Call __________________________________________
 
-/// Indicates the requested conversion for a enum variant field.
+/// Indicates the methods to be called on a value to return it from a converter function.
 #[derive(Copy, Clone, Debug)]
-enum Conversion {
+enum Call {
     Clone,
     ToString,
     AsStrToString,
     MapAsStrToString,
 }
 
-impl Conversion {
+impl Call {
     //- Constructors -----------------------------
 
-    fn from_specifier(specifier: &str) -> Conversion {
+    fn from_specifier(specifier: &str) -> Call {
         match specifier {
-            "ts" => Conversion::ToString,
-            "asts" => Conversion::AsStrToString,
-            "masts" => Conversion::MapAsStrToString,
-            _ => Conversion::Clone,
+            "ts" => Call::ToString,
+            "asts" => Call::AsStrToString,
+            "masts" => Call::MapAsStrToString,
+            _ => Call::Clone,
         }
     }
 
@@ -61,11 +61,10 @@ impl Conversion {
 
     fn to_expr(self, context: &mut ExtCtxt, ident: Ident) -> P<Expr> {
         match self {
-            Conversion::Clone => quote_expr!(context, $ident.clone()),
-            Conversion::ToString => quote_expr!(context, $ident.to_string()),
-            Conversion::AsStrToString => quote_expr!(context, $ident.as_str().to_string()),
-            Conversion::MapAsStrToString =>
-                quote_expr!(context, $ident.map(|v| v.as_str().to_string())),
+            Call::Clone => quote_expr!(context, $ident.clone()),
+            Call::ToString => quote_expr!(context, $ident.to_string()),
+            Call::AsStrToString => quote_expr!(context, $ident.as_str().to_string()),
+            Call::MapAsStrToString => quote_expr!(context, $ident.map(|f| f.as_str().to_string())),
         }
     }
 }
@@ -120,7 +119,8 @@ fn camel_case_to_snake_case(ident: Ident) -> String {
     snake
 }
 
-fn expand_convert_fn_doc(
+/// Returns a doc comment meta item with appropriate documentation for a converter function.
+fn expand_convert_fn_doc_comment(
     context: &mut ExtCtxt, span: Span, pty: &P<Ty>, dname: Ident, dvariant: Ident, fields: usize
 ) -> P<MetaItem> {
     let ty = pprust::ty_to_string(&pty);
@@ -132,6 +132,7 @@ fn expand_convert_fn_doc(
     get_doc_comment(context, span, &doc)
 }
 
+/// Returns a converter function item.
 fn expand_convert_fn(
     context: &mut ExtCtxt,
     span: Span,
@@ -141,13 +142,18 @@ fn expand_convert_fn(
     pexpr: &P<Expr>,
     dname: Ident,
 ) -> P<Item> {
+    // Validate and extract the arguments.
     let dvariant = to_ident(&arguments[0]);
     let dfields = to_delimited(&arguments[1]);
     let rty = parse_ty(context, &arguments[3..4]);
 
-    let doc = expand_convert_fn_doc(context, span, pty, dname, dvariant, dfields.tts.len());
+    // Build the documentation.
+    let doc = expand_convert_fn_doc_comment(context, span, pty, dname, dvariant, dfields.tts.len());
+
+    // Build the name.
     let name = context.ident_of(&format!("{}_to_{}", pname, camel_case_to_snake_case(dvariant)));
 
+    // Determine the variant field names and required method calls to return them.
     let fields = dfields.tts.iter().filter_map(|tt| {
         match tt {
             &TokenTree::Token(_, Token::Underscore) => Some("_".into()),
@@ -157,12 +163,15 @@ fn expand_convert_fn(
     }).enumerate().map(|(i, s)| {
         let mut buffer = String::new();
         buffer.push(((97 + i) as u8) as char);
-        (Conversion::from_specifier(&s), context.ident_of(&buffer))
+        (Call::from_specifier(&s), context.ident_of(&buffer))
     }).collect::<Vec<_>>();
 
+    // Build the variant pat.
     let path = context.path_all(span, false, vec![dname, dvariant], vec![], vec![], vec![]);
     let pats = fields.iter().cloned().map(|(_, p)| quote_pat!(context, ref $p)).collect();
     let pat = context.pat_enum(span, path, pats);
+
+    // Build the expr that returns the variant fields.
     let mut exprs = fields.into_iter().map(|(c, p)| c.to_expr(context, p)).collect::<Vec<_>>();
     let expr = if exprs.len() == 1 {
         exprs.remove(0)
@@ -170,8 +179,10 @@ fn expand_convert_fn(
         context.expr_tuple(span, exprs)
     };
 
+    // Build the error message.
     let message = get_lit_str(span, &format!("expected `{}::{}` {}", dname, dvariant, pname));
 
+    // Build the converter function item.
     quote_item!(context,
         #[$doc]
         pub fn $name($pname: &$pty) -> PluginResult<$rty> {
@@ -183,9 +194,16 @@ fn expand_convert_fn(
     ).unwrap()
 }
 
+/// Returns converter function items.
+///
+/// A converter function attempts to extract the values in the `node` of an AST element. For
+/// example, `expr_to_vec` takes an `&Expr` and returns a `PluginResult<Vec<P<Expr>>>`. If the
+/// `node` in the supplied `&Expr` is the `ExprKind::Vec` variant, the value contained in the
+/// variant is returned as an `Ok` value. Otherwise, an `Err` value is returned.
 fn expand_convert(
     context: &mut ExtCtxt, span: Span, arguments: &[TokenTree]
 ) -> Box<MacResult + 'static> {
+    // Validate and extract the arguments.
     assert_eq!(arguments.len(), 8);
     let pname = to_ident(&arguments[0]);
     let pty = match &arguments[2] {
@@ -197,6 +215,7 @@ fn expand_convert(
     let dname = to_ident(&arguments[5]);
     let dconverters = to_delimited(&arguments[7]);
 
+    // Expand the list of converter specifications into converter function items.
     assert_eq!(dconverters.tts.len() % 5, 0);
     let items = dconverters.tts.chunks(5).map(|c| {
         expand_convert_fn(context, span, c, pname, &pty, &pexpr, dname)

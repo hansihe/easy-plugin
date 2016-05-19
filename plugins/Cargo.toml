@@ -9,6 +9,8 @@ license = "Apache-2.0"
 
 description = "Compiler plugins used internally by the easy-plugin crate."
 
+repository = "https://github.com/KyleMayes/easy-plugin"
+
 [lib]
 
 path = "lib.rs"
