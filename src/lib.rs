@@ -315,7 +315,7 @@ fn expand_parse(
         fn $function(
             session: &::syntax::parse::ParseSess, arguments: &[::syntax::ast::TokenTree]
         ) -> ::easy_plugin::PluginResult<$name> {
-            ::easy_plugin::parse_arguments(session, arguments, &$specification.0).map(|_m| $result)
+            ::easy_plugin::parse_args(session, arguments, &$specification.0).map(|_m| $result)
         }
     ).unwrap()
 }
@@ -439,7 +439,7 @@ fn expand_easy_plugin_enum(
     ];
 
     // Extract the arguments.
-    let matches = try!(parse_arguments(context.parse_sess, arguments, specification));
+    let matches = try!(parse_args(context.parse_sess, arguments, specification));
     let arguments = matches.get("arguments").unwrap().to::<Spanned<Ident>>().node;
     let names = matches.get("name").unwrap().to::<Vec<Match>>().into_iter().map(|s| {
         s.to::<Spanned<Ident>>().node
@@ -511,7 +511,7 @@ fn expand_easy_plugin_struct(
     ];
 
     // Extract the arguments.
-    let matches = try!(parse_arguments(context.parse_sess, arguments, specification));
+    let matches = try!(parse_args(context.parse_sess, arguments, specification));
     let arguments = matches.get("arguments").unwrap().to::<Spanned<Ident>>().node;
     let tts = matches.get("tt").unwrap().to::<Vec<Match>>().iter().map(|s| {
         s.to::<TokenTree>()

@@ -212,7 +212,7 @@ impl<'s> ArgumentParser<'s> {
 
             // Attempt to parse an occurrence of the sequence.
             let mut submatches = HashMap::new();
-            match self.parse_arguments(specification, &mut submatches) {
+            match self.parse_args(specification, &mut submatches) {
                 Ok(()) => count += 1,
                 Err(error) => if count == 0 && required {
                     return Err(error);
@@ -264,7 +264,7 @@ impl<'s> ArgumentParser<'s> {
     }
 
     #[cfg_attr(feature="clippy", allow(cyclomatic_complexity))]
-    fn parse_arguments(
+    fn parse_args(
         &mut self, specification: &[Specifier], matches: &mut HashMap<String, Match>
     ) -> PluginResult<()> {
         macro_rules! insert {
@@ -328,7 +328,7 @@ impl<'s> ArgumentParser<'s> {
                 Specifier::Specific(ref expected) => try!(self.expect_specific_token(expected)),
                 Specifier::Delimited(delimiter, ref specification) => {
                     try!(self.expect_specific_token(&Token::OpenDelim(delimiter)));
-                    try!(self.parse_arguments(&specification, matches));
+                    try!(self.parse_args(&specification, matches));
                     try!(self.expect_specific_token(&Token::CloseDelim(delimiter)));
                 },
                 Specifier::Sequence(amount, ref separator, ref specification) => {
@@ -350,7 +350,7 @@ impl<'s> ArgumentParser<'s> {
 
     pub fn parse(&mut self, specification: &[Specifier]) -> PluginResult<HashMap<String, Match>> {
         let mut matches = HashMap::new();
-        try!(self.parse_arguments(specification, &mut matches));
+        try!(self.parse_args(specification, &mut matches));
         if self.parser.is_empty() {
             Ok(matches)
         } else {
@@ -366,7 +366,7 @@ impl<'s> ArgumentParser<'s> {
 //================================================
 
 /// Parses the supplied arguments with the supplied specification.
-pub fn parse_arguments(
+pub fn parse_args(
     session: &ParseSess, tts: &[TokenTree], specification: &[Specifier]
 ) -> PluginResult<HashMap<String, Match>> {
     if tts.is_empty() && specification.is_empty() {

@@ -2,6 +2,7 @@
 
 ### Changed
 - Renamed `parse_specification` plugin to `parse_spec`
+- Renamed `parse_arguments` function to `parse_args`
 
 ## [0.5.0] - 2016-5-15
 
