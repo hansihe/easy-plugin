@@ -226,5 +226,5 @@ fn expand_convert(
 #[doc(hidden)]
 #[plugin_registrar]
 pub fn plugin_registrar(registry: &mut Registry) {
-    registry.register_macro("convert", expand_convert);
+    registry.register_macro("__easy_plugin_convert", expand_convert);
 }

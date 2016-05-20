@@ -30,13 +30,13 @@ use super::{PluginResult, ToError};
 // Functions
 //================================================
 
-convert!(attr: Attribute(attr.node.value.node) -> MetaItemKind, [
+__easy_plugin_convert!(attr: Attribute(attr.node.value.node) -> MetaItemKind, [
     Word(ts) -> (String),
     List(ts, _) -> (String, Vec<P<MetaItem>>),
     NameValue(ts, _) -> (String, Lit),
 ]);
 
-convert!(expr: Expr(expr.node) -> ExprKind, [
+__easy_plugin_convert!(expr: Expr(expr.node) -> ExprKind, [
     Box(_) -> (P<Expr>),
     InPlace(_, _) -> (P<Expr>, P<Expr>),
     Vec(_) -> (Vec<P<Expr>>),
@@ -76,7 +76,7 @@ convert!(expr: Expr(expr.node) -> ExprKind, [
     Try(_) -> (P<Expr>),
 ]);
 
-convert!(item: Item(item.node) -> ItemKind, [
+__easy_plugin_convert!(item: Item(item.node) -> ItemKind, [
     ExternCrate(masts) -> (Option<String>),
     Use(_) -> (P<ViewPath>),
     Static(_, _, _) -> (P<Ty>, Mutability, P<Expr>),
@@ -93,7 +93,7 @@ convert!(item: Item(item.node) -> ItemKind, [
     Mac(_) -> (Mac),
 ]);
 
-convert!(lit: Lit(lit.node) -> LitKind, [
+__easy_plugin_convert!(lit: Lit(lit.node) -> LitKind, [
     Str(ts, _) -> (String, StrStyle),
     ByteStr(_) -> (Rc<Vec<u8>>),
     Byte(_) -> (u8),
@@ -104,13 +104,13 @@ convert!(lit: Lit(lit.node) -> LitKind, [
     Bool(_) -> (bool),
 ]);
 
-convert!(meta: MetaItem(meta.node) -> MetaItemKind, [
+__easy_plugin_convert!(meta: MetaItem(meta.node) -> MetaItemKind, [
     Word(ts) -> (String),
     List(ts, _) -> (String, Vec<P<MetaItem>>),
     NameValue(ts, _) -> (String, Lit),
 ]);
 
-convert!(pat: Pat(pat.node) -> PatKind, [
+__easy_plugin_convert!(pat: Pat(pat.node) -> PatKind, [
     Wild() -> (),
     Ident(_, _, _) -> (BindingMode, SpannedIdent, Option<P<Pat>>),
     Struct(_, _, _) -> (Path, Vec<Spanned<FieldPat>>, bool),
@@ -126,14 +126,14 @@ convert!(pat: Pat(pat.node) -> PatKind, [
     Mac(_) -> (Mac),
 ]);
 
-convert!(stmt: Stmt(stmt.node) -> StmtKind, [
+__easy_plugin_convert!(stmt: Stmt(stmt.node) -> StmtKind, [
     Decl(_, _) -> (P<Decl>, NodeId),
     Expr(_, _) -> (P<Expr>, NodeId),
     Semi(_, _) -> (P<Expr>, NodeId),
     Mac(_, _, _) -> (P<Mac>, MacStmtStyle, ThinAttributes),
 ]);
 
-convert!(ty: Ty(ty.node) -> TyKind, [
+__easy_plugin_convert!(ty: Ty(ty.node) -> TyKind, [
     Vec(_) -> (P<Ty>),
     FixedLengthVec(_, _) -> (P<Ty>, P<Expr>),
     Ptr(_) -> (MutTy),
@@ -149,7 +149,7 @@ convert!(ty: Ty(ty.node) -> TyKind, [
     Mac(_) -> (Mac),
 ]);
 
-convert!(tok: [Spanned<Token>](tok.node) -> Token, [
+__easy_plugin_convert!(tok: [Spanned<Token>](tok.node) -> Token, [
     Eq() -> (),
     Lt() -> (),
     Le() -> (),
