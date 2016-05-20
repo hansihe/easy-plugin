@@ -7,7 +7,7 @@ easy_plugin! {
     enum Arguments {
         A { },
         B { [$a:ident $b:ident] },
-        C { $($a:ident $($b:ident)*), + },
+        C { [$($a:ident $($b:ident)*), +] },
     }
 
     pub fn expand_enum(
@@ -48,7 +48,7 @@ fn test_easy_plugin_enum() {
         expand_enum(c, s, a);
     });
 
-    super::with_tts("a, b c, d e f", |c, s, a| {
+    super::with_tts("[a, b c, d e f]", |c, s, a| {
         expand_enum(c, s, a);
     });
 }

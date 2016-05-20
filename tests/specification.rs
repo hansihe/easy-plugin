@@ -4,7 +4,7 @@ use syntax::parse::token;
 use syntax::parse::token::{BinOpToken, DelimToken, Lit, Token};
 
 #[test]
-fn test_parse_specification() {
+fn test_specification() {
     let specification: Specification = parse_specification!();
     assert_eq!(specification, spec![]);
 
