@@ -130,7 +130,7 @@ impl<'a> From<&'a Match> for Spanned<usize> {
     fn from(match_: &'a Match) -> Spanned<usize> {
         match *match_ {
             Match::NamedSequence(count) => count,
-            _ => unreachable!(),
+            _ => panic!("expected `Match::NamedSequence`"),
         }
     }
 }
@@ -139,7 +139,7 @@ impl<'a> From<&'a Match> for Spanned<bool> {
     fn from(match_: &'a Match) -> Spanned<bool> {
         match *match_ {
             Match::NamedSequence(count) => codemap::respan(count.span, count.node != 0),
-            _ => unreachable!(),
+            _ => panic!("expected `Match::NamedSequence`"),
         }
     }
 }

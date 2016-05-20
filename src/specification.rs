@@ -189,6 +189,7 @@ impl Specifier {
     }
 
     /// Returns `Field`s that would initialize values matched by this specifier.
+    #[doc(hidden)]
     pub fn to_fields(&self, context: &mut ExtCtxt, span: Span, stack: &[Amount]) -> Vec<Field> {
         match *self {
             Specifier::Delimited(_, ref subspecification) =>
@@ -203,6 +204,7 @@ impl Specifier {
     }
 
     /// Returns `StructField`s that could contain values matched by this specifier.
+    #[doc(hidden)]
     pub fn to_struct_fields(&self, context: &mut ExtCtxt, span: Span) -> Vec<StructField> {
         macro_rules! field {
             ($name:expr, $($variant:tt)*) => ({
@@ -318,11 +320,13 @@ impl Specification {
     //- Accessors --------------------------------
 
     /// Returns `Field`s that would initialize values matched by this specification.
+    #[doc(hidden)]
     pub fn to_fields(&self, context: &mut ExtCtxt, span: Span, stack: &[Amount]) -> Vec<Field> {
         self.iter().flat_map(|s| s.to_fields(context, span, stack).into_iter()).collect()
     }
 
     /// Returns `StructField`s that could contain values matched by this specification.
+    #[doc(hidden)]
     pub fn to_struct_fields(&self, context: &mut ExtCtxt, span: Span) -> Vec<StructField> {
         self.iter().flat_map(|s| s.to_struct_fields(context, span).into_iter()).collect()
     }
