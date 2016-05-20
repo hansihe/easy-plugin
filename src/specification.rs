@@ -30,13 +30,13 @@ use super::utility::{self, ToError, ToExpr, TtsIterator};
 // Macros
 //================================================
 
-// spec! ________________________________________
+// spec! _________________________________________
 
 /// Constructs a `Specification`.
 #[macro_export]
 macro_rules! spec {
-    ($($specifier:expr), *) => (Specification(vec![$($specifier), *]));
-    ($($specifier:expr), *,) => (Specification(vec![$($specifier), *]));
+    ($($specifier:expr), *) => ($crate::Specification(vec![$($specifier), *]));
+    ($($specifier:expr), *,) => ($crate::Specification(vec![$($specifier), *]));
 }
 
 //================================================
@@ -374,7 +374,7 @@ fn parse_named_specifier<'i, I>(
     match try!(tts.expect()) {
         &TokenTree::Delimited(subspan, ref delimited) => {
             let mut names = HashSet::new();
-            let subspecification = try!(parse_specification_(subspan, &delimited.tts, &mut names));
+            let subspecification = try!(parse_spec_(subspan, &delimited.tts, &mut names));
             if !names.is_empty() {
                 return subspan.to_error("named specifiers not allowed in named sequences");
             }
@@ -424,13 +424,13 @@ fn parse_sequence_suffix<'i, I>(
 fn parse_sequence<'i, I>(
     span: Span, tts: &mut TtsIterator<'i, I>, subtts: &[TokenTree], names: &mut HashSet<String>
 ) -> PluginResult<Specifier> where I: Iterator<Item=&'i TokenTree> {
-    let subspecification = try!(parse_specification_(span, subtts, names));
+    let subspecification = try!(parse_spec_(span, subtts, names));
     let (amount, separator) = try!(parse_sequence_suffix(tts));
     Ok(Specifier::Sequence(amount, separator, subspecification))
 }
 
 /// Actually parses the supplied specification.
-fn parse_specification_(
+fn parse_spec_(
     span: Span, tts: &[TokenTree], names: &mut HashSet<String>
 ) -> PluginResult<Specification> {
     let mut tts = TtsIterator::new(tts.iter(), span, "unexpected end of specification");
@@ -442,7 +442,7 @@ fn parse_specification_(
             TokenTree::Token(_, ref token) =>
                 specification.push(Specifier::Specific(token.clone())),
             TokenTree::Delimited(subspan, ref delimited) => {
-                let subspecification = try!(parse_specification_(subspan, &delimited.tts, names));
+                let subspecification = try!(parse_spec_(subspan, &delimited.tts, names));
                 specification.push(Specifier::Delimited(delimited.delim, subspecification));
             },
             _ => unreachable!(),
@@ -452,20 +452,20 @@ fn parse_specification_(
 }
 
 /// Parses the supplied specification.
-pub fn parse_specification(tts: &[TokenTree]) -> PluginResult<Specification> {
+pub fn parse_spec(tts: &[TokenTree]) -> PluginResult<Specification> {
     // Build a span that spans the entire specification.
     let start = tts.iter().nth(0).map_or(DUMMY_SP, |s| s.get_span());
     let end = tts.iter().last().map_or(DUMMY_SP, |s| s.get_span());
     let span = Span { lo: start.lo, hi: end.hi, expn_id: start.expn_id };
 
-    parse_specification_(span, tts, &mut HashSet::new())
+    parse_spec_(span, tts, &mut HashSet::new())
 }
 
 #[doc(hidden)]
-pub fn expand_parse_specification(
+pub fn expand_parse_spec(
     context: &mut ExtCtxt, span: Span, arguments: &[TokenTree]
 ) -> Box<MacResult> {
-    match parse_specification(arguments) {
+    match parse_spec(arguments) {
         Ok(specification) => MacEager::expr(specification.to_expr(context, span)),
         Err((span, message)) => {
             context.span_err(span, &message);

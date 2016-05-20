@@ -5,10 +5,10 @@ use syntax::parse::token::{BinOpToken, DelimToken, Lit, Token};
 
 #[test]
 fn test_specification() {
-    let specification: Specification = parse_specification!();
+    let specification: Specification = parse_spec!();
     assert_eq!(specification, spec![]);
 
-    let specification: Specification = parse_specification!(
+    let specification: Specification = parse_spec!(
         $attr:attr
         $binop:binop
         $block:block

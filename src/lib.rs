@@ -336,7 +336,7 @@ fn expand_easy_plugin_enum_(
     function: P<Item>,
 ) -> PluginResult<Box<MacResult + 'static>> {
     let specifications: Result<Vec<_>, _> = names.iter().zip(ttss.into_iter()).map(|(n, tts)| {
-        parse_specification(&tts).map(|s| (*n, s))
+        parse_spec(&tts).map(|s| (*n, s))
     }).collect();
     let specifications = try!(specifications);
 
@@ -455,7 +455,7 @@ fn expand_easy_plugin_enum(
 fn expand_easy_plugin_struct_(
     context: &mut ExtCtxt, span: Span, arguments: Ident, tts: Vec<TokenTree>, function: P<Item>
 ) -> PluginResult<Box<MacResult + 'static>> {
-    let specification = try!(parse_specification(&tts));
+    let specification = try!(parse_spec(&tts));
 
     let struct_ = expand_struct(context, span, arguments, &specification);
     let parse = expand_parse(context, span, arguments, &specification, false);
@@ -555,6 +555,7 @@ pub fn expand_easy_plugin(
 #[doc(hidden)]
 #[plugin_registrar]
 pub fn plugin_registrar(registry: &mut Registry) {
-    registry.register_macro("parse_specification", expand_parse_specification);
     registry.register_macro("easy_plugin", expand_easy_plugin);
+
+    registry.register_macro("parse_spec", expand_parse_spec);
 }
