@@ -1,4 +1,4 @@
-## [0.6.0] - UNRELEASED
+## [0.6.0] - 2016-5-28
 
 ### Changed
 - Renamed `parse_specification` plugin to `parse_spec`
