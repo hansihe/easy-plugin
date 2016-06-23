@@ -49,9 +49,8 @@ mod structs;
 fn with_tts<F>(source: &str, f: F) where F: Fn(&mut ExtCtxt, Span, &[TokenTree]) {
     let session = ParseSess::new();
     let config = ExpansionConfig::default("".into());
-    let mut cfgs = vec![];
     let mut loader = DummyMacroLoader;
-    let mut context = ExtCtxt::new(&session, vec![], config, &mut cfgs, &mut loader);
+    let mut context = ExtCtxt::new(&session, vec![], config, &mut loader);
     let tts = context.parse_tts(source.into());
     f(&mut context, DUMMY_SP, &tts);
 }
