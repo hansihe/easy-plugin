@@ -22,6 +22,7 @@ use syntax::ext::build::{AstBuilder};
 use syntax::codemap::{DUMMY_SP, Span};
 use syntax::parse::token::{BinOpToken, DelimToken, Token};
 use syntax::ptr::{P};
+use syntax::tokenstream::{TokenTree};
 
 use super::{PluginResult};
 use super::utility::{self, ToError, ToExpr, TtsIterator};
@@ -230,8 +231,7 @@ impl Specifier {
             Specifier::Attr(ref name) => field!(name, ::syntax::ast::Attribute),
             Specifier::BinOp(ref name) => field_spanned!(name, ::syntax::parse::token::BinOpToken),
             Specifier::Block(ref name) => field!(name, ::syntax::ptr::P<::syntax::ast::Block>),
-            Specifier::Delim(ref name) =>
-                field_spanned!(name, ::std::rc::Rc<::syntax::ast::Delimited>),
+            Specifier::Delim(ref name) => field_spanned!(name, ::syntax::tokenstream::Delimited),
             Specifier::Expr(ref name) => field!(name, ::syntax::ptr::P<::syntax::ast::Expr>),
             Specifier::Ident(ref name) => field_spanned!(name, ::syntax::ast::Ident),
             Specifier::Item(ref name) => field!(name, ::syntax::ptr::P<::syntax::ast::Item>),
@@ -243,7 +243,7 @@ impl Specifier {
             Specifier::Stmt(ref name) => field!(name, ::syntax::ast::Stmt),
             Specifier::Ty(ref name) => field!(name, ::syntax::ptr::P<::syntax::ast::Ty>),
             Specifier::Tok(ref name) => field_spanned!(name, ::syntax::parse::token::Token),
-            Specifier::Tt(ref name) => field!(name, ::syntax::ast::TokenTree),
+            Specifier::Tt(ref name) => field!(name, ::syntax::tokenstream::TokenTree),
             Specifier::Delimited(_, ref subspecification) =>
                 subspecification.to_struct_fields(context, span),
             Specifier::Sequence(amount, _, ref subspecification) => {
@@ -458,7 +458,7 @@ fn parse_spec_(
 /// Parses the supplied specification.
 pub fn parse_spec(tts: &[TokenTree]) -> PluginResult<Specification> {
     // Build a span that spans the entire specification.
-    let start = tts.iter().nth(0).map_or(DUMMY_SP, |s| s.get_span());
+    let start = tts.get(0).map_or(DUMMY_SP, |s| s.get_span());
     let end = tts.iter().last().map_or(DUMMY_SP, |s| s.get_span());
     let span = Span { lo: start.lo, hi: end.hi, expn_id: start.expn_id };
 

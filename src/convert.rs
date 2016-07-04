@@ -18,11 +18,11 @@ use std::rc::{Rc};
 
 use syntax::abi::{Abi};
 use syntax::ast::*;
-use syntax::attr::{ThinAttributes};
 use syntax::codemap::{self, Span, Spanned};
 use syntax::parse::token::{self, BinOpToken, DelimToken, Nonterminal};
 use syntax::parse::token::{SpecialMacroVar, Token};
 use syntax::ptr::{P};
+use syntax::tokenstream::{Delimited, SequenceRepetition, TokenTree};
 
 use super::{PluginResult, ToError};
 
@@ -66,7 +66,7 @@ __easy_plugin_convert!(expr: Expr(expr.node) -> ExprKind, [
     Path(_, _) -> (Option<QSelf>, Path),
     AddrOf(_, _) -> (Mutability, P<Expr>),
     Break(_) -> (Option<SpannedIdent>),
-    Again(_) -> (Option<SpannedIdent>),
+    Continue(_) -> (Option<SpannedIdent>),
     Ret(_) -> (Option<P<Expr>>),
     InlineAsm(_) -> (InlineAsm),
     Mac(_) -> (Mac),
@@ -115,8 +115,7 @@ __easy_plugin_convert!(pat: Pat(pat.node) -> PatKind, [
     Ident(_, _, _) -> (BindingMode, SpannedIdent, Option<P<Pat>>),
     Struct(_, _, _) -> (Path, Vec<Spanned<FieldPat>>, bool),
     TupleStruct(_, _, _) -> (Path, Vec<P<Pat>>, Option<usize>),
-    Path(_) -> (Path),
-    QPath(_, _) -> (QSelf, Path),
+    Path(_, _) -> (Option<QSelf>, Path),
     Tuple(_, _) -> (Vec<P<Pat>>, Option<usize>),
     Box(_) -> (P<Pat>),
     Ref(_, _) -> (P<Pat>, Mutability),
@@ -127,10 +126,11 @@ __easy_plugin_convert!(pat: Pat(pat.node) -> PatKind, [
 ]);
 
 __easy_plugin_convert!(stmt: Stmt(stmt.node) -> StmtKind, [
-    Decl(_, _) -> (P<Decl>, NodeId),
-    Expr(_, _) -> (P<Expr>, NodeId),
-    Semi(_, _) -> (P<Expr>, NodeId),
-    Mac(_, _, _) -> (P<Mac>, MacStmtStyle, ThinAttributes),
+    Local(_) -> (P<Local>),
+    Item(_) -> (P<Item>),
+    Expr(_) -> (P<Expr>),
+    Semi(_) -> (P<Expr>),
+    Mac(_) -> (P<(Mac, MacStmtStyle, ThinVec<Attribute>)>),
 ]);
 
 __easy_plugin_convert!(ty: Ty(ty.node) -> TyKind, [
@@ -146,6 +146,7 @@ __easy_plugin_convert!(ty: Ty(ty.node) -> TyKind, [
     Paren(_) -> (P<Ty>),
     Typeof(_) -> (P<Expr>),
     Infer() -> (),
+    ImplicitSelf() -> (),
     Mac(_) -> (Mac),
 ]);
 
@@ -195,7 +196,7 @@ __easy_plugin_convert!(tok: [Spanned<Token>](tok.node) -> Token, [
 ]);
 
 /// Returns the `TokenTree::Delimited` value in the supplied `TokenTree`.
-pub fn tt_to_delimited(tt: &TokenTree) -> PluginResult<Rc<Delimited>> {
+pub fn tt_to_delimited(tt: &TokenTree) -> PluginResult<Delimited> {
     match *tt {
         TokenTree::Delimited(_, ref delimited) => Ok(delimited.clone()),
         _ => tt.to_error("expected `TokenTree::Delimited` tt"),
@@ -211,7 +212,7 @@ pub fn tt_to_token(tt: &TokenTree) -> PluginResult<Spanned<Token>> {
 }
 
 /// Returns the `TokenTree::Sequence` value in the supplied `TokenTree`.
-pub fn tt_to_sequence(tt: &TokenTree) -> PluginResult<Rc<SequenceRepetition>> {
+pub fn tt_to_sequence(tt: &TokenTree) -> PluginResult<SequenceRepetition> {
     match *tt {
         TokenTree::Sequence(_, ref sequence) => Ok(sequence.clone()),
         _ => tt.to_error("expected `TokenTree::Sequence` tt"),

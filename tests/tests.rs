@@ -10,12 +10,12 @@ extern crate syntax;
 
 use rustc_plugin::{Registry};
 
-use syntax::ast::{TokenTree};
 use syntax::codemap::{Span, DUMMY_SP};
 use syntax::ext::base::{DummyMacroLoader, ExtCtxt};
 use syntax::ext::expand::{ExpansionConfig};
 use syntax::ext::quote::rt::{ExtParseUtils};
 use syntax::parse::{ParseSess};
+use syntax::tokenstream::{TokenTree};
 
 // check! ________________________________________
 

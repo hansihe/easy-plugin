@@ -128,24 +128,24 @@
 //! writing for macros. There are two primary differences: no restrictions on ordering and
 //! additional types of named specifiers.
 //!
-//! | Name    | Description                            |  Storage Type            |
-//! |:--------|:---------------------------------------|:-------------------------|
-//! | `attr`  | An attribute.                          | `Attribute`              |
-//! | `binop` | A binary operator.                     | `Spanned<BinOpToken>`    |
-//! | `block` | A brace-delimited statement sequence.  | `P<Block>`               |
-//! | `delim` | A delimited token tree sequence.       | `Spanned<Rc<Delimited>>` |
-//! | `expr`  | An expression.                         | `P<Expr>`                |
-//! | `ident` | An identifier.                         | `Spanned<Ident>`         |
-//! | `item`  | An item.                               | `P<Item>`                |
-//! | `lftm`  | A lifetime.                            | `Spanned<Name>`          |
-//! | `lit`   | A literal.                             | `Lit`                    |
-//! | `meta`  | A "meta" item, as found in attributes. | `P<MetaItem>`            |
-//! | `pat`   | A pattern.                             | `P<Pat>`                 |
-//! | `path`  | A qualified name.                      | `Path`                   |
-//! | `stmt`  | A single statement.                    | `P<Stmt>`                |
-//! | `ty`    | A type.                                | `P<Ty>`                  |
-//! | `tok`   | A single token.                        | `Spanned<Token>`         |
-//! | `tt`    | A single token tree.                   | `TokenTree`              |
+//! | Name    | Description                            |  Storage Type         |
+//! |:--------|:---------------------------------------|:----------------------|
+//! | `attr`  | An attribute.                          | `Attribute`           |
+//! | `binop` | A binary operator.                     | `Spanned<BinOpToken>` |
+//! | `block` | A brace-delimited statement sequence.  | `P<Block>`            |
+//! | `delim` | A delimited token tree sequence.       | `Spanned<Delimited>`  |
+//! | `expr`  | An expression.                         | `P<Expr>`             |
+//! | `ident` | An identifier.                         | `Spanned<Ident>`      |
+//! | `item`  | An item.                               | `P<Item>`             |
+//! | `lftm`  | A lifetime.                            | `Spanned<Name>`       |
+//! | `lit`   | A literal.                             | `Lit`                 |
+//! | `meta`  | A "meta" item, as found in attributes. | `P<MetaItem>`         |
+//! | `pat`   | A pattern.                             | `P<Pat>`              |
+//! | `path`  | A qualified name.                      | `Path`                |
+//! | `stmt`  | A single statement.                    | `P<Stmt>`             |
+//! | `ty`    | A type.                                | `P<Ty>`               |
+//! | `tok`   | A single token.                        | `Spanned<Token>`      |
+//! | `tt`    | A single token tree.                   | `TokenTree`           |
 //!
 //! ## Sequences
 //!
@@ -224,6 +224,7 @@ use syntax::ext::build::{AstBuilder};
 use syntax::parse::token::{DelimToken, Token};
 use syntax::ptr::{P};
 use syntax::util::small_vector::{SmallVector};
+use syntax::tokenstream::{TokenTree};
 
 pub mod convert;
 
@@ -313,7 +314,7 @@ fn expand_parse(
     quote_item!(context,
         #[allow(non_snake_case)]
         fn $function(
-            session: &::syntax::parse::ParseSess, arguments: &[::syntax::ast::TokenTree]
+            session: &::syntax::parse::ParseSess, arguments: &[::syntax::tokenstream::TokenTree]
         ) -> ::easy_plugin::PluginResult<$name> {
             ::easy_plugin::parse_args(session, arguments, &$specification.0).map(|_m| $result)
         }
@@ -400,7 +401,7 @@ fn expand_easy_plugin_enum_(
         fn $identifier(
             context: &mut ::syntax::ext::base::ExtCtxt,
             span: ::syntax::codemap::Span,
-            arguments: &[::syntax::ast::TokenTree],
+            arguments: &[::syntax::tokenstream::TokenTree],
         ) -> ::std::boxed::Box<::syntax::ext::base::MacResult> {
             $structs
             $enum_
@@ -467,7 +468,7 @@ fn expand_easy_plugin_struct_(
         fn $identifier(
             context: &mut ::syntax::ext::base::ExtCtxt,
             span: ::syntax::codemap::Span,
-            arguments: &[::syntax::ast::TokenTree],
+            arguments: &[::syntax::tokenstream::TokenTree],
         ) -> ::std::boxed::Box<::syntax::ext::base::MacResult> {
             $struct_
             $parse

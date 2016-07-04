@@ -12,7 +12,7 @@ easy_plugin! {
         $lit_bool:lit
         $meta_list:meta
         $pat_ident:pat
-        $stmt_decl:stmt;
+        $stmt_local:stmt;
         $ty_bare_fn:ty
         $tok_bin_op:tok
         $tt_delimited:tt
@@ -27,7 +27,7 @@ easy_plugin! {
         lit_to_bool(&arguments.lit_bool).unwrap();
         meta_to_list(&arguments.meta_list).unwrap();
         pat_to_ident(&arguments.pat_ident).unwrap();
-        stmt_to_decl(&arguments.stmt_decl).unwrap();
+        stmt_to_local(&arguments.stmt_local).unwrap();
         ty_to_bare_fn(&arguments.ty_bare_fn).unwrap();
         tok_to_bin_op(&arguments.tok_bin_op).unwrap();
         tt_to_delimited(&arguments.tt_delimited).unwrap();

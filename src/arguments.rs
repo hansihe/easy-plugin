@@ -23,6 +23,7 @@ use syntax::parse::common::{SeqSep};
 use syntax::parse::parser::{Parser};
 use syntax::parse::token::{BinOpToken, Token};
 use syntax::ptr::{P};
+use syntax::tokenstream::{Delimited, TokenTree};
 
 use super::{Amount, PluginResult, Specifier};
 use super::utility::{SaveEmitter, ToError, TransactionParser};
@@ -63,7 +64,7 @@ pub enum Match {
     /// A brace-delimited sequence of statements (e.g., `{ log(error, "hi"); return 12; }`).
     Block(P<Block>),
     /// A delimited sequence of token trees (e.g., `()`, `[foo - "bar"]`).
-    Delim(Spanned<Rc<Delimited>>),
+    Delim(Spanned<Delimited>),
     /// An expression (e.g., `2 + 2`, `if true { 1 } else { 2 }`, `f(42)`).
     Expr(P<Expr>),
     /// An identifier (e.g., `x`, `foo`).
@@ -111,7 +112,7 @@ impl Match {
 from!(Attr, Attribute);
 from!(BinOp, Spanned<BinOpToken>);
 from!(Block, P<Block>);
-from!(Delim, Spanned<Rc<Delimited>>);
+from!(Delim, Spanned<Delimited>);
 from!(Expr, P<Expr>);
 from!(Ident, Spanned<Ident>);
 from!(Item, P<Item>);
@@ -237,7 +238,7 @@ impl<'s> ArgumentParser<'s> {
     }
 
    /// Parses and returns a delimited sequence of token trees.
-   fn parse_delim(&mut self) -> PluginResult<Rc<Delimited>> {
+   fn parse_delim(&mut self) -> PluginResult<Delimited> {
         // Check for an open delimiter.
         let (delimiter, open) = match try!(self.expect_token()) {
             Token::OpenDelim(delimiter) => (delimiter, self.parser.get_last_span()),
@@ -260,7 +261,7 @@ impl<'s> ArgumentParser<'s> {
             tts: try!(tts),
             close_span: self.parser.get_last_span(),
         };
-        Ok(Rc::new(delimited))
+        Ok(delimited)
     }
 
     #[cfg_attr(feature="clippy", allow(cyclomatic_complexity))]
@@ -374,7 +375,7 @@ pub fn parse_args(
     }
 
     // Build a span that spans all the arguments.
-    let start = tts.iter().nth(0).map_or(DUMMY_SP, |s| s.get_span());
+    let start = tts.get(0).map_or(DUMMY_SP, |s| s.get_span());
     let end = tts.iter().last().map_or(DUMMY_SP, |s| s.get_span());
     let span = Span { lo: start.lo, hi: end.hi, expn_id: start.expn_id };
 

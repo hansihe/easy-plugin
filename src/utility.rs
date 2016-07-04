@@ -28,6 +28,7 @@ use syntax::parse::lexer::{Reader, TokenAndSpan};
 use syntax::parse::parser::{Parser, PathStyle};
 use syntax::parse::token::{BinOpToken, DelimToken, Token};
 use syntax::ptr::{P};
+use syntax::tokenstream::{TokenTree};
 
 use super::{PluginResult};
 
@@ -134,6 +135,7 @@ to_error!(Expr);
 to_error!(Item);
 to_error!(Pat);
 to_error!(Path);
+to_error!(Stmt);
 to_error!(Ty);
 
 // ToExpr ________________________________________
