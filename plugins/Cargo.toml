@@ -3,7 +3,7 @@
 name = "easy-plugin-plugins"
 authors = ["Kyle Mayes <kyle@mayeses.com>"]
 
-version = "0.6.0"
+version = "0.7.0"
 
 license = "Apache-2.0"
 
