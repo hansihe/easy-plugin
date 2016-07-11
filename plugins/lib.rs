@@ -21,6 +21,8 @@
 extern crate rustc_plugin;
 extern crate syntax;
 
+use std::rc::{Rc};
+
 use rustc_plugin::{Registry};
 
 use syntax::print::pprust;
@@ -93,7 +95,7 @@ fn parse_ty(context: &mut ExtCtxt, tts: &[TokenTree]) -> P<Ty> {
     context.new_parser_from_tts(tts).parse_ty().unwrap()
 }
 
-fn to_delimited(tt: &TokenTree) -> Delimited {
+fn to_delimited(tt: &TokenTree) -> Rc<Delimited> {
     match tt {
         &TokenTree::Delimited(_, ref delimited) => delimited.clone(),
         _ => unreachable!(),

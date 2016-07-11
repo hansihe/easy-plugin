@@ -196,7 +196,7 @@ __easy_plugin_convert!(tok: [Spanned<Token>](tok.node) -> Token, [
 ]);
 
 /// Returns the `TokenTree::Delimited` value in the supplied `TokenTree`.
-pub fn tt_to_delimited(tt: &TokenTree) -> PluginResult<Delimited> {
+pub fn tt_to_delimited(tt: &TokenTree) -> PluginResult<Rc<Delimited>> {
     match *tt {
         TokenTree::Delimited(_, ref delimited) => Ok(delimited.clone()),
         _ => tt.to_error("expected `TokenTree::Delimited` tt"),
@@ -212,7 +212,7 @@ pub fn tt_to_token(tt: &TokenTree) -> PluginResult<Spanned<Token>> {
 }
 
 /// Returns the `TokenTree::Sequence` value in the supplied `TokenTree`.
-pub fn tt_to_sequence(tt: &TokenTree) -> PluginResult<SequenceRepetition> {
+pub fn tt_to_sequence(tt: &TokenTree) -> PluginResult<Rc<SequenceRepetition>> {
     match *tt {
         TokenTree::Sequence(_, ref sequence) => Ok(sequence.clone()),
         _ => tt.to_error("expected `TokenTree::Sequence` tt"),
