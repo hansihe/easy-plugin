@@ -1,4 +1,4 @@
-## [0.7.1] - UNRELEASED
+## [0.7.1] - 2016-7-11
 
 ### Fixed
 - Updated for latest nightly
