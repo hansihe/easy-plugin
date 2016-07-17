@@ -199,6 +199,39 @@ fn expand_convert_fn(
     ).unwrap()
 }
 
+/// Returns an exhaustive function that ensures all variants are accounted for.
+fn expand_convert_exhaustive_fn(
+    context: &mut ExtCtxt,
+    pname: Ident,
+    pty: &P<Ty>,
+    pexpr: &P<Expr>,
+    dname: Ident,
+    dconverters: &Rc<Delimited>,
+) -> P<Item> {
+    // Build the name.
+    let name = context.ident_of(&format!("{}_exhaustive", pname));
+
+    // Build the variants.
+    let variants = dconverters.tts.chunks(5).map(|c| {
+        let name = &c[0];
+        if to_delimited(&c[1]).tts.is_empty() {
+            quote_arm!(context, $dname::$name => { })
+        } else {
+            quote_arm!(context, $dname::$name(..) => { })
+        }
+    }).collect::<Vec<_>>();
+
+    // Build the exhaustive converter function item.
+    quote_item!(context,
+        #[allow(dead_code)]
+        fn $name($pname: &$pty) {
+            match $pexpr {
+                $variants
+            }
+        }
+    ).unwrap()
+}
+
 /// Returns converter function items.
 ///
 /// A converter function attempts to extract the values in the `node` of an AST element. For
@@ -222,9 +255,10 @@ fn expand_convert(
 
     // Expand the list of converter specifications into converter function items.
     assert_eq!(dconverters.tts.len() % 5, 0);
-    let items = dconverters.tts.chunks(5).map(|c| {
+    let mut items = dconverters.tts.chunks(5).map(|c| {
         expand_convert_fn(context, span, c, pname, &pty, &pexpr, dname)
-    }).collect();
+    }).collect::<Vec<_>>();
+    items.push(expand_convert_exhaustive_fn(context, pname, &pty, &pexpr, dname, &dconverters));
     MacEager::items(SmallVector::many(items))
 }
 
