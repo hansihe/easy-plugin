@@ -532,7 +532,7 @@ pub fn mk_expr_path(context: &ExtCtxt, span: Span, idents: &[&str]) -> P<Expr> {
 
 pub fn mtwt_eq(left: &Token, right: &Token) -> bool {
     match (left, right) {
-        (&Token::Ident(left), &Token::Ident(right)) => left.name.as_str() == right.name.as_str(),
+        (&Token::Ident(left), &Token::Ident(right)) |
         (&Token::Lifetime(left), &Token::Lifetime(right)) =>
             left.name.as_str() == right.name.as_str(),
         _ => left == right,
