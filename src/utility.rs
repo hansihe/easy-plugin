@@ -497,7 +497,7 @@ impl<'i, I> TtsIterator<'i, I> where I: Iterator<Item=&'i TokenTree> {
     pub fn expect_specific_token(&mut self, token: Token) -> PluginResult<()> {
         let description = Parser::token_to_string(&token);
         self.expect_token(&description).and_then(|(s, t)| {
-            if t.mtwt_eq(&token) {
+            if mtwt_eq(&t, &token) {
                 Ok(())
             } else {
                 s.to_error(format!("expected {}", description))
@@ -528,4 +528,13 @@ pub fn mk_expr_call(context: &ExtCtxt, span: Span, idents: &[&str], args: Vec<P<
 
 pub fn mk_expr_path(context: &ExtCtxt, span: Span, idents: &[&str]) -> P<Expr> {
     context.expr_path(context.path_global(span, mk_path(context, idents)))
+}
+
+pub fn mtwt_eq(left: &Token, right: &Token) -> bool {
+    match (left, right) {
+        (&Token::Ident(left), &Token::Ident(right)) => left.name.as_str() == right.name.as_str(),
+        (&Token::Lifetime(left), &Token::Lifetime(right)) =>
+            left.name.as_str() == right.name.as_str(),
+        _ => left == right,
+    }
 }

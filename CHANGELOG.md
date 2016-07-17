@@ -1,3 +1,8 @@
+## [0.7.2] - UNRELEASED
+
+### Fixed
+- Updated for latest nightly
+
 ## [0.7.1] - 2016-7-11
 
 ### Fixed

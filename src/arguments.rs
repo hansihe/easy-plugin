@@ -26,7 +26,7 @@ use syntax::ptr::{P};
 use syntax::tokenstream::{Delimited, TokenTree};
 
 use super::{Amount, PluginResult, Specifier};
-use super::utility::{SaveEmitter, ToError, TransactionParser};
+use super::utility::{self, SaveEmitter, ToError, TransactionParser};
 
 //================================================
 // Macros
@@ -174,8 +174,7 @@ impl<'s> ArgumentParser<'s> {
     }
 
     fn expect_specific_token(&mut self, token: &Token) -> PluginResult<()> {
-        let found = try!(self.expect_token());
-        if found.mtwt_eq(token) {
+        if utility::mtwt_eq(token, &try!(self.expect_token())) {
             Ok(())
         } else {
             let message = format!("expected `{}`", Parser::token_to_string(token));
