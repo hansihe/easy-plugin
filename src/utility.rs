@@ -19,8 +19,8 @@ use syntax::ext::tt::transcribe;
 use syntax::parse::token;
 use syntax::ast::*;
 use syntax::codemap::{DUMMY_SP, Span, Spanned};
-use syntax::errors::{FatalError, Level, RenderSpan};
-use syntax::errors::emitter::{CoreEmitter};
+use syntax::errors::{DiagnosticBuilder, FatalError, Level};
+use syntax::errors::emitter::{Emitter};
 use syntax::ext::base::{ExtCtxt};
 use syntax::ext::build::{AstBuilder};
 use syntax::parse::{ParseSess, PResult};
@@ -273,15 +273,11 @@ thread_local! { static ERROR: RefCell<Option<(Span, String)>> = RefCell::default
 /// A diagnostic emitter that saves fatal errors to a thread local variable.
 pub struct SaveEmitter;
 
-impl CoreEmitter for SaveEmitter {
-    fn emit_message(
-        &mut self, span: &RenderSpan, message: &str, _: Option<&str>, level: Level, _: bool, _: bool
-    ) -> () {
-        if level == Level::Fatal {
-            if let RenderSpan::FullSpan(ref ms) = *span {
-                let span = ms.primary_span().unwrap_or(DUMMY_SP);
-                ERROR.with(|e| *e.borrow_mut() = Some((span, message.into())));
-            }
+impl Emitter for SaveEmitter {
+    fn emit(&mut self, builder: &DiagnosticBuilder) {
+        if builder.level == Level::Fatal {
+            let span = builder.span.primary_span().unwrap_or(DUMMY_SP);
+            ERROR.with(|e| *e.borrow_mut() = Some((span, builder.message.clone())));
         }
     }
 }
