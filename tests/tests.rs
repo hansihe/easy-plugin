@@ -39,6 +39,7 @@ macro_rules! assert_span_eq {
 mod arguments;
 mod convert;
 mod enums;
+mod errors;
 mod specification;
 mod structs;
 

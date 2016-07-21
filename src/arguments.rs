@@ -166,15 +166,15 @@ impl<'s> ArgumentParser<'s> {
 
     //- Mutators ---------------------------------
 
-    fn expect_token(&mut self) -> PluginResult<Token> {
+    fn next_token(&mut self) -> Option<Token> {
         match self.parser.bump_and_get() {
-            Token::Eof => self.span.to_error("unexpected end of arguments"),
-            token => Ok(token),
+            Token::Eof => None,
+            token => Some(token),
         }
     }
 
     fn expect_specific_token(&mut self, token: &Token) -> PluginResult<()> {
-        if utility::mtwt_eq(token, &try!(self.expect_token())) {
+        if self.next_token().map_or(false, |t| utility::mtwt_eq(token, &t)) {
             Ok(())
         } else {
             let message = format!("expected `{}`", Parser::token_to_string(token));
@@ -237,15 +237,13 @@ impl<'s> ArgumentParser<'s> {
     }
 
    /// Parses and returns a delimited sequence of token trees.
-   fn parse_delim(&mut self) -> PluginResult<Delimited> {
+   fn parse_delim(&mut self, name: &str) -> PluginResult<Delimited> {
         // Check for an open delimiter.
-        let (delimiter, open) = match try!(self.expect_token()) {
-            Token::OpenDelim(delimiter) => (delimiter, self.parser.get_last_span()),
-            invalid => {
-                let string = Parser::token_to_string(&invalid);
-                let error = format!("expected opening delimiter, found `{}`", string);
-                return self.parser.get_last_span().to_error(error);
-            },
+        let (delimiter, open) = if let Some(Token::OpenDelim(delimiter)) = self.next_token() {
+            (delimiter, self.parser.get_last_span())
+        } else {
+            let error = format!("expected opening delimiter: '{}'", name);
+            return self.parser.get_last_span().to_error(error);
         };
 
         // Parse token trees until a matching close delimiter is encountered.
@@ -286,20 +284,20 @@ impl<'s> ArgumentParser<'s> {
         for specifier in specification {
             match *specifier {
                 Specifier::Attr(ref name) => insert!(Attr, parse_attribute, name),
-                Specifier::BinOp(ref name) => match try!(self.expect_token()) {
-                    Token::BinOp(binop) | Token::BinOpEq(binop) => {
+                Specifier::BinOp(ref name) => match self.next_token() {
+                    Some(Token::BinOp(binop)) | Some(Token::BinOpEq(binop)) => {
                         let spanned = codemap::respan(self.parser.get_last_span(), binop);
                         matches.insert(name.clone(), Match::BinOp(spanned));
                     },
                     _ => {
-                        let error = format!("expected binop: '{}'", name);
+                        let error = format!("expected binary operator: '{}'", name);
                         return self.parser.get_last_span().to_error(error);
                     },
                 },
                 Specifier::Block(ref name) => insert!(Block, parse_block, name),
                 Specifier::Delim(ref name) => {
                     let open = self.parser.get_span();
-                    let delim = try!(self.parse_delim());
+                    let delim = try!(self.parse_delim(name));
                     let spanned = codemap::spanned(open.lo, delim.close_span.hi, delim);
                     matches.insert(name.clone(), Match::Delim(spanned));
                 },
@@ -319,10 +317,12 @@ impl<'s> ArgumentParser<'s> {
                 Specifier::Path(ref name) => insert!(Path, parse_path, name),
                 Specifier::Stmt(ref name) => insert!(Stmt, parse_stmt, name),
                 Specifier::Ty(ref name) => insert!(Ty, parse_ty, name),
-                Specifier::Tok(ref name) => {
-                    let tok = try!(self.expect_token());
-                    let spanned = codemap::respan(self.parser.get_last_span(), tok);
+                Specifier::Tok(ref name) => if let Some(token) = self.next_token() {
+                    let spanned = codemap::respan(self.parser.get_last_span(), token);
                     matches.insert(name.clone(), Match::Tok(spanned));
+                } else {
+                    let error = format!("expected token: '{}'", name);
+                    return self.parser.get_last_span().to_error(error);
                 },
                 Specifier::Tt(ref name) => insert!(Tt, parse_token_tree, name),
                 Specifier::Specific(ref expected) => try!(self.expect_specific_token(expected)),
