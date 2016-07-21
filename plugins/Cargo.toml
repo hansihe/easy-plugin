@@ -13,5 +13,4 @@ repository = "https://github.com/KyleMayes/easy-plugin"
 
 [lib]
 
-path = "lib.rs"
 plugin = true

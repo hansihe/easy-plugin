@@ -218,12 +218,11 @@ extern crate syntax;
 use rustc_plugin::{Registry};
 
 use syntax::ast::*;
-use syntax::codemap::{Span, Spanned};
-use syntax::ext::base::{ExtCtxt, DummyResult, MacEager, MacResult};
+use syntax::codemap::{Span};
+use syntax::ext::base::{ExtCtxt, DummyResult, MacResult};
 use syntax::ext::build::{AstBuilder};
-use syntax::parse::token::{DelimToken, Token};
+use syntax::parse::token::{Token};
 use syntax::ptr::{P};
-use syntax::util::small_vector::{SmallVector};
 use syntax::tokenstream::{TokenTree};
 
 pub mod convert;
@@ -239,6 +238,9 @@ pub use self::arguments::*;
 mod specification;
 pub use self::specification::*;
 
+mod enums;
+mod structs;
+
 /// A result type suitable for reporting errors in plugins.
 pub type PluginResult<T> = Result<T, (Span, String)>;
 
@@ -246,7 +248,9 @@ pub type PluginResult<T> = Result<T, (Span, String)>;
 // Functions
 //================================================
 
-fn strip_function(
+/// Strips the visibility and attributes from a function and appends `_` to the name.
+#[doc(hidden)]
+pub fn strip_function(
     context: &mut ExtCtxt, function: P<Item>
 ) -> (P<Item>, Ident, Visibility, Vec<Attribute>) {
     let ident = function.ident;
@@ -261,35 +265,9 @@ fn strip_function(
     (function, ident, visibility, attributes)
 }
 
-/// Returns a struct that stores the values matched by the supplied specification.
-fn expand_struct(
-    context: &mut ExtCtxt, span: Span, name: Ident, specification: &Specification
-) -> P<Item> {
-    let fields = specification.iter().flat_map(|s| {
-        s.to_struct_fields(context, span).into_iter()
-    }).collect::<Vec<_>>();
-
-    // Build the struct.
-    let struct_ = if fields.is_empty() {
-        quote_item!(context, struct $name;).unwrap()
-    } else {
-        context.item_struct(span, name, VariantData::Struct(fields, DUMMY_NODE_ID))
-    };
-    struct_.map(|mut s| {
-        s.attrs = vec![quote_attr!(context, #[derive(Clone, Debug)])];
-        s
-    })
-}
-
-/// Returns structs that store the values matched by the supplied specifications.
-fn expand_structs(
-    context: &mut ExtCtxt, span: Span, specifications: &[(Ident, Specification)]
-) -> Vec<P<Item>> {
-    specifications.iter().map(|&(n, ref s)| expand_struct(context, span, n, s)).collect()
-}
-
 /// Returns a function that parse arguments according the supplied specification.
-fn expand_parse(
+#[doc(hidden)]
+pub fn expand_parse(
     context: &mut ExtCtxt, span: Span, name: Ident, specification: &Specification, multiple: bool
 ) -> P<Item> {
     let function = if multiple {
@@ -321,207 +299,6 @@ fn expand_parse(
     ).unwrap()
 }
 
-/// Returns functions that parse arguments according the supplied specifications.
-fn expand_parses(
-    context: &mut ExtCtxt, span: Span, specifications: &[(Ident, Specification)]
-) -> Vec<P<Item>> {
-    specifications.iter().map(|&(n, ref s)| expand_parse(context, span, n, s, true)).collect()
-}
-
-fn expand_easy_plugin_enum_(
-    context: &mut ExtCtxt,
-    span: Span,
-    arguments: Ident,
-    names: Vec<Ident>,
-    ttss: Vec<Vec<TokenTree>>,
-    function: P<Item>,
-) -> PluginResult<Box<MacResult + 'static>> {
-    let specifications: Result<Vec<_>, _> = names.iter().zip(ttss.into_iter()).map(|(n, tts)| {
-        parse_spec(&tts).map(|s| (*n, s))
-    }).collect();
-    let specifications = try!(specifications);
-
-    let structs = expand_structs(context, span, &specifications);
-    let variants = names.iter().map(|n| {
-        context.variant(span, *n, vec![quote_ty!(context, $n)])
-    }).collect();
-    let enum_ = context.item_enum(span, arguments, EnumDef { variants: variants }).map(|mut e| {
-        e.attrs = vec![quote_attr!(context, #[derive(Clone, Debug)])];
-        e
-    });
-
-    let parses = expand_parses(context, span, &specifications);
-
-    let (function, identifier, visibility, attributes) = strip_function(context, function);
-    let inner = function.ident;
-
-    let stmts = names.iter().enumerate().map(|(i, ref n)| {
-        let parse = context.ident_of(&format!("parse{}", n));
-        if i + 1 < specifications.len() {
-            quote_stmt!(context,
-                if let Ok(arguments) = $parse(context.parse_sess, arguments) {
-                    return match $inner(context, span, $arguments::$n(arguments)) {
-                        Ok(result) => result,
-                        Err((subspan, message)) => {
-                            let span = if subspan == ::syntax::codemap::DUMMY_SP {
-                                span
-                            } else {
-                                subspan
-                            };
-
-                            context.span_err(span, &message);
-                            ::syntax::ext::base::DummyResult::any(span)
-                        }
-                    };
-                }
-            )
-        } else {
-            quote_stmt!(context,
-                return match $parse(context.parse_sess, arguments).and_then(|a| {
-                    $inner(context, span, $arguments::$n(a))
-                }) {
-                    Ok(result) => result,
-                    Err((subspan, message)) => {
-                        let span = if subspan == ::syntax::codemap::DUMMY_SP {
-                            span
-                        } else {
-                            subspan
-                        };
-
-                        context.span_err(span, &message);
-                        ::syntax::ext::base::DummyResult::any(span)
-                    }
-                };
-            )
-        }
-    }).collect::<Vec<_>>();
-
-    // Build the wrapper function.
-    let item = quote_item!(context,
-        fn $identifier(
-            context: &mut ::syntax::ext::base::ExtCtxt,
-            span: ::syntax::codemap::Span,
-            arguments: &[::syntax::tokenstream::TokenTree],
-        ) -> ::std::boxed::Box<::syntax::ext::base::MacResult> {
-            $structs
-            $enum_
-            $parses
-            $function
-            $stmts
-        }
-    ).unwrap().map(|mut i| {
-        i.vis = visibility;
-        i.attrs = attributes;
-        i
-    });
-    Ok(MacEager::items(SmallVector::one(item)))
-}
-
-/// Returns a mulitple specification easy-plugin wrapper function.
-fn expand_easy_plugin_enum(
-    context: &mut ExtCtxt, span: Span, arguments: &[TokenTree]
-) -> PluginResult<Box<MacResult + 'static>> {
-    // Build the argument specification.
-    let specification = &[
-        Specifier::specific_ident("enum"),
-        Specifier::Ident("arguments".into()),
-        Specifier::Delimited(DelimToken::Brace, spec![
-            Specifier::Sequence(Amount::ZeroOrMore, None, spec![
-                Specifier::Ident("name".into()),
-                Specifier::Delimited(DelimToken::Brace, spec![
-                    Specifier::Sequence(Amount::ZeroOrMore, None, spec![
-                        Specifier::Tt("tt".into()),
-                    ]),
-                ]),
-                Specifier::Specific(Token::Comma),
-            ]),
-        ]),
-        Specifier::Item("function".into()),
-    ];
-
-    // Extract the arguments.
-    let matches = try!(parse_args(context.parse_sess, arguments, specification));
-    let arguments = matches.get("arguments").unwrap().to::<Spanned<Ident>>().node;
-    let names = matches.get("name").unwrap().to::<Vec<Match>>().into_iter().map(|s| {
-        s.to::<Spanned<Ident>>().node
-    }).collect();
-    let ttss = matches.get("tt").unwrap().to::<Vec<Match>>().into_iter().map(|s| {
-        s.to::<Vec<Match>>().into_iter().map(|s| s.to::<TokenTree>()).collect::<Vec<_>>()
-    }).collect();
-    let function = matches.get("function").unwrap().to::<P<Item>>();
-
-    expand_easy_plugin_enum_(context, span, arguments, names, ttss, function)
-}
-
-fn expand_easy_plugin_struct_(
-    context: &mut ExtCtxt, span: Span, arguments: Ident, tts: Vec<TokenTree>, function: P<Item>
-) -> PluginResult<Box<MacResult + 'static>> {
-    let specification = try!(parse_spec(&tts));
-
-    let struct_ = expand_struct(context, span, arguments, &specification);
-    let parse = expand_parse(context, span, arguments, &specification, false);
-    let (function, identifier, visibility, attributes) = strip_function(context, function);
-    let inner = function.ident;
-
-    // Build the wrapper function.
-    let item = quote_item!(context,
-        fn $identifier(
-            context: &mut ::syntax::ext::base::ExtCtxt,
-            span: ::syntax::codemap::Span,
-            arguments: &[::syntax::tokenstream::TokenTree],
-        ) -> ::std::boxed::Box<::syntax::ext::base::MacResult> {
-            $struct_
-            $parse
-            $function
-            match parse(context.parse_sess, arguments).and_then(|a| $inner(context, span, a)) {
-                Ok(result) => result,
-                Err((subspan, message)) => {
-                    let span = if subspan == ::syntax::codemap::DUMMY_SP {
-                        span
-                    } else {
-                        subspan
-                    };
-
-                    context.span_err(span, &message);
-                    ::syntax::ext::base::DummyResult::any(span)
-                },
-            }
-        }
-    ).unwrap().map(|mut i| {
-        i.vis = visibility;
-        i.attrs = attributes;
-        i
-    });
-    Ok(MacEager::items(SmallVector::one(item)))
-}
-
-/// Returns a single specification easy-plugin wrapper function.
-fn expand_easy_plugin_struct(
-    context: &mut ExtCtxt, span: Span, arguments: &[TokenTree]
-) -> PluginResult<Box<MacResult + 'static>> {
-    // Build the argument specification.
-    let specification = &[
-        Specifier::specific_ident("struct"),
-        Specifier::Ident("arguments".into()),
-        Specifier::Delimited(DelimToken::Brace, spec![
-            Specifier::Sequence(Amount::ZeroOrMore, None, spec![
-                Specifier::Tt("tt".into()),
-            ]),
-        ]),
-        Specifier::Item("function".into()),
-    ];
-
-    // Extract the arguments.
-    let matches = try!(parse_args(context.parse_sess, arguments, specification));
-    let arguments = matches.get("arguments").unwrap().to::<Spanned<Ident>>().node;
-    let tts = matches.get("tt").unwrap().to::<Vec<Match>>().iter().map(|s| {
-        s.to::<TokenTree>()
-    }).collect::<Vec<_>>();
-    let function = matches.get("function").unwrap().to::<P<Item>>();
-
-    expand_easy_plugin_struct_(context, span, arguments, tts, function)
-}
-
 /// Returns an easy-plugin wrapper function.
 fn expand_easy_plugin_(
     context: &mut ExtCtxt, span: Span, arguments: &[TokenTree]
@@ -532,8 +309,8 @@ fn expand_easy_plugin_(
 
     match arguments[0] {
         TokenTree::Token(_, Token::Ident(ref ident)) => match &*ident.name.as_str() {
-            "enum" => expand_easy_plugin_enum(context, span, arguments),
-            "struct" => expand_easy_plugin_struct(context, span, arguments),
+            "enum" => enums::expand_easy_plugin_enum(context, span, arguments),
+            "struct" => structs::expand_easy_plugin_struct(context, span, arguments),
             _ => arguments[0].to_error("expected `enum` or `struct`"),
         },
         _ => arguments[0].to_error("expected `enum` or `struct`"),
@@ -556,7 +333,6 @@ pub fn expand_easy_plugin(
 #[doc(hidden)]
 #[plugin_registrar]
 pub fn plugin_registrar(registry: &mut Registry) {
-    registry.register_macro("easy_plugin", expand_easy_plugin);
-
     registry.register_macro("parse_spec", expand_parse_spec);
+    registry.register_macro("easy_plugin", expand_easy_plugin);
 }

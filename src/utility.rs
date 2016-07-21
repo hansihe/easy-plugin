@@ -124,7 +124,7 @@ impl<T, S: Into<String>> ToError<T, S> for TokenTree {
     }
 }
 
-impl<T, U, S:Into<String>> ToError<T, S> for Spanned<U> {
+impl<T, U, S: Into<String>> ToError<T, S> for Spanned<U> {
     fn to_error(&self, message: S) -> PluginResult<T> {
         Err((self.span, message.into()))
     }
@@ -393,7 +393,7 @@ impl<'s> TransactionParser<'s> {
         self.start = self.position;
     }
 
-    /// Sets the position to the saved position.
+    /// Sets the current position to the saved position.
     pub fn rollback(&mut self) {
         self.position = self.start;
     }
