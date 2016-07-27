@@ -1,4 +1,5 @@
 #![feature(plugin, plugin_registrar, rustc_private)]
+
 #![plugin(easy_plugin)]
 
 #[allow(plugin_as_library)]

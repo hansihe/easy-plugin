@@ -1,7 +1,6 @@
 use syntax::ast::*;
 use syntax::codemap::{Span, Spanned};
 use syntax::ext::base::{ExtCtxt, MacEager, MacResult};
-use syntax::ext::build::{AstBuilder};
 use syntax::parse::token::{DelimToken};
 use syntax::ptr::{P};
 use syntax::util::small_vector::{SmallVector};
@@ -13,69 +12,31 @@ use super::*;
 // Functions
 //================================================
 
-/// Returns a struct that stores the values matched by the supplied specification.
-pub fn expand_struct(
-    context: &mut ExtCtxt, span: Span, name: Ident, specification: &Specification
-) -> P<Item> {
-    let fields = specification.iter().flat_map(|s| {
-        s.to_struct_fields(context, span).into_iter()
-    }).collect::<Vec<_>>();
-
-    // Build the struct.
-    let struct_ = if fields.is_empty() {
-        quote_item!(context, struct $name;).unwrap()
-    } else {
-        context.item_struct(span, name, VariantData::Struct(fields, DUMMY_NODE_ID))
-    };
-    struct_.map(|mut s| {
-        s.attrs = vec![quote_attr!(context, #[derive(Clone, Debug)])];
-        s
-    })
-}
-
 fn expand_easy_plugin_struct_(
     context: &mut ExtCtxt, span: Span, arguments: Ident, tts: Vec<TokenTree>, function: P<Item>
 ) -> PluginResult<Box<MacResult + 'static>> {
-    let specification = try!(super::parse_spec(&tts));
-
-    let struct_ = expand_struct(context, span, arguments, &specification);
-    let parse = super::expand_parse(context, span, arguments, &specification, false);
+    let specification = try!(parse_spec(&tts));
     let (function, identifier, visibility, attributes) = strip_function(context, function);
-    let inner = function.ident;
 
-    // Build the wrapper function.
+    let expr = quote_expr!(context, |a| ${function.ident}(context, span, a));
+    let expr = quote_expr!(context, parse(context.parse_sess, arguments).and_then($expr));
+
     let item = quote_item!(context,
-        fn $identifier(
+        $attributes
+        $visibility fn $identifier(
             context: &mut ::syntax::ext::base::ExtCtxt,
             span: ::syntax::codemap::Span,
             arguments: &[::syntax::tokenstream::TokenTree],
-        ) -> ::std::boxed::Box<::syntax::ext::base::MacResult> {
-            $struct_
-            $parse
+        ) -> Box<::syntax::ext::base::MacResult> {
+            ${specification.to_struct_item(context, arguments)}
+            ${expand_parse_fn(context, span, arguments, &specification, false)}
             $function
-            match parse(context.parse_sess, arguments).and_then(|a| $inner(context, span, a)) {
-                Ok(result) => result,
-                Err((subspan, message)) => {
-                    let span = if subspan == ::syntax::codemap::DUMMY_SP {
-                        span
-                    } else {
-                        subspan
-                    };
-
-                    context.span_err(span, &message);
-                    ::syntax::ext::base::DummyResult::any(span)
-                },
-            }
+            ${expand_parse_expr(context, expr)}
         }
-    ).unwrap().map(|mut i| {
-        i.vis = visibility;
-        i.attrs = attributes;
-        i
-    });
+    ).unwrap();
     Ok(MacEager::items(SmallVector::one(item)))
 }
 
-/// Returns a single specification `easy-plugin` wrapper function.
 pub fn expand_easy_plugin_struct(
     context: &mut ExtCtxt, span: Span, arguments: &[TokenTree]
 ) -> PluginResult<Box<MacResult + 'static>> {

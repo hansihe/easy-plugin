@@ -8,14 +8,30 @@ use syntax::util::small_vector::{SmallVector};
 use syntax::tokenstream::{TokenTree};
 
 use super::*;
-use super::structs;
 
 //================================================
 // Functions
 //================================================
 
+fn expand_parse_stmt(
+    context: &ExtCtxt, parse: (Ident, Ident), arguments: Ident, variant: Ident, last: bool
+) -> Stmt {
+    if last {
+        let expr = quote_expr!(context, |a| ${parse.1}(context, span, $arguments::$variant(a)));
+        let expr = quote_expr!(context, ${parse.0}(context.parse_sess, arguments).and_then($expr));
+        quote_stmt!(context, return ${expand_parse_expr(context, expr)};).unwrap()
+    } else {
+        let expr = quote_expr!(context, ${parse.1}(context, span, $arguments::$variant(arguments)));
+        quote_stmt!(context,
+            if let Ok(arguments) = ${parse.0}(context.parse_sess, arguments) {
+                return ${expand_parse_expr(context, expr)};
+            }
+        ).unwrap()
+    }
+}
+
 fn expand_easy_plugin_enum_(
-    context: &mut ExtCtxt,
+    context: &ExtCtxt,
     span: Span,
     arguments: Ident,
     names: Vec<Ident>,
@@ -28,82 +44,42 @@ fn expand_easy_plugin_enum_(
     let specifications = try!(specifications);
 
     let structs = specifications.iter().map(|&(n, ref s)| {
-        structs::expand_struct(context, span, n, s)
+        s.to_struct_item(context, n)
     }).collect::<Vec<_>>();
     let variants = names.iter().map(|n| {
         context.variant(span, *n, vec![quote_ty!(context, $n)])
     }).collect();
     let enum_ = context.item_enum(span, arguments, EnumDef { variants: variants }).map(|mut e| {
-        e.attrs = vec![quote_attr!(context, #[derive(Clone, Debug)])];
+        e.attrs = vec![quote_attribute!(context, #[derive(Clone, Debug)])];
         e
     });
 
     let parses = specifications.iter().map(|&(n, ref s)| {
-        expand_parse(context, span, n, s, true)
+        expand_parse_fn(context, span, n, s, true)
     }).collect::<Vec<_>>();
 
     let (function, identifier, visibility, attributes) = strip_function(context, function);
-    let inner = function.ident;
 
     let stmts = names.iter().enumerate().map(|(i, ref n)| {
         let parse = context.ident_of(&format!("parse{}", n));
-        if i + 1 < specifications.len() {
-            quote_stmt!(context,
-                if let Ok(arguments) = $parse(context.parse_sess, arguments) {
-                    return match $inner(context, span, $arguments::$n(arguments)) {
-                        Ok(result) => result,
-                        Err((subspan, message)) => {
-                            let span = if subspan == ::syntax::codemap::DUMMY_SP {
-                                span
-                            } else {
-                                subspan
-                            };
-
-                            context.span_err(span, &message);
-                            ::syntax::ext::base::DummyResult::any(span)
-                        }
-                    };
-                }
-            )
-        } else {
-            quote_stmt!(context,
-                return match $parse(context.parse_sess, arguments).and_then(|a| {
-                    $inner(context, span, $arguments::$n(a))
-                }) {
-                    Ok(result) => result,
-                    Err((subspan, message)) => {
-                        let span = if subspan == ::syntax::codemap::DUMMY_SP {
-                            span
-                        } else {
-                            subspan
-                        };
-
-                        context.span_err(span, &message);
-                        ::syntax::ext::base::DummyResult::any(span)
-                    }
-                };
-            )
-        }
+        expand_parse_stmt(context, (parse, function.ident), arguments, **n, i + 1 == specifications.len())
     }).collect::<Vec<_>>();
 
     // Build the wrapper function.
     let item = quote_item!(context,
-        fn $identifier(
+        $attributes
+        $visibility fn $identifier(
             context: &mut ::syntax::ext::base::ExtCtxt,
             span: ::syntax::codemap::Span,
             arguments: &[::syntax::tokenstream::TokenTree],
-        ) -> ::std::boxed::Box<::syntax::ext::base::MacResult> {
+        ) -> Box<::syntax::ext::base::MacResult> {
             $structs
             $enum_
             $parses
             $function
             $stmts
         }
-    ).unwrap().map(|mut i| {
-        i.vis = visibility;
-        i.attrs = attributes;
-        i
-    });
+    ).unwrap();
     Ok(MacEager::items(SmallVector::one(item)))
 }
 
