@@ -17,13 +17,14 @@ use std::rc::{Rc};
 
 use syntax::ast::*;
 use syntax::codemap::{self, DUMMY_SP, CodeMap, Span, Spanned};
-use syntax::errors::{Handler};
 use syntax::parse::{ParseSess};
 use syntax::parse::common::{SeqSep};
 use syntax::parse::parser::{Parser};
 use syntax::parse::token::{BinOpToken, Token};
 use syntax::ptr::{P};
 use syntax::tokenstream::{Delimited, TokenTree};
+
+use syntax_errors::{Handler};
 
 use super::{Amount, PluginResult, Specifier};
 use super::utility::{self, SaveEmitter, ToError, TransactionParser};

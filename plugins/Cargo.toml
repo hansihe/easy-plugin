@@ -11,6 +11,24 @@ description = "Compiler plugins used internally by the easy-plugin crate."
 
 repository = "https://github.com/KyleMayes/easy-plugin"
 
+build = "build.rs"
+
 [lib]
 
 plugin = true
+
+[features]
+
+stable = ["syntex", "syntex_syntax", "synthax/stable"]
+
+[dependencies]
+
+syntex = { version = "0.39.0", optional = true }
+syntex_syntax = { version = "0.39.0", optional = true }
+synthax = "0.2.0"
+
+clippy = { version = "0.0.*", optional = true }
+
+[build-dependencies]
+
+synthax = "0.2.0"

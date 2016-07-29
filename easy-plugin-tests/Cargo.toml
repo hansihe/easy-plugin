@@ -1,0 +1,26 @@
+[package]
+
+name = "easy-plugin-tests"
+authors = ["Kyle Mayes <kyle@mayeses.com>"]
+
+version = "0.7.3"
+
+build = "build.rs"
+
+[features]
+
+stable = ["syntex", "syntex_syntax", "easy-plugin/stable"]
+
+[dependencies]
+
+syntex = { version = "0.39.0", optional = true }
+syntex_syntax = { version = "0.39.0", optional = true }
+easy-plugin = { path = ".." }
+
+[build-dependencies]
+
+easy-plugin = { path = ".." }
+
+[[test]]
+
+name = "tests"

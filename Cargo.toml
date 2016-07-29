@@ -13,18 +13,28 @@ description = "A compiler plugin that makes it easier to write compiler plugins.
 documentation = "https://kylemayes.github.io/easy-plugin/easy_plugin"
 repository = "https://github.com/KyleMayes/easy-plugin"
 
+build = "build.rs"
+
 [lib]
 
 plugin = true
 
+[features]
+
+stable = ["syntex", "syntex_errors", "syntex_syntax", "synthax/stable", "easy-plugin-plugins/stable"]
+
 [dependencies]
 
 easy-plugin-plugins = { version = "0.7.3", path = "plugins" }
-synthax = "0.1.0"
+syntex = { version = "0.39.0", optional = true }
+syntex_errors = { version = "0.39.0", optional = true }
+syntex_syntax = { version = "0.39.0", optional = true }
+synthax = "0.2.0"
 
 clippy = { version = "0.0.*", optional = true }
 
-[[test]]
+[build-dependencies]
 
-name = "tests"
-harness = true
+easy-plugin-plugins = { version = "0.7.3", path = "plugins" }
+syntex = { version = "0.39.0", optional = true }
+synthax = "0.2.0"

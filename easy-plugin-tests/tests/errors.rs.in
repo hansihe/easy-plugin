@@ -44,23 +44,39 @@ fn test_errors() {
         });
     }
 
-    assert_errors_eq!(parse_spec!($a:attr), "attribute", "#[cfg(test)]");
-    assert_errors_eq!(parse_spec!($a:binop), "binary operator", "+");
-    assert_errors_eq!(parse_spec!($a:block), "block", "{ let a = 322; }");
-    assert_errors_eq!(parse_spec!($a:delim), "opening delimiter", "(1, 2, 3)");
-    assert_errors_eq!(parse_spec!($a:expr), "expression", "2 + 2");
-    assert_errors_eq!(parse_spec!($a:ident), "identifier", "a");
-    assert_errors_eq!(parse_spec!($a:item), "item", "struct A;");
-    assert_errors_eq!(parse_spec!($a:lftm), "lifetime", "'a");
-    assert_errors_eq!(parse_spec!($a:lit), "literal", "322");
-    assert_errors_eq!(parse_spec!($a:meta), "meta item", "cfg(test)");
-    assert_errors_eq!(parse_spec!($a:pat), "pattern", "_");
-    assert_errors_eq!(parse_spec!($a:path), "path", "::std::path::Path");
-    assert_errors_eq!(parse_spec!($a:stmt), "statement", "let a = 322");
-    assert_errors_eq!(parse_spec!($a:ty), "type", "(i32, f32)");
+    let spec = parse_spec!($a:attr);
+    assert_errors_eq!(&spec, "attribute", "#[cfg(test)]");
+    let spec = parse_spec!($a:binop);
+    assert_errors_eq!(&spec, "binary operator", "+");
+    let spec = parse_spec!($a:block);
+    assert_errors_eq!(&spec, "block", "{ let a = 322; }");
+    let spec = parse_spec!($a:delim);
+    assert_errors_eq!(&spec, "opening delimiter", "(1, 2, 3)");
+    let spec = parse_spec!($a:expr);
+    assert_errors_eq!(&spec, "expression", "2 + 2");
+    let spec = parse_spec!($a:ident);
+    assert_errors_eq!(&spec, "identifier", "a");
+    let spec = parse_spec!($a:item);
+    assert_errors_eq!(&spec, "item", "struct A;");
+    let spec = parse_spec!($a:lftm);
+    assert_errors_eq!(&spec, "lifetime", "'a");
+    let spec = parse_spec!($a:lit);
+    assert_errors_eq!(&spec, "literal", "322");
+    let spec = parse_spec!($a:meta);
+    assert_errors_eq!(&spec, "meta item", "cfg(test)");
+    let spec = parse_spec!($a:pat);
+    assert_errors_eq!(&spec, "pattern", "_");
+    let spec = parse_spec!($a:path);
+    assert_errors_eq!(&spec, "path", "::std::path::Path");
+    let spec = parse_spec!($a:stmt);
+    assert_errors_eq!(&spec, "statement", "let a = 322");
+    let spec = parse_spec!($a:ty);
+    assert_errors_eq!(&spec, "type", "(i32, f32)");
 
-    assert_error_eq!(&parse_spec!($a:tok), 0, 0, "", "expected token: 'a'");
-    assert_error_eq!(&parse_spec!($a:tt), 0, 0, "", "expected token tree: 'a'");
+    let spec = parse_spec!($a:tok);
+    assert_error_eq!(&spec, 0, 0, "", "expected token: 'a'");
+    let spec = parse_spec!($a:tt);
+    assert_error_eq!(&spec, 0, 0, "", "expected token tree: 'a'");
 
     let spec = parse_spec!(?);
     assert_error_eq!(&spec, 0, 0, "", "expected `?`");
@@ -82,5 +98,6 @@ fn test_errors() {
     assert_error_eq!(&spec, 1, 2, "a!", "too many arguments");
     assert_error_eq!(&spec, 3, 4, "a b!", "too many arguments");
 
-    assert_error_eq!(&parse_spec!($($a:ident)?), 2, 3, "a b", "too many arguments");
+    let spec = parse_spec!($($a:ident)?);
+    assert_error_eq!(&spec, 2, 3, "a b", "too many arguments");
 }

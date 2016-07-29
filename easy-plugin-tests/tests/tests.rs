@@ -1,15 +1,22 @@
-#![feature(plugin, plugin_registrar, rustc_private)]
+#![cfg_attr(not(feature="syntex"), feature(plugin))]
+#![cfg_attr(not(feature="syntex"), feature(plugin_registrar))]
+#![cfg_attr(not(feature="syntex"), feature(rustc_private))]
 
-#![plugin(easy_plugin)]
+#![cfg_attr(not(feature="syntex"), plugin(easy_plugin))]
 
-#[allow(plugin_as_library)]
-#[macro_use]
-extern crate easy_plugin;
+#[cfg(feature="syntex")]
+extern crate syntex as rustc_plugin;
+#[cfg(feature="syntex")]
+extern crate syntex_syntax as syntax;
 
+#[cfg(not(feature="syntex"))]
 extern crate rustc_plugin;
+#[cfg(not(feature="syntex"))]
 extern crate syntax;
 
-use rustc_plugin::{Registry};
+#[cfg_attr(not(feature="syntex"), allow(plugin_as_library))]
+#[macro_use]
+extern crate easy_plugin;
 
 use syntax::codemap::{Span, DUMMY_SP};
 use syntax::ext::base::{DummyMacroLoader, ExtCtxt};
@@ -17,6 +24,10 @@ use syntax::ext::expand::{ExpansionConfig};
 use syntax::ext::quote::rt::{ExtParseUtils};
 use syntax::parse::{ParseSess};
 use syntax::tokenstream::{TokenTree};
+
+//================================================
+// Macros
+//================================================
 
 // check! ________________________________________
 
@@ -37,13 +48,6 @@ macro_rules! assert_span_eq {
     });
 }
 
-mod arguments;
-mod convert;
-mod enums;
-mod errors;
-mod specification;
-mod structs;
-
 //================================================
 // Functions
 //================================================
@@ -57,8 +61,9 @@ fn with_tts<F>(source: &str, f: F) where F: Fn(&mut ExtCtxt, Span, &[TokenTree])
     f(&mut context, DUMMY_SP, &tts);
 }
 
-#[plugin_registrar]
-pub fn plugin_registrar(registry: &mut Registry) {
-    registry.register_macro("enum", enums::expand_enum);
-    registry.register_macro("struct", structs::expand_struct);
-}
+mod arguments { include!(concat!(env!("OUT_DIR"), "/arguments.rs")); }
+mod convert { include!(concat!(env!("OUT_DIR"), "/convert.rs")); }
+mod enums { include!(concat!(env!("OUT_DIR"), "/enums.rs")); }
+mod errors { include!(concat!(env!("OUT_DIR"), "/errors.rs")); }
+mod specification { include!(concat!(env!("OUT_DIR"), "/specification.rs")); }
+mod structs { include!(concat!(env!("OUT_DIR"), "/structs.rs")); }

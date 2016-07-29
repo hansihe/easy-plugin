@@ -200,27 +200,39 @@ impl Specifier {
     /// Returns `StructField`s that could contain values matched by this specifier.
     #[doc(hidden)]
     pub fn to_struct_fields(&self, context: &ExtCtxt) -> Vec<StructField> {
-        macro_rules! ty { ($($ty:tt)*) => (quote_ty!(context, $($ty)*)) }
-        macro_rules! ty_p { ($($ty:tt)*) => (ty!(::syntax::ptr::P<$($ty)*>)); }
-        macro_rules! ty_spanned { ($($ty:tt)*) => (ty!(::syntax::codemap::Spanned<$($ty)*>)) }
-
         let ty = match *self {
-            Specifier::Attr(_) => ty!(::syntax::ast::Attribute),
-            Specifier::BinOp(_) => ty_spanned!(::syntax::parse::token::BinOpToken),
-            Specifier::Block(_) => ty_p!(::syntax::ast::Block),
-            Specifier::Delim(_) => ty_spanned!(::syntax::tokenstream::Delimited),
-            Specifier::Expr(_) => ty_p!(::syntax::ast::Expr),
-            Specifier::Ident(_) => ty_spanned!(::syntax::ast::Ident),
-            Specifier::Item(_) => ty_p!(::syntax::ast::Item),
-            Specifier::Lftm(_) => ty_spanned!(::syntax::ast::Name),
-            Specifier::Lit(_) => ty!(::syntax::ast::Lit),
-            Specifier::Meta(_) => ty_p!(::syntax::ast::MetaItem>),
-            Specifier::Pat(_) => ty_p!(::syntax::ast::Pat),
-            Specifier::Path(_) => ty!(::syntax::ast::Path),
-            Specifier::Stmt(_) => ty!(::syntax::ast::Stmt),
-            Specifier::Ty(_) => ty_p!(::syntax::ast::Ty),
-            Specifier::Tok(_) => ty_spanned!(::syntax::parse::token::Token),
-            Specifier::Tt(_) => ty!(::syntax::tokenstream::TokenTree),
+            Specifier::Attr(_) =>
+                quote_ty!(context, ::syntax::ast::Attribute),
+            Specifier::BinOp(_) =>
+                quote_ty!(context, ::syntax::codemap::Spanned<::syntax::parse::token::BinOpToken>),
+            Specifier::Block(_) =>
+                quote_ty!(context, ::syntax::ptr::P<::syntax::ast::Block>),
+            Specifier::Delim(_) =>
+                quote_ty!(context, ::syntax::codemap::Spanned<::syntax::tokenstream::Delimited>),
+            Specifier::Expr(_) =>
+                quote_ty!(context, ::syntax::ptr::P<::syntax::ast::Expr>),
+            Specifier::Ident(_) =>
+                quote_ty!(context, ::syntax::codemap::Spanned<::syntax::ast::Ident>),
+            Specifier::Item(_) =>
+                quote_ty!(context, ::syntax::ptr::P<::syntax::ast::Item>),
+            Specifier::Lftm(_) =>
+                quote_ty!(context, ::syntax::codemap::Spanned<::syntax::ast::Name>),
+            Specifier::Lit(_) =>
+                quote_ty!(context, ::syntax::ast::Lit),
+            Specifier::Meta(_) =>
+                quote_ty!(context, ::syntax::ptr::P<::syntax::ast::MetaItem>),
+            Specifier::Pat(_) =>
+                quote_ty!(context, ::syntax::ptr::P<::syntax::ast::Pat>),
+            Specifier::Path(_) =>
+                quote_ty!(context, ::syntax::ast::Path),
+            Specifier::Stmt(_) =>
+                quote_ty!(context, ::syntax::ast::Stmt),
+            Specifier::Ty(_) =>
+                quote_ty!(context, ::syntax::ptr::P<::syntax::ast::Ty>),
+            Specifier::Tok(_) =>
+                quote_ty!(context, ::syntax::codemap::Spanned<::syntax::parse::token::Token>),
+            Specifier::Tt(_) =>
+                quote_ty!(context, ::syntax::tokenstream::TokenTree),
             Specifier::Delimited(_, ref subspecification) =>
                 return subspecification.to_struct_fields(context),
             Specifier::Sequence(amount, _, ref subspecification) => {
@@ -236,13 +248,14 @@ impl Specifier {
                 return subfields;
             },
             Specifier::NamedSequence(_, amount, _, _) => if amount == Amount::ZeroOrOne {
-                ty_spanned!(bool)
+                quote_ty!(context, ::syntax::codemap::Spanned<bool>)
             } else {
-                ty_spanned!(usize)
+                quote_ty!(context, ::syntax::codemap::Spanned<usize>)
             },
             _ => return vec![],
         };
-        vec![quote_struct_field!(context, pub ${context.ident_of(self.get_name().unwrap())}: $ty)]
+        let field = quote_struct_field!(context, pub ${context.ident_of(self.get_name().unwrap())}: $ty);
+        vec![field]
     }
 }
 
@@ -465,9 +478,9 @@ pub fn parse_spec(tts: &[TokenTree]) -> PluginResult<Specification> {
 }
 
 #[doc(hidden)]
-pub fn expand_parse_spec(
-    context: &mut ExtCtxt, span: Span, arguments: &[TokenTree]
-) -> Box<MacResult> {
+pub fn expand_parse_spec<'cx>(
+    context: &'cx mut ExtCtxt, span: Span, arguments: &[TokenTree]
+) -> Box<MacResult + 'cx> {
     match parse_spec(arguments) {
         Ok(specification) => MacEager::expr(specification.to_expr(context, span)),
         Err((span, message)) => {

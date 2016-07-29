@@ -202,147 +202,46 @@
 //! Because named sequences are counted, the storage types are simply `usize` for `*` and `+` named
 //! sequences and `bool` for `?`named sequences.
 
-#![feature(plugin, plugin_registrar, rustc_private)]
+#![cfg_attr(not(feature="syntex"), feature(plugin))]
+#![cfg_attr(not(feature="syntex"), feature(plugin_registrar))]
+#![cfg_attr(not(feature="syntex"), feature(rustc_private))]
 
-#![plugin(easy_plugin_plugins, synthax)]
+#![cfg_attr(not(feature="syntex"), plugin(easy_plugin_plugins, synthax))]
 
 #![warn(missing_copy_implementations, missing_debug_implementations, missing_docs)]
 
 #![cfg_attr(feature="clippy", plugin(clippy))]
 #![cfg_attr(feature="clippy", warn(clippy))]
 
+#[cfg(feature="syntex")]
+extern crate syntex as rustc_plugin;
+#[cfg(feature="syntex")]
+extern crate syntex_syntax as syntax;
+#[cfg(feature="syntex")]
+extern crate syntex_errors as syntax_errors;
+
+#[cfg(not(feature="syntex"))]
 extern crate rustc_plugin;
+#[cfg(not(feature="syntex"))]
 extern crate syntax;
-#[allow(plugin_as_library)]
+#[cfg(not(feature="syntex"))]
+extern crate rustc_errors as syntax_errors;
+
 extern crate synthax;
 
-use rustc_plugin::{Registry};
-
-use syntax::ast::*;
-use syntax::codemap::{Span};
-use syntax::ext::base::{ExtCtxt, DummyResult, MacResult};
-use syntax::parse::token::{Token};
-use syntax::ptr::{P};
-use syntax::tokenstream::{TokenTree};
-
-use synthax::{ToExpr};
-
-pub mod convert;
+/// Conversion of parsing results into other AST entities.
+pub mod convert { include!(concat!(env!("OUT_DIR"), "/convert.rs")); }
 
 mod arguments;
 pub use self::arguments::*;
 #[macro_use]
-mod specification;
+mod specification { include!(concat!(env!("OUT_DIR"), "/specification.rs")); }
 pub use self::specification::*;
 
 mod utility;
 pub use utility::{PluginResultExt, ToError};
 
-mod enums;
-mod structs;
+mod enums { include!(concat!(env!("OUT_DIR"), "/enums.rs")); }
+mod structs { include!(concat!(env!("OUT_DIR"), "/structs.rs")); }
 
-/// A result type suitable for reporting errors in plugins.
-pub type PluginResult<T> = Result<T, (Span, String)>;
-
-//================================================
-// Functions
-//================================================
-
-/// Strips the visibility and attributes from a function and appends `_` to the name.
-#[doc(hidden)]
-pub fn strip_function(
-    context: &ExtCtxt, function: P<Item>
-) -> (P<Item>, Ident, Option<Ident>, Vec<Attribute>) {
-    let ident = function.ident;
-    let visibility = if function.vis == Visibility::Public {
-        Some(context.ident_of("pub"))
-    } else {
-        None
-    };
-    let attributes = function.attrs.clone();
-    let function = function.map(|mut f| {
-        f.ident = context.ident_of(&format!("{}_", ident.name));
-        f.vis = Visibility::Inherited;
-        f.attrs = vec![];
-        f
-    });
-    (function, ident, visibility, attributes)
-}
-
-/// Returns a function that parse arguments according to the supplied specification.
-#[doc(hidden)]
-pub fn expand_parse_fn(
-    context: &ExtCtxt, span: Span, name: Ident, specification: &Specification, multiple: bool
-) -> P<Item> {
-    let function = if multiple {
-        context.ident_of(&format!("parse{}", name.name))
-    } else {
-        context.ident_of("parse")
-    };
-
-    quote_item!(context,
-        #[allow(non_snake_case)]
-        fn $function(
-            session: &::syntax::parse::ParseSess, arguments: &[::syntax::tokenstream::TokenTree]
-        ) -> ::easy_plugin::PluginResult<$name> {
-            let specification = ${specification.to_expr(context, span)};
-            ::easy_plugin::parse_args(session, arguments, &specification.0).map(|_m| {
-                ${specification.to_struct_expr(context, name)}
-            })
-        }
-    ).unwrap()
-}
-
-/// Returns an expression that attempts to parse plugin arguments.
-#[doc(hidden)]
-pub fn expand_parse_expr(context: &ExtCtxt, expr: P<Expr>) -> P<Expr> {
-    quote_expr!(context,
-        match $expr {
-            Ok(result) => result,
-            Err((subspan, message)) => {
-                let span = if subspan == ::syntax::codemap::DUMMY_SP {
-                    span
-                } else {
-                    subspan
-                };
-                context.span_err(span, &message);
-                ::syntax::ext::base::DummyResult::any(span)
-            },
-        }
-    )
-}
-
-fn expand_easy_plugin_(
-    context: &mut ExtCtxt, span: Span, arguments: &[TokenTree]
-) -> PluginResult<Box<MacResult + 'static>> {
-    if arguments.is_empty() {
-        return span.to_error("unexpected end of arguments");
-    }
-    if let TokenTree::Token(_, Token::Ident(ref ident)) = arguments[0] {
-        match &*ident.name.as_str() {
-            "enum" => return enums::expand_easy_plugin_enum(context, span, arguments),
-            "struct" => return structs::expand_easy_plugin_struct(context, span, arguments),
-            _ => { },
-        }
-    }
-    arguments[0].to_error("expected `enum` or `struct`")
-}
-
-fn expand_easy_plugin(
-    context: &mut ExtCtxt, span: Span, arguments: &[TokenTree]
-) -> Box<MacResult + 'static> {
-    match expand_easy_plugin_(context, span, arguments) {
-        Ok(result) => result,
-        Err((span, message)) => {
-            context.span_err(span, &message);
-            DummyResult::any(span)
-        },
-    }
-}
-
-#[doc(hidden)]
-#[plugin_registrar]
-pub fn plugin_registrar(registry: &mut Registry) {
-    registry.register_macro("parse_spec", expand_parse_spec);
-    registry.register_macro("easy_plugin", expand_easy_plugin);
-}
+include!(concat!(env!("OUT_DIR"), "/lib.rs"));

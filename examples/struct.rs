@@ -1,8 +1,9 @@
-#![allow(unused)]
+/*#![allow(unused)]
+
 #![feature(plugin, plugin_registrar, rustc_private)]
+
 #![plugin(easy_plugin)]
 
-#[allow(plugin_as_library)]
 extern crate easy_plugin;
 
 use easy_plugin::{PluginResult};
@@ -31,6 +32,6 @@ easy_plugin! {
 #[plugin_registrar]
 pub fn plugin_registrar(registry: &mut Registry) {
     registry.register_macro("plugin", expand_plugin);
-}
+}*/
 
 fn main() { }

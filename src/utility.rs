@@ -18,8 +18,6 @@ use std::marker::{PhantomData};
 use syntax::ext::tt::transcribe;
 use syntax::ast::*;
 use syntax::codemap::{DUMMY_SP, Span, Spanned};
-use syntax::errors::{DiagnosticBuilder, FatalError, Level};
-use syntax::errors::emitter::{Emitter};
 use syntax::ext::base::{ExtCtxt};
 use syntax::ext::build::{AstBuilder};
 use syntax::parse::{ParseSess, PResult};
@@ -28,6 +26,9 @@ use syntax::parse::parser::{Parser, PathStyle};
 use syntax::parse::token::{Token};
 use syntax::ptr::{P};
 use syntax::tokenstream::{TokenTree};
+
+use syntax_errors::{DiagnosticBuilder, FatalError, Level};
+use syntax_errors::emitter::{Emitter};
 
 use super::{PluginResult};
 
