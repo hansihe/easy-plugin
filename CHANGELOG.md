@@ -1,4 +1,4 @@
-## [0.8.0] - UNRELEASED
+## [0.8.0] - 2016-07-28
 
 ### Changed
 - Added support for the stable and beta Rust channels
