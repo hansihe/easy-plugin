@@ -83,17 +83,17 @@ fn expand_easy_plugin_enum_(
 
     // Build the wrapper function.
     let item = quote_item!(context,
-        $attributes
+        $($attributes)*
         $visibility fn $identifier(
             context: &mut ::syntax::ext::base::ExtCtxt,
             span: ::syntax::codemap::Span,
             arguments: &[::syntax::tokenstream::TokenTree],
         ) -> Box<::syntax::ext::base::MacResult> {
-            $structs
+            $($structs)*
             $enum_
-            $parses
+            $($parses)*
             $function
-            $stmts
+            $($stmts)*
         }
     ).unwrap();
     Ok(MacEager::items(SmallVector::one(item)))

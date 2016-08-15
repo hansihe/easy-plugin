@@ -322,7 +322,7 @@ impl Specification {
         if fields.is_empty() {
             quote_expr!(context, $name)
         } else {
-            quote_expr!(context, $name { $({&fields},) })
+            quote_expr!(context, $name { $($fields), * })
         }
     }
 
@@ -340,7 +340,7 @@ impl Specification {
         if fields.is_empty() {
             quote_item!(context, $attribute struct $name;).unwrap()
         } else {
-            quote_item!(context, $attribute struct $name { $({&fields},) }).unwrap()
+            quote_item!(context, $attribute struct $name { $($fields), * }).unwrap()
         }
     }
 }

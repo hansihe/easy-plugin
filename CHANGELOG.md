@@ -1,3 +1,8 @@
+## [0.8.1] - UNRELEASED
+
+### Fixed
+- Updated for latest nightly
+
 ## [0.8.0] - 2016-07-28
 
 ### Changed

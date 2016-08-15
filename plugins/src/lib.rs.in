@@ -216,7 +216,7 @@ fn expand_convert_exhaustive_fn(
         #[allow(dead_code)]
         fn $name($pname: &$pty) {
             match $pexpr {
-                $variants
+                $($variants)*
             }
         }
     ).unwrap()
@@ -236,7 +236,7 @@ fn expand_convert<'cx>(
     let pname = to_ident(&arguments[0]);
     let pty = match &arguments[2] {
         &TokenTree::Delimited(_, ref delimited) => delimited.tts.clone(),
-        tt @ _ => vec![tt.clone()],
+        tt => vec![tt.clone()],
     };
     let pty = parse_ty(context, &pty[..]);
     let pexpr = parse_expr(context, &to_delimited(&arguments[3]).tts[..]);

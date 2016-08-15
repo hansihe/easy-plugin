@@ -36,7 +36,7 @@ fn expand_easy_plugin_struct_(
     let expr = quote_expr!(context, parse(context.parse_sess, arguments).and_then($expr));
 
     let item = quote_item!(context,
-        $attributes
+        $($attributes)*
         $visibility fn $identifier(
             context: &mut ::syntax::ext::base::ExtCtxt,
             span: ::syntax::codemap::Span,

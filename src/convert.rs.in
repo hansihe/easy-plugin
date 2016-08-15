@@ -141,6 +141,7 @@ __easy_plugin_convert!(ty: Ty(ty.node) -> TyKind, [
     Path(_, _) -> (Option<QSelf>, Path),
     ObjectSum(_, _) -> (P<Ty>, TyParamBounds),
     PolyTraitRef(_) -> (TyParamBounds),
+    ImplTrait(_) -> (TyParamBounds),
     Paren(_) -> (P<Ty>),
     Typeof(_) -> (P<Expr>),
     Infer() -> (),
