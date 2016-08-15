@@ -68,11 +68,11 @@ pub fn expand_easy_plugin_struct(
 
     // Extract the arguments.
     let matches = try!(parse_args(context.parse_sess, arguments, specification));
-    let arguments = matches.get("arguments").unwrap().to::<Spanned<Ident>>().node;
-    let tts = matches.get("tt").unwrap().to::<Vec<Match>>().iter().map(|s| {
-        s.to::<TokenTree>()
+    let arguments = matches.get("arguments").unwrap().get::<Spanned<Ident>>().node;
+    let tts = matches.get("tt").unwrap().get_matches().iter().map(|s| {
+        s.get::<TokenTree>()
     }).collect::<Vec<_>>();
-    let function = matches.get("function").unwrap().to::<P<Item>>();
+    let function = matches.get("function").unwrap().get::<P<Item>>();
 
     expand_easy_plugin_struct_(context, span, arguments, tts, function)
 }

@@ -162,21 +162,22 @@ impl Specifier {
             None => return None,
         };
 
+        let ty = self.to_ty(context);
         let mut expr = quote_expr!(context, _m.get(stringify!($name)).unwrap());
         if stack.is_empty() {
-            Some(quote_field!(context, $name: $expr.into()))
+            Some(quote_field!(context, $name: $expr.get::<$ty>()))
         } else {
-            let f = stack.iter().skip(1).fold(quote_expr!(context, |s| s.into()), |f, a| {
+            let f = stack.iter().skip(1).fold(quote_expr!(context, |s| s.get::<$ty>()), |f, a| {
                 if *a == Amount::ZeroOrOne {
-                    quote_expr!(context, |s| s.to::<Vec<::easy_plugin::Match>>().iter().map($f).next())
+                    quote_expr!(context, |s| s.get_matches().iter().map($f).next())
                 } else {
-                    quote_expr!(context, |s| s.to::<Vec<::easy_plugin::Match>>().iter().map($f).collect())
+                    quote_expr!(context, |s| s.get_matches().iter().map($f).collect())
                 }
             });
             expr = if stack[0] == Amount::ZeroOrOne {
-                quote_expr!(context, $expr.to::<Vec<::easy_plugin::Match>>().iter().map($f).next())
+                quote_expr!(context, $expr.get_matches().iter().map($f).next())
             } else {
-                quote_expr!(context, $expr.to::<Vec<::easy_plugin::Match>>().iter().map($f).collect())
+                quote_expr!(context, $expr.get_matches().iter().map($f).collect())
             };
             Some(quote_field!(context, $name: $expr))
         }
@@ -197,10 +198,9 @@ impl Specifier {
         }
     }
 
-    /// Returns `StructField`s that could contain values matched by this specifier.
-    #[doc(hidden)]
-    pub fn to_struct_fields(&self, context: &ExtCtxt) -> Vec<StructField> {
-        let ty = match *self {
+    /// Returns a `P<Ty>` that could contain values matched by this specifier.
+    fn to_ty(&self, context: &ExtCtxt) -> P<Ty> {
+        match *self {
             Specifier::Attr(_) =>
                 quote_ty!(context, ::syntax::ast::Attribute),
             Specifier::BinOp(_) =>
@@ -233,6 +233,20 @@ impl Specifier {
                 quote_ty!(context, ::syntax::codemap::Spanned<::syntax::parse::token::Token>),
             Specifier::Tt(_) =>
                 quote_ty!(context, ::syntax::tokenstream::TokenTree),
+            Specifier::NamedSequence(_, amount, _, _) => if amount == Amount::ZeroOrOne {
+                quote_ty!(context, ::syntax::codemap::Spanned<bool>)
+            } else {
+                quote_ty!(context, ::syntax::codemap::Spanned<usize>)
+            },
+            _ => unreachable!(),
+        }
+    }
+
+    /// Returns `StructField`s that could contain values matched by this specifier.
+    #[doc(hidden)]
+    pub fn to_struct_fields(&self, context: &ExtCtxt) -> Vec<StructField> {
+        let ty = match *self {
+            Specifier::Specific(_) => return vec![],
             Specifier::Delimited(_, ref subspecification) =>
                 return subspecification.to_struct_fields(context),
             Specifier::Sequence(amount, _, ref subspecification) => {
@@ -247,12 +261,7 @@ impl Specifier {
                 }
                 return subfields;
             },
-            Specifier::NamedSequence(_, amount, _, _) => if amount == Amount::ZeroOrOne {
-                quote_ty!(context, ::syntax::codemap::Spanned<bool>)
-            } else {
-                quote_ty!(context, ::syntax::codemap::Spanned<usize>)
-            },
-            _ => return vec![],
+            _ => self.to_ty(context),
         };
         let field = quote_struct_field!(context, pub ${context.ident_of(self.get_name().unwrap())}: $ty);
         vec![field]

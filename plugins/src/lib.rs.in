@@ -55,7 +55,7 @@ impl Call {
 
     //- Accessors --------------------------------
 
-    fn to_expr(self, context: &mut ExtCtxt, ident: Ident) -> P<Expr> {
+    fn to_expr(self, context: &ExtCtxt, ident: Ident) -> P<Expr> {
         match self {
             Call::Clone => quote_expr!(context, $ident.clone()),
             Call::ToString => quote_expr!(context, $ident.to_string()),
@@ -66,10 +66,74 @@ impl Call {
 }
 
 //================================================
+// Structs
+//================================================
+
+// Converter _____________________________________
+
+/// A conversion function.
+#[derive(Clone, Debug)]
+struct Converter {
+    pub name: Ident,
+    pub arguments: Vec<(Ident, Call)>,
+    pub rty: P<Ty>,
+}
+
+impl Converter {
+    //- Constructors -----------------------------
+
+    fn parse(context: &ExtCtxt, tts: &[TokenTree]) -> Converter {
+        let name = to_ident(&tts[0]);
+        let arguments = to_delimited(&tts[1]).tts.iter().filter_map(|tt| {
+            match tt {
+                &TokenTree::Token(_, Token::Underscore) => Some("_".into()),
+                &TokenTree::Token(_, Token::Ident(ref ident)) => Some(ident.name.as_str().to_string()),
+                _ => None,
+            }
+        }).enumerate().map(|(i, s)| {
+            let mut buffer = String::new();
+            buffer.push(((97 + i) as u8) as char);
+            (context.ident_of(&buffer), Call::from_specifier(&s))
+        }).collect::<Vec<_>>();
+        Converter { name: name, arguments: arguments, rty: parse_ty(context, &tts[3..4]) }
+    }
+}
+
+// ConverterSet __________________________________
+
+/// A set of conversion functions.
+#[derive(Clone, Debug)]
+struct ConverterSet {
+    pub name: Ident,
+    pub converters: Vec<Converter>,
+    pub pname: Ident,
+    pub pty: P<Ty>,
+    pub pexpr: P<Expr>,
+}
+
+impl ConverterSet {
+    //- Constructors -----------------------------
+
+    fn parse(context: &ExtCtxt, tts: &[TokenTree]) -> ConverterSet {
+        let name = to_ident(&tts[5]);
+        let converters = to_delimited(&tts[7]).tts.chunks(5).map(|tts| {
+            Converter::parse(context, tts)
+        }).collect();
+        let pname = to_ident(&tts[0]);
+        let pty = match &tts[2] {
+            &TokenTree::Delimited(_, ref delimited) => quote_ty!(context, $(${delimited.tts})*),
+            tt => quote_ty!(context, $tt),
+        };
+        let pexpr = parse_expr(context, &to_delimited(&tts[3]).tts[..]);
+        ConverterSet { name: name, converters: converters, pname: pname, pty: pty, pexpr: pexpr }
+    }
+}
+
+//================================================
 // Functions
 //================================================
 
-fn get_doc_comment(context: &mut ExtCtxt, span: Span, value: &str) -> P<MetaItem> {
+fn get_doc_comment(context: &ExtCtxt, span: Span, value: &str) -> P<MetaItem> {
     let value = LitKind::Str(token::intern_and_get_ident(value), StrStyle::Cooked);
     context.meta_name_value(span, token::intern_and_get_ident("doc"), value)
 }
@@ -78,11 +142,11 @@ fn get_lit_str(span: Span, value: &str) -> Lit {
     codemap::respan(span, LitKind::Str(token::intern_and_get_ident(value), StrStyle::Cooked))
 }
 
-fn parse_expr(context: &mut ExtCtxt, tts: &[TokenTree]) -> P<Expr> {
+fn parse_expr(context: &ExtCtxt, tts: &[TokenTree]) -> P<Expr> {
     context.new_parser_from_tts(tts).parse_expr().unwrap()
 }
 
-fn parse_ty(context: &mut ExtCtxt, tts: &[TokenTree]) -> P<Ty> {
+fn parse_ty(context: &ExtCtxt, tts: &[TokenTree]) -> P<Ty> {
     context.new_parser_from_tts(tts).parse_ty().unwrap()
 }
 
@@ -117,58 +181,37 @@ fn camel_case_to_snake_case(ident: Ident) -> String {
 
 /// Returns a doc comment meta item with appropriate documentation for a converter function.
 fn expand_convert_fn_doc_comment(
-    context: &mut ExtCtxt, span: Span, pty: &P<Ty>, dname: Ident, dvariant: Ident, fields: usize
+    context: &mut ExtCtxt, span: Span, set: &ConverterSet, converter: &Converter
 ) -> P<MetaItem> {
-    let ty = pprust::ty_to_string(&pty);
-    let doc = match fields {
-        0 => format!("Returns `Ok` if the supplied `{}` is `{}::{}`", ty, dname, dvariant),
-        1 => format!("Returns the `{}::{}` value in the supplied `{}`.", dname, dvariant, ty),
-        _ => format!("Returns the `{}::{}` values in the supplied `{}`.", dname, dvariant, ty),
+    let ty = pprust::ty_to_string(&set.pty);
+    let doc = match converter.arguments.len() {
+        0 => format!("Returns `Ok` if the supplied `{}` is `{}::{}`", ty, set.name, converter.name),
+        1 => format!("Returns the `{}::{}` value in the supplied `{}`.", set.name, converter.name, ty),
+        _ => format!("Returns the `{}::{}` values in the supplied `{}`.", set.name, converter.name, ty),
     };
     get_doc_comment(context, span, &doc)
 }
 
 /// Returns a converter function item.
 fn expand_convert_fn(
-    context: &mut ExtCtxt,
-    span: Span,
-    arguments: &[TokenTree],
-    pname: Ident,
-    pty: &P<Ty>,
-    pexpr: &P<Expr>,
-    dname: Ident,
+    context: &mut ExtCtxt, span: Span, set: &ConverterSet, converter: &Converter
 ) -> P<Item> {
-    // Validate and extract the arguments.
-    let dvariant = to_ident(&arguments[0]);
-    let dfields = to_delimited(&arguments[1]);
-    let rty = parse_ty(context, &arguments[3..4]);
-
     // Build the documentation.
-    let doc = expand_convert_fn_doc_comment(context, span, pty, dname, dvariant, dfields.tts.len());
+    let doc = expand_convert_fn_doc_comment(context, span, set, converter);
 
     // Build the name.
-    let name = context.ident_of(&format!("{}_to_{}", pname, camel_case_to_snake_case(dvariant)));
-
-    // Determine the variant field names and required method calls to return them.
-    let fields = dfields.tts.iter().filter_map(|tt| {
-        match tt {
-            &TokenTree::Token(_, Token::Underscore) => Some("_".into()),
-            &TokenTree::Token(_, Token::Ident(ref ident)) => Some(ident.name.as_str().to_string()),
-            _ => None,
-        }
-    }).enumerate().map(|(i, s)| {
-        let mut buffer = String::new();
-        buffer.push(((97 + i) as u8) as char);
-        (Call::from_specifier(&s), context.ident_of(&buffer))
-    }).collect::<Vec<_>>();
+    let name = context.ident_of(&format!("{}_to_{}", set.pname, camel_case_to_snake_case(converter.name)));
 
     // Build the variant pat.
-    let path = context.path_all(span, false, vec![dname, dvariant], vec![], vec![], vec![]);
-    let pats = fields.iter().cloned().map(|(_, p)| quote_pat!(context, ref $p)).collect();
+    let idents = vec![set.name, converter.name];
+    let path = context.path_all(span, false, idents, vec![], vec![], vec![]);
+    let pats = converter.arguments.iter().map(|&(ref p, _)| quote_pat!(context, ref $p)).collect();
     let pat = context.pat_enum(span, path, pats);
 
     // Build the expr that returns the variant fields.
-    let mut exprs = fields.into_iter().map(|(c, p)| c.to_expr(context, p)).collect::<Vec<_>>();
+    let mut exprs = converter.arguments.iter().map(|&(ref p, ref c)| {
+        c.to_expr(context, *p)
+    }).collect::<Vec<_>>();
     let expr = if exprs.len() == 1 {
         exprs.remove(0)
     } else {
@@ -176,46 +219,38 @@ fn expand_convert_fn(
     };
 
     // Build the error message.
-    let message = get_lit_str(span, &format!("expected `{}::{}` {}", dname, dvariant, pname));
+    let message = get_lit_str(span, &format!("expected `{}::{}` {}", set.name, converter.name, set.pname));
 
     // Build the converter function item.
     quote_item!(context,
         #[$doc]
-        pub fn $name($pname: &$pty) -> PluginResult<$rty> {
-            match $pexpr {
+        pub fn $name(${set.pname}: &${set.pty}) -> PluginResult<${converter.rty}> {
+            match ${set.pexpr} {
                 $pat => Ok($expr),
-                _ => $pname.to_error($message),
+                _ => ${set.pname}.to_error($message),
             }
         }
     ).unwrap()
 }
 
 /// Returns an exhaustive function that ensures all variants are accounted for.
-fn expand_convert_exhaustive_fn(
-    context: &mut ExtCtxt,
-    pname: Ident,
-    pty: &P<Ty>,
-    pexpr: &P<Expr>,
-    dname: Ident,
-    dconverters: &Rc<Delimited>,
-) -> P<Item> {
+fn expand_convert_exhaustive_fn(context: &mut ExtCtxt, set: &ConverterSet) -> P<Item> {
     // Build the name.
-    let name = context.ident_of(&format!("{}_exhaustive", pname));
+    let name = context.ident_of(&format!("{}_exhaustive", set.pname));
 
     // Build the variants.
-    let variants = dconverters.tts.chunks(5).map(|c| {
-        if to_delimited(&c[1]).tts.is_empty() {
-            quote_arm!(context, $dname::${&c[0]} => { })
-        } else {
-            quote_arm!(context, $dname::${&c[0]}(..) => { })
+    let variants = set.converters.iter().map(|c| {
+        match c.rty.node {
+            TyKind::Tup(ref tys) if tys.is_empty() => quote_arm!(context, ${set.name}::${c.name} => { }),
+            _ => quote_arm!(context, ${set.name}::${c.name}(..) => { }),
         }
     }).collect::<Vec<_>>();
 
     // Build the exhaustive converter function item.
     quote_item!(context,
         #[allow(dead_code)]
-        fn $name($pname: &$pty) {
-            match $pexpr {
+        fn $name(${set.pname}: &${set.pty}) {
+            match ${set.pexpr} {
                 $($variants)*
             }
         }
@@ -231,24 +266,14 @@ fn expand_convert_exhaustive_fn(
 fn expand_convert<'cx>(
     context: &'cx mut ExtCtxt, span: Span, arguments: &[TokenTree]
 ) -> Box<MacResult + 'cx> {
-    // Validate and extract the arguments.
-    assert_eq!(arguments.len(), 8);
-    let pname = to_ident(&arguments[0]);
-    let pty = match &arguments[2] {
-        &TokenTree::Delimited(_, ref delimited) => delimited.tts.clone(),
-        tt => vec![tt.clone()],
-    };
-    let pty = parse_ty(context, &pty[..]);
-    let pexpr = parse_expr(context, &to_delimited(&arguments[3]).tts[..]);
-    let dname = to_ident(&arguments[5]);
-    let dconverters = to_delimited(&arguments[7]);
-
-    // Expand the list of converter specifications into converter function items.
-    assert_eq!(dconverters.tts.len() % 5, 0);
-    let mut items = dconverters.tts.chunks(5).map(|c| {
-        expand_convert_fn(context, span, c, pname, &pty, &pexpr, dname)
-    }).collect::<Vec<_>>();
-    items.push(expand_convert_exhaustive_fn(context, pname, &pty, &pexpr, dname, &dconverters));
+    let sets = arguments.chunks(9).map(|tts| ConverterSet::parse(context, tts)).collect::<Vec<_>>();
+    let mut items = vec![];
+    for set in &sets {
+        items.push(expand_convert_exhaustive_fn(context, set));
+        for converter in &set.converters {
+            items.push(expand_convert_fn(context, span, set, converter));
+        }
+    }
     MacEager::items(SmallVector::many(items))
 }
 

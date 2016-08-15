@@ -123,14 +123,14 @@ pub fn expand_easy_plugin_enum(
 
     // Extract the arguments.
     let matches = try!(parse_args(context.parse_sess, arguments, specification));
-    let arguments = matches.get("arguments").unwrap().to::<Spanned<Ident>>().node;
-    let names = matches.get("name").unwrap().to::<Vec<Match>>().into_iter().map(|s| {
-        s.to::<Spanned<Ident>>().node
+    let arguments = matches.get("arguments").unwrap().get::<Spanned<Ident>>().node;
+    let names = matches.get("name").unwrap().get_matches().into_iter().map(|s| {
+        s.get::<Spanned<Ident>>().node
     }).collect();
-    let ttss = matches.get("tt").unwrap().to::<Vec<Match>>().into_iter().map(|s| {
-        s.to::<Vec<Match>>().into_iter().map(|s| s.to::<TokenTree>()).collect::<Vec<_>>()
+    let ttss = matches.get("tt").unwrap().get_matches().into_iter().map(|s| {
+        s.get_matches().into_iter().map(|s| s.get::<TokenTree>()).collect::<Vec<_>>()
     }).collect();
-    let function = matches.get("function").unwrap().to::<P<Item>>();
+    let function = matches.get("function").unwrap().get::<P<Item>>();
 
     expand_easy_plugin_enum_(context, span, arguments, names, ttss, function)
 }

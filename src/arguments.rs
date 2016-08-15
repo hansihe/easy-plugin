@@ -12,139 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::any::{Any};
 use std::collections::{HashMap};
 use std::rc::{Rc};
 
-use syntax::ast::*;
-use syntax::codemap::{self, DUMMY_SP, CodeMap, Span, Spanned};
+use syntax::codemap::{self, DUMMY_SP, CodeMap, Span};
 use syntax::parse::{ParseSess};
 use syntax::parse::common::{SeqSep};
 use syntax::parse::parser::{Parser};
-use syntax::parse::token::{BinOpToken, Token};
-use syntax::ptr::{P};
+use syntax::parse::token::{Token};
 use syntax::tokenstream::{Delimited, TokenTree};
 
 use syntax_errors::{Handler};
 
 use super::{Amount, PluginResult, Specifier};
 use super::utility::{self, SaveEmitter, ToError, TransactionParser};
-
-//================================================
-// Macros
-//================================================
-
-// from! _________________________________________
-
-/// Implements `From` for the supplied type on `&Match`.
-macro_rules! from {
-    ($variant:ident, $ty:ty) => {
-        impl<'a> From<&'a Match> for $ty {
-            fn from(match_: &'a Match) -> $ty {
-                match *match_ {
-                    Match::$variant(ref value) => value.clone(),
-                    _ => panic!("expected `Match::{}`", stringify!($variant)),
-                }
-            }
-        }
-    };
-}
-
-//================================================
-// Enums
-//================================================
-
-// Match _________________________________________
-
-/// A plugin argument that has been matched with a named specifier.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum Match {
-    /// An attribute (e.g., `#[cfg(target_os = "windows")]`).
-    Attr(Attribute),
-    /// A binary operator (e.g., `+`, `*`).
-    BinOp(Spanned<BinOpToken>),
-    /// A brace-delimited sequence of statements (e.g., `{ log(error, "hi"); return 12; }`).
-    Block(P<Block>),
-    /// A delimited sequence of token trees (e.g., `()`, `[foo - "bar"]`).
-    Delim(Spanned<Delimited>),
-    /// An expression (e.g., `2 + 2`, `if true { 1 } else { 2 }`, `f(42)`).
-    Expr(P<Expr>),
-    /// An identifier (e.g., `x`, `foo`).
-    Ident(Spanned<Ident>),
-    /// An item (e.g., `fn foo() { }`, `struct Bar;`).
-    Item(P<Item>),
-    /// A lifetime (e.g., `'a`).
-    Lftm(Spanned<Name>),
-    /// A literal (e.g., `322`, `'a'`, `"foo"`).
-    Lit(Lit),
-    /// A "meta" item, as found in attributes (e.g., `cfg(target_os = "windows")`).
-    Meta(P<MetaItem>),
-    /// A pattern (e.g., `Some(t)`, `(17, 'a')`, `_`).
-    Pat(P<Pat>),
-    /// A qualified name (e.g., `T::SpecialA`).
-    Path(Path),
-    /// A single statement (e.g., `let x = 3`).
-    Stmt(Stmt),
-    /// A type (e.g., `i32`, `Vec<(char, String)>`, `&T`).
-    Ty(P<Ty>),
-    /// A single token.
-    Tok(Spanned<Token>),
-    /// A single token tree.
-    Tt(TokenTree),
-    /// A sequence which may either contain sequence matches or subsequences.
-    Sequence(Vec<Match>),
-    /// A count of named sequence repetitions.
-    NamedSequence(Spanned<usize>),
-}
-
-impl Match {
-    //- Accessors --------------------------------
-
-    /// Converts this `Match` to the supplied type.
-    ///
-    /// # Panics
-    ///
-    /// * this `Match` cannot be converted to the supplied type
-    #[cfg_attr(feature="clippy", allow(needless_lifetimes))]
-    pub fn to<'a, T: From<&'a Match>>(&'a self) -> T {
-        self.into()
-    }
-}
-
-from!(Attr, Attribute);
-from!(BinOp, Spanned<BinOpToken>);
-from!(Block, P<Block>);
-from!(Delim, Spanned<Delimited>);
-from!(Expr, P<Expr>);
-from!(Ident, Spanned<Ident>);
-from!(Item, P<Item>);
-from!(Lftm, Spanned<Name>);
-from!(Lit, Lit);
-from!(Meta, P<MetaItem>);
-from!(Pat, P<Pat>);
-from!(Path, Path);
-from!(Stmt, Stmt);
-from!(Ty, P<Ty>);
-from!(Tok, Spanned<Token>);
-from!(Tt, TokenTree);
-from!(Sequence, Vec<Match>);
-
-impl<'a> From<&'a Match> for Spanned<usize> {
-    fn from(match_: &'a Match) -> Spanned<usize> {
-        match *match_ {
-            Match::NamedSequence(count) => count,
-            _ => panic!("expected `Match::NamedSequence`"),
-        }
-    }
-}
-
-impl<'a> From<&'a Match> for Spanned<bool> {
-    fn from(match_: &'a Match) -> Spanned<bool> {
-        match *match_ {
-            Match::NamedSequence(count) => codemap::respan(count.span, count.node != 0),
-            _ => panic!("expected `Match::NamedSequence`"),
-        }
-    }
-}
 
 //================================================
 // Structs
@@ -194,7 +76,7 @@ impl<'s> ArgumentParser<'s> {
         // Insert empty sequence matches for each named specifier in the sequence.
         for specifier in specification {
             if let Some(name) = specifier.get_name() {
-                matches.insert(name.clone(), Match::Sequence(vec![]));
+                matches.insert(name.clone(), Match::new(Vec::<Match>::new()));
             }
         }
 
@@ -205,7 +87,7 @@ impl<'s> ArgumentParser<'s> {
             self.parser.save();
 
             // Check for a separator if expected.
-            if let Some(ref separator) = separator {
+            if let Some(separator) = separator {
                 if count != 0 && !self.parser.eat(separator) {
                     return Ok(count);
                 }
@@ -225,10 +107,8 @@ impl<'s> ArgumentParser<'s> {
 
             // Append the occurrence matches to the sequence matches.
             for (k, v) in submatches {
-                match *matches.entry(k).or_insert_with(|| Match::Sequence(vec![])) {
-                    Match::Sequence(ref mut sequence) => sequence.push(v),
-                    _ => unreachable!(),
-                }
+                let entry = matches.entry(k).or_insert_with(|| Match::new(Vec::<Match>::new()));
+                entry.0.downcast_mut::<Vec<Match>>().unwrap().push(v);
             }
 
             if amount == Amount::ZeroOrOne {
@@ -269,7 +149,7 @@ impl<'s> ArgumentParser<'s> {
         macro_rules! insert {
             ($variant:ident, $parse:ident$(.$field:ident)*, $name:expr) => ({
                 let match_ = try!(self.parser.$parse($name))$(.$field)*;
-                matches.insert($name.clone(), Match::$variant(match_));
+                matches.insert($name.clone(), Match::new(match_));
             });
         }
 
@@ -278,7 +158,7 @@ impl<'s> ArgumentParser<'s> {
                 let open = self.parser.get_span();
                 let match_ = try!(self.parser.$parse($name))$(.$field)*;
                 let spanned = codemap::spanned(open.lo, self.parser.get_last_span().hi, match_);
-                matches.insert($name.clone(), Match::$variant(spanned));
+                matches.insert($name.clone(), Match::new(spanned));
             });
         }
 
@@ -288,7 +168,7 @@ impl<'s> ArgumentParser<'s> {
                 Specifier::BinOp(ref name) => match self.next_token() {
                     Some(Token::BinOp(binop)) | Some(Token::BinOpEq(binop)) => {
                         let spanned = codemap::respan(self.parser.get_last_span(), binop);
-                        matches.insert(name.clone(), Match::BinOp(spanned));
+                        matches.insert(name.clone(), Match::new(spanned));
                     },
                     _ => {
                         let error = format!("expected binary operator: '{}'", name);
@@ -300,7 +180,7 @@ impl<'s> ArgumentParser<'s> {
                     let open = self.parser.get_span();
                     let delim = try!(self.parse_delim(name));
                     let spanned = codemap::spanned(open.lo, delim.close_span.hi, delim);
-                    matches.insert(name.clone(), Match::Delim(spanned));
+                    matches.insert(name.clone(), Match::new(spanned));
                 },
                 Specifier::Expr(ref name) => insert!(Expr, parse_expr, name),
                 Specifier::Ident(ref name) => insert_spanned!(Ident, parse_ident, name),
@@ -312,7 +192,7 @@ impl<'s> ArgumentParser<'s> {
                         m.span.hi = self.parser.get_last_span().hi;
                         m
                     });
-                    matches.insert(name.clone(), Match::Meta(meta));
+                    matches.insert(name.clone(), Match::new(meta));
                 },
                 Specifier::Pat(ref name) => insert!(Pat, parse_pat, name),
                 Specifier::Path(ref name) => insert!(Path, parse_path, name),
@@ -320,7 +200,7 @@ impl<'s> ArgumentParser<'s> {
                 Specifier::Ty(ref name) => insert!(Ty, parse_ty, name),
                 Specifier::Tok(ref name) => if let Some(token) = self.next_token() {
                     let spanned = codemap::respan(self.parser.get_last_span(), token);
-                    matches.insert(name.clone(), Match::Tok(spanned));
+                    matches.insert(name.clone(), Match::new(spanned));
                 } else {
                     let error = format!("expected token: '{}'", name);
                     return self.parser.get_last_span().to_error(error);
@@ -340,8 +220,13 @@ impl<'s> ArgumentParser<'s> {
                     let separator = separator.as_ref();
                     let count = self.parse_sequence(amount, separator, specification, matches);
                     let close = self.parser.get_last_span();
-                    let spanned = codemap::spanned(open.lo, close.hi, try!(count));
-                    matches.insert(name.clone(), Match::NamedSequence(spanned));
+                    if amount == Amount::ZeroOrOne {
+                        let spanned = codemap::spanned(open.lo, close.hi, try!(count) != 0);
+                        matches.insert(name.clone(), Match::new(spanned));
+                    } else {
+                        let spanned = codemap::spanned(open.lo, close.hi, try!(count));
+                        matches.insert(name.clone(), Match::new(spanned));
+                    }
                 },
             }
         }
@@ -359,6 +244,41 @@ impl<'s> ArgumentParser<'s> {
             let span = Span { lo: start.lo, hi: self.span.hi, expn_id: self.span.expn_id };
             span.to_error("too many arguments")
         }
+    }
+}
+
+// Match _________________________________________
+
+/// A plugin argument that has been matched with a named specifier.
+#[derive(Debug)]
+pub struct Match(Box<Any>);
+
+impl Match {
+    //- Constructors -----------------------------
+
+    /// Constructs a new `Match`.
+    fn new<T: Any>(value: T) -> Match {
+        Match(Box::new(value))
+    }
+
+    //- Accessors --------------------------------
+
+    /// Converts this `Match` to the supplied type.
+    ///
+    /// # Panics
+    ///
+    /// * this `Match` cannot be converted to the supplied type
+    pub fn get<T: Any + Clone>(&self) -> T {
+        self.0.downcast_ref::<T>().expect("invalid match").clone()
+    }
+
+    /// Converts this `Match` to a slice of matches.
+    ///
+    /// # Panics
+    ///
+    /// * this `Match` cannot be converted to a slice of matches
+    pub fn get_matches(&self) -> &[Match] {
+        &(self.0.downcast_ref::<Vec<Match>>().expect("invalid match"))[..]
     }
 }
 
