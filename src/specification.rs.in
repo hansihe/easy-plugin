@@ -27,6 +27,7 @@ use syntax::tokenstream::{TokenTree};
 use synthax::{ToExpr};
 
 use super::{PluginResult};
+use super::convert::{self, CONVERTERS};
 use super::utility::{self, ToError, TtsIterator};
 
 //================================================
@@ -103,6 +104,8 @@ pub enum Specifier {
     Tok(String),
     /// A single token tree.
     Tt(String),
+    /// A piece that will be filtered through a `convert` function.
+    Convert(String, Specification, String),
     /// A non-variable piece.
     Specific(Token),
     /// A delimited piece.
@@ -115,6 +118,29 @@ pub enum Specifier {
 
 impl Specifier {
     //- Constructors -----------------------------
+
+    /// Returns a simple specifier.
+    fn simple(specifier: &str, name: String) -> Option<Specifier> {
+        match specifier {
+            "attr" => Some(Specifier::Attr(name)),
+            "binop" => Some(Specifier::BinOp(name)),
+            "block" => Some(Specifier::Block(name)),
+            "delim" => Some(Specifier::Delim(name)),
+            "expr" => Some(Specifier::Expr(name)),
+            "ident" => Some(Specifier::Ident(name)),
+            "item" => Some(Specifier::Item(name)),
+            "lftm" => Some(Specifier::Lftm(name)),
+            "lit" => Some(Specifier::Lit(name)),
+            "meta" => Some(Specifier::Meta(name)),
+            "pat" => Some(Specifier::Pat(name)),
+            "path" => Some(Specifier::Path(name)),
+            "stmt" => Some(Specifier::Stmt(name)),
+            "ty" => Some(Specifier::Ty(name)),
+            "tok" => Some(Specifier::Tok(name)),
+            "tt" => Some(Specifier::Tt(name)),
+            _ => None,
+        }
+    }
 
     /// Returns a new `Specifier` for the given identifier.
     pub fn specific_ident(ident: &str) -> Specifier {
@@ -149,6 +175,7 @@ impl Specifier {
             Specifier::Ty(ref name) |
             Specifier::Tok(ref name) |
             Specifier::Tt(ref name) |
+            Specifier::Convert(ref name, _ , _) |
             Specifier::NamedSequence(ref name, _, _, _) => Some(name),
             _ => None,
         }
@@ -162,12 +189,11 @@ impl Specifier {
             None => return None,
         };
 
-        let ty = self.to_ty(context);
         let mut expr = quote_expr!(context, _m.get(stringify!($name)).unwrap());
         if stack.is_empty() {
-            Some(quote_field!(context, $name: $expr.get::<$ty>()))
+            Some(quote_field!(context, $name: $expr.get()))
         } else {
-            let f = stack.iter().skip(1).fold(quote_expr!(context, |s| s.get::<$ty>()), |f, a| {
+            let f = stack.iter().skip(1).fold(quote_expr!(context, |s| s.get()), |f, a| {
                 if *a == Amount::ZeroOrOne {
                     quote_expr!(context, |s| s.get_matches().iter().map($f).next())
                 } else {
@@ -233,6 +259,8 @@ impl Specifier {
                 quote_ty!(context, ::syntax::codemap::Spanned<::syntax::parse::token::Token>),
             Specifier::Tt(_) =>
                 quote_ty!(context, ::syntax::tokenstream::TokenTree),
+            Specifier::Convert(_, _, ref converter) =>
+                convert::get_converter_ty(context, converter),
             Specifier::NamedSequence(_, amount, _, _) => if amount == Amount::ZeroOrOne {
                 quote_ty!(context, ::syntax::codemap::Spanned<bool>)
             } else {
@@ -295,6 +323,8 @@ impl ToExpr for Specifier {
             Specifier::Ty(ref name) => expr!("Ty", name),
             Specifier::Tok(ref name) => expr!("Tok", name),
             Specifier::Tt(ref name) => expr!("Tt", name),
+            Specifier::Convert(ref name, ref subspecifier, ref converter) =>
+                expr!("Convert", name, subspecifier, converter),
             Specifier::Specific(ref token) => expr!("Specific", token),
             Specifier::Delimited(delimiter, ref subspecification) =>
                 expr!("Delimited", delimiter, subspecification),
@@ -407,24 +437,18 @@ fn parse_named_specifier<'i, I>(
             let (amount, separator) = try!(parse_sequence_suffix(tts));
             Ok(Specifier::NamedSequence(name, amount, separator, subspecification))
         },
-        &TokenTree::Token(subspan, Token::Ident(ref ident)) => match &*ident.name.as_str() {
-            "attr" => Ok(Specifier::Attr(name)),
-            "binop" => Ok(Specifier::BinOp(name)),
-            "block" => Ok(Specifier::Block(name)),
-            "delim" => Ok(Specifier::Delim(name)),
-            "expr" => Ok(Specifier::Expr(name)),
-            "ident" => Ok(Specifier::Ident(name)),
-            "item" => Ok(Specifier::Item(name)),
-            "lftm" => Ok(Specifier::Lftm(name)),
-            "lit" => Ok(Specifier::Lit(name)),
-            "meta" => Ok(Specifier::Meta(name)),
-            "pat" => Ok(Specifier::Pat(name)),
-            "path" => Ok(Specifier::Path(name)),
-            "stmt" => Ok(Specifier::Stmt(name)),
-            "ty" => Ok(Specifier::Ty(name)),
-            "tok" => Ok(Specifier::Tok(name)),
-            "tt" => Ok(Specifier::Tt(name)),
-            _ => subspan.to_error("invalid named specifier type"),
+        &TokenTree::Token(subspan, Token::Ident(ref ident)) => {
+            let specifier = &ident.name.as_str()[..];
+            match Specifier::simple(specifier, name.clone()) {
+                Some(specifier) => Ok(specifier),
+                _ => if CONVERTERS.iter().find(|c| *c == &specifier).is_some() {
+                    let underscore  = specifier.find('_').unwrap();
+                    let subspecifier = Specifier::simple(&specifier[..underscore], name.clone());
+                    Ok(Specifier::Convert(name, spec![subspecifier.unwrap()], specifier.into()))
+                } else {
+                    subspan.to_error("invalid named specifier type")
+                },
+            }
         },
         invalid => invalid.to_error("expected named specifier type or sequence"),
     }

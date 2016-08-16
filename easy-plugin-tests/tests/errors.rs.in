@@ -73,6 +73,27 @@ fn test_errors() {
     let spec = parse_spec!($a:ty);
     assert_errors_eq!(&spec, "type", "(i32, f32)");
 
+    let spec = parse_spec!($a:attr_list);
+    assert_error_eq!(&spec, 0, 7, "#[test]", "expected `MetaItemKind::List` attr");
+    let spec = parse_spec!($a:expr_addr_of);
+    assert_error_eq!(&spec, 0, 5, "2 + 2", "expected `ExprKind::AddrOf` expr");
+    let spec = parse_spec!($a:item_const);
+    assert_error_eq!(&spec, 0, 14, "struct Struct;", "expected `ItemKind::Const` item");
+    let spec = parse_spec!($a:lit_bool);
+    assert_error_eq!(&spec, 0, 3, "322", "expected `LitKind::Bool` lit");
+    let spec = parse_spec!($a:meta_list);
+    assert_error_eq!(&spec, 0, 4, "test", "expected `MetaItemKind::List` meta");
+    let spec = parse_spec!($a:pat_ident);
+    assert_error_eq!(&spec, 0, 6, "(a, b)", "expected `PatKind::Ident` pat");
+    let spec = parse_spec!($a:stmt_expr);
+    assert_error_eq!(&spec, 0, 9, "let a = b;", "expected `StmtKind::Expr` stmt");
+    let spec = parse_spec!($a:tok_and_and);
+    assert_error_eq!(&spec, 0, 1, "!", "expected `Token::AndAnd` tok");
+    let spec = parse_spec!($a:tt_delimited);
+    assert_error_eq!(&spec, 0, 1, "!", "expected `TokenTree::Delimited` tt");
+    let spec = parse_spec!($a:ty_bare_fn);
+    assert_error_eq!(&spec, 0, 3, "i32", "expected `TyKind::BareFn` ty");
+
     let spec = parse_spec!($a:tok);
     assert_error_eq!(&spec, 0, 0, "", "expected token: 'a'");
     let spec = parse_spec!($a:tt);

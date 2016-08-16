@@ -14,11 +14,9 @@
 
 use std::rc::{Rc};
 
-use syntax::abi::{Abi};
 use syntax::ast::*;
-use syntax::codemap::{self, Span, Spanned};
-use syntax::parse::token::{self, BinOpToken, DelimToken, Nonterminal};
-use syntax::parse::token::{SpecialMacroVar, Token};
+use syntax::codemap::{self, Spanned};
+use syntax::parse::token::{Token};
 use syntax::ptr::{P};
 use syntax::tokenstream::{Delimited, SequenceRepetition, TokenTree};
 
@@ -28,13 +26,11 @@ use super::{PluginResult, ToError};
 // Functions
 //================================================
 
-__easy_plugin_convert!(attr: Attribute(attr.node.value.node) -> MetaItemKind, [
+__easy_plugin_convert!(attr: [Attribute], [Attribute](attr.node.value.node) -> MetaItemKind, [
     Word(ts) -> (String),
     List(ts, _) -> (String, Vec<P<MetaItem>>),
     NameValue(ts, _) -> (String, Lit),
-]);
-
-__easy_plugin_convert!(expr: Expr(expr.node) -> ExprKind, [
+], expr: [P<Expr>], [Expr](expr.node) -> ExprKind, [
     Box(_) -> (P<Expr>),
     InPlace(_, _) -> (P<Expr>, P<Expr>),
     Vec(_) -> (Vec<P<Expr>>),
@@ -72,9 +68,7 @@ __easy_plugin_convert!(expr: Expr(expr.node) -> ExprKind, [
     Repeat(_, _) -> (P<Expr>, P<Expr>),
     Paren(_) -> (P<Expr>),
     Try(_) -> (P<Expr>),
-]);
-
-__easy_plugin_convert!(item: Item(item.node) -> ItemKind, [
+], item: [P<Item>], [Item](item.node) -> ItemKind, [
     ExternCrate(masts) -> (Option<String>),
     Use(_) -> (P<ViewPath>),
     Static(_, _, _) -> (P<Ty>, Mutability, P<Expr>),
@@ -89,9 +83,7 @@ __easy_plugin_convert!(item: Item(item.node) -> ItemKind, [
     DefaultImpl(_, _) -> (Unsafety, TraitRef),
     Impl(_, _, _, _, _, _) -> (Unsafety, ImplPolarity, Generics, Option<TraitRef>, P<Ty>, Vec<ImplItem>),
     Mac(_) -> (Mac),
-]);
-
-__easy_plugin_convert!(lit: Lit(lit.node) -> LitKind, [
+], lit: [Lit], [Lit](lit.node) -> LitKind, [
     Str(ts, _) -> (String, StrStyle),
     ByteStr(_) -> (Rc<Vec<u8>>),
     Byte(_) -> (u8),
@@ -100,15 +92,11 @@ __easy_plugin_convert!(lit: Lit(lit.node) -> LitKind, [
     Float(ts, _) -> (String, FloatTy),
     FloatUnsuffixed(ts) -> (String),
     Bool(_) -> (bool),
-]);
-
-__easy_plugin_convert!(meta: MetaItem(meta.node) -> MetaItemKind, [
+], meta: [P<MetaItem>], [MetaItem](meta.node) -> MetaItemKind, [
     Word(ts) -> (String),
     List(ts, _) -> (String, Vec<P<MetaItem>>),
     NameValue(ts, _) -> (String, Lit),
-]);
-
-__easy_plugin_convert!(pat: Pat(pat.node) -> PatKind, [
+], pat: [P<Pat>], [Pat](pat.node) -> PatKind, [
     Wild() -> (),
     Ident(_, _, _) -> (BindingMode, SpannedIdent, Option<P<Pat>>),
     Struct(_, _, _) -> (Path, Vec<Spanned<FieldPat>>, bool),
@@ -121,17 +109,13 @@ __easy_plugin_convert!(pat: Pat(pat.node) -> PatKind, [
     Range(_, _) -> (P<Expr>, P<Expr>),
     Vec(_, _, _) -> (Vec<P<Pat>>, Option<P<Pat>>, Vec<P<Pat>>),
     Mac(_) -> (Mac),
-]);
-
-__easy_plugin_convert!(stmt: Stmt(stmt.node) -> StmtKind, [
+], stmt: [Stmt], [Stmt](stmt.node) -> StmtKind, [
     Local(_) -> (P<Local>),
     Item(_) -> (P<Item>),
     Expr(_) -> (P<Expr>),
     Semi(_) -> (P<Expr>),
     Mac(_) -> (P<(Mac, MacStmtStyle, ThinVec<Attribute>)>),
-]);
-
-__easy_plugin_convert!(ty: Ty(ty.node) -> TyKind, [
+], ty: [P<Ty>], [Ty](ty.node) -> TyKind, [
     Vec(_) -> (P<Ty>),
     FixedLengthVec(_, _) -> (P<Ty>, P<Expr>),
     Ptr(_) -> (MutTy),
@@ -147,9 +131,7 @@ __easy_plugin_convert!(ty: Ty(ty.node) -> TyKind, [
     Infer() -> (),
     ImplicitSelf() -> (),
     Mac(_) -> (Mac),
-]);
-
-__easy_plugin_convert!(tok: [Spanned<Token>](tok.node) -> Token, [
+], tok: [Spanned<Token>], [Spanned<Token>](tok.node) -> Token, [
     Eq() -> (),
     Lt() -> (),
     Le() -> (),
@@ -179,7 +161,7 @@ __easy_plugin_convert!(tok: [Spanned<Token>](tok.node) -> Token, [
     Question() -> (),
     OpenDelim(_) -> (DelimToken),
     CloseDelim(_) -> (DelimToken),
-    Literal(_, masts) -> (token::Lit, Option<String>),
+    Literal(_, masts) -> (TokenLit, Option<String>),
     Ident(_) -> (Ident),
     Underscore() -> (),
     Lifetime(_) -> (Ident),
@@ -194,19 +176,19 @@ __easy_plugin_convert!(tok: [Spanned<Token>](tok.node) -> Token, [
     Eof() -> (),
 ]);
 
-/// Returns the `TokenTree::Delimited` value in the supplied `TokenTree`.
-pub fn tt_to_delimited(tt: &TokenTree) -> PluginResult<Rc<Delimited>> {
-    match *tt {
-        TokenTree::Delimited(_, ref delimited) => Ok(delimited.clone()),
-        _ => tt.to_error("expected `TokenTree::Delimited` tt"),
-    }
-}
-
 /// Returns the `TokenTree::Token` value in the supplied `TokenTree`.
 pub fn tt_to_token(tt: &TokenTree) -> PluginResult<Spanned<Token>> {
     match *tt {
         TokenTree::Token(span, ref token) => Ok(codemap::respan(span, token.clone())),
         _ => tt.to_error("expected `TokenTree::Token` tt"),
+    }
+}
+
+/// Returns the `TokenTree::Delimited` value in the supplied `TokenTree`.
+pub fn tt_to_delimited(tt: &TokenTree) -> PluginResult<Rc<Delimited>> {
+    match *tt {
+        TokenTree::Delimited(_, ref delimited) => Ok(delimited.clone()),
+        _ => tt.to_error("expected `TokenTree::Delimited` tt"),
     }
 }
 

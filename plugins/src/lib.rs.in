@@ -75,6 +75,8 @@ impl Call {
 #[derive(Clone, Debug)]
 struct Converter {
     pub name: Ident,
+    pub function: Ident,
+    pub converter: P<Expr>,
     pub arguments: Vec<(Ident, Call)>,
     pub rty: P<Ty>,
 }
@@ -82,12 +84,16 @@ struct Converter {
 impl Converter {
     //- Constructors -----------------------------
 
-    fn parse(context: &ExtCtxt, tts: &[TokenTree]) -> Converter {
+    fn parse(context: &ExtCtxt, span: Span, tts: &[TokenTree], pname: Ident) -> Converter {
         let name = to_ident(&tts[0]);
+        let function = context.ident_of(&format!("{}_to_{}", pname, camel_case_to_snake_case(name)));
+        let converter = function.name.as_str().replace("_to_", "_");
+        let converter = quote_expr!(context, ${get_lit_str(span, &converter)});
         let arguments = to_delimited(&tts[1]).tts.iter().filter_map(|tt| {
             match tt {
                 &TokenTree::Token(_, Token::Underscore) => Some("_".into()),
-                &TokenTree::Token(_, Token::Ident(ref ident)) => Some(ident.name.as_str().to_string()),
+                &TokenTree::Token(_, Token::Ident(ref ident)) =>
+                    Some(ident.name.as_str().to_string()),
                 _ => None,
             }
         }).enumerate().map(|(i, s)| {
@@ -95,7 +101,10 @@ impl Converter {
             buffer.push(((97 + i) as u8) as char);
             (context.ident_of(&buffer), Call::from_specifier(&s))
         }).collect::<Vec<_>>();
-        Converter { name: name, arguments: arguments, rty: parse_ty(context, &tts[3..4]) }
+        let rty = parse_ty(context, &qualify(context, &tts[3..4]));
+        Converter {
+            name: name, function: function, converter: converter, arguments: arguments, rty: rty
+        }
     }
 }
 
@@ -107,6 +116,7 @@ struct ConverterSet {
     pub name: Ident,
     pub converters: Vec<Converter>,
     pub pname: Ident,
+    pub cty: P<Ty>,
     pub pty: P<Ty>,
     pub pexpr: P<Expr>,
 }
@@ -114,24 +124,56 @@ struct ConverterSet {
 impl ConverterSet {
     //- Constructors -----------------------------
 
-    fn parse(context: &ExtCtxt, tts: &[TokenTree]) -> ConverterSet {
-        let name = to_ident(&tts[5]);
-        let converters = to_delimited(&tts[7]).tts.chunks(5).map(|tts| {
-            Converter::parse(context, tts)
-        }).collect();
+    fn parse(context: &ExtCtxt, span: Span, tts: &[TokenTree]) -> ConverterSet {
         let pname = to_ident(&tts[0]);
-        let pty = match &tts[2] {
-            &TokenTree::Delimited(_, ref delimited) => quote_ty!(context, $(${delimited.tts})*),
-            tt => quote_ty!(context, $tt),
+        let cty = match &tts[2] {
+            &TokenTree::Delimited(_, ref delimited) =>
+                parse_ty(context, &qualify(context, &delimited.tts)),
+            _ => unreachable!(),
         };
-        let pexpr = parse_expr(context, &to_delimited(&tts[3]).tts[..]);
-        ConverterSet { name: name, converters: converters, pname: pname, pty: pty, pexpr: pexpr }
+        let pty = match &tts[4] {
+            &TokenTree::Delimited(_, ref delimited) => parse_ty(context, &delimited.tts),
+            _ => unreachable!(),
+        };
+        let pexpr = parse_expr(context, &to_delimited(&tts[5]).tts[..]);
+        let name = to_ident(&tts[7]);
+        let converters = to_delimited(&tts[9]).tts.chunks(5).map(|tts| {
+            Converter::parse(context, span, tts, pname)
+        }).collect();
+        ConverterSet {
+            name: name, converters: converters, pname: pname, cty: cty, pty: pty, pexpr: pexpr
+        }
     }
 }
 
 //================================================
 // Functions
 //================================================
+
+fn qualify(context: &ExtCtxt, tts: &[TokenTree]) -> Vec<TokenTree> {
+    tts.iter().flat_map(|tt| {
+        match *tt {
+            TokenTree::Token(_, Token::Ident(ident)) => match &*ident.name.as_str() {
+                "bool" | "char" | "u8" | "u64" | "usize" | "Option" | "String" | "Vec" =>
+                    vec![tt.clone()].into_iter(),
+                "Rc" => quote_token_trees!(context, ::std::rc::Rc).into_iter(),
+                "Abi" => quote_token_trees!(context, ::syntax::abi::Abi).into_iter(),
+                "Span" | "Spanned" =>
+                    quote_token_trees!(context, ::syntax::codemap::$tt).into_iter(),
+                "BinOpToken" | "DelimToken" | "Nonterminal" | "SpecialMacroVar" | "Token" =>
+                    quote_token_trees!(context, ::syntax::parse::token::$tt).into_iter(),
+                "TokenLit" => quote_token_trees!(context, ::syntax::parse::token::Lit).into_iter(),
+                "P" => quote_token_trees!(context, ::syntax::ptr::P).into_iter(),
+                _ => quote_token_trees!(context, ::syntax::ast::$tt).into_iter(),
+            },
+            TokenTree::Delimited(_, ref delimited) => {
+                let tts = qualify(context, &delimited.tts);
+                quote_token_trees!(context, ($($tts)*)).into_iter()
+            }
+            _ => vec![tt.clone()].into_iter(),
+        }
+    }).collect()
+}
 
 fn get_doc_comment(context: &ExtCtxt, span: Span, value: &str) -> P<MetaItem> {
     let value = LitKind::Str(token::intern_and_get_ident(value), StrStyle::Cooked);
@@ -199,9 +241,6 @@ fn expand_convert_fn(
     // Build the documentation.
     let doc = expand_convert_fn_doc_comment(context, span, set, converter);
 
-    // Build the name.
-    let name = context.ident_of(&format!("{}_to_{}", set.pname, camel_case_to_snake_case(converter.name)));
-
     // Build the variant pat.
     let idents = vec![set.name, converter.name];
     let path = context.path_all(span, false, idents, vec![], vec![], vec![]);
@@ -224,7 +263,7 @@ fn expand_convert_fn(
     // Build the converter function item.
     quote_item!(context,
         #[$doc]
-        pub fn $name(${set.pname}: &${set.pty}) -> PluginResult<${converter.rty}> {
+        pub fn ${converter.function}(${set.pname}: &${set.pty}) -> PluginResult<${converter.rty}> {
             match ${set.pexpr} {
                 $pat => Ok($expr),
                 _ => ${set.pname}.to_error($message),
@@ -257,6 +296,79 @@ fn expand_convert_exhaustive_fn(context: &mut ExtCtxt, set: &ConverterSet) -> P<
     ).unwrap()
 }
 
+/// Returns a static array of all the converter names.
+fn expand_converters(context: &ExtCtxt, sets: &[ConverterSet]) -> P<Item> {
+    let exprs = sets.iter().flat_map(|s| {
+        s.converters.iter().map(|c| c.converter.clone())
+    }).collect::<Vec<_>>();
+    quote_item!(context,
+        #[doc(hidden)]
+        pub const CONVERTERS: &'static [&'static str] = &[
+            $($exprs), *,
+            "tt_token",
+            "tt_delimited",
+            "tt_sequence",
+        ];
+    ).unwrap()
+}
+
+/// Returns a function that returns the return type of the supplied converter.
+fn expand_get_converter_ty(context: &ExtCtxt, span: Span, sets: &[ConverterSet]) -> P<Item> {
+    let arms = sets.iter().flat_map(|s| {
+        s.converters.iter().map(|c| {
+            let source = pprust::ty_to_string(&c.rty);
+            quote_arm!(context, ${c.converter} => ${get_lit_str(span, &source)},)
+        })
+    }).collect::<Vec<_>>();
+    quote_item!(context,
+        #[doc(hidden)]
+        pub fn get_converter_ty(context: &::syntax::ext::base::ExtCtxt, converter: &str) -> P<Ty> {
+            let source = match converter {
+                "tt_token" => "::syntax::codemap::Spanned<::syntax::parse::token::Token>",
+                "tt_delimited" => "::std::rc::Rc<::syntax::tokenstream::Delimited>",
+                "tt_sequence" => "::std::rc::Rc<::syntax::tokenstream::SequenceRepetition>",
+                $($arms)*
+                _ => unreachable!(),
+            };
+            let tts = ::syntax::ext::quote::rt::ExtParseUtils::parse_tts(context, source.into());
+            context.new_parser_from_tts(&tts).parse_ty().unwrap()
+        }
+    ).unwrap()
+}
+
+/// Returns a function that returns the return value of the supplied converter.
+fn expand_get_converter_val(context: &ExtCtxt, sets: &[ConverterSet]) -> P<Item> {
+    let arms = sets.iter().flat_map(|s| {
+        s.converters.iter().map(move |c| {
+            quote_arm!(context,
+                ${c.converter} => ${c.function}(node.downcast_ref::<${s.cty}>().unwrap()).map(|p| {
+                    Box::new(p) as Box<::std::any::Any>
+                }),
+            )
+        })
+    }).collect::<Vec<_>>();
+    quote_item!(context,
+        #[doc(hidden)]
+        pub fn get_converter_val(
+            converter: &str, node: &::std::any::Any
+        ) -> PluginResult<Box<::std::any::Any>> {
+            match converter {
+                "tt_token" => tt_to_token(node.downcast_ref::<TokenTree>().unwrap()).map(|p| {
+                    Box::new(p) as Box<::std::any::Any>
+                }),
+                "tt_delimited" => tt_to_delimited(node.downcast_ref::<TokenTree>().unwrap()).map(|p| {
+                    Box::new(p) as Box<::std::any::Any>
+                }),
+                "tt_sequence" => tt_to_sequence(node.downcast_ref::<TokenTree>().unwrap()).map(|p| {
+                    Box::new(p) as Box<::std::any::Any>
+                }),
+                $($arms)*
+                _ => unreachable!(),
+            }
+        }
+    ).unwrap()
+}
+
 /// Returns converter function items.
 ///
 /// A converter function attempts to extract the values in the `node` of an AST element. For
@@ -266,7 +378,9 @@ fn expand_convert_exhaustive_fn(context: &mut ExtCtxt, set: &ConverterSet) -> P<
 fn expand_convert<'cx>(
     context: &'cx mut ExtCtxt, span: Span, arguments: &[TokenTree]
 ) -> Box<MacResult + 'cx> {
-    let sets = arguments.chunks(9).map(|tts| ConverterSet::parse(context, tts)).collect::<Vec<_>>();
+    let sets = arguments.chunks(11).map(|tts| {
+        ConverterSet::parse(context, span, tts)
+    }).collect::<Vec<_>>();
     let mut items = vec![];
     for set in &sets {
         items.push(expand_convert_exhaustive_fn(context, set));
@@ -274,6 +388,9 @@ fn expand_convert<'cx>(
             items.push(expand_convert_fn(context, span, set, converter));
         }
     }
+    items.push(expand_converters(context, &sets));
+    items.push(expand_get_converter_ty(context, span, &sets));
+    items.push(expand_get_converter_val(context, &sets));
     MacEager::items(SmallVector::many(items))
 }
 

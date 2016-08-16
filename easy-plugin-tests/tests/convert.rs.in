@@ -1,56 +1,157 @@
 use easy_plugin::{PluginResult};
-use easy_plugin::convert::*;
 
 use syntax::codemap::{Span};
 use syntax::ext::base::{DummyResult, ExtCtxt, MacResult};
 
 easy_plugin! {
     struct Arguments {
-        $attr_list:attr
-        $expr_addr_of:expr
-        $item_const:item
-        $lit_bool:lit
-        $meta_list:meta
-        $pat_ident:pat
-        $stmt_local:stmt;
-        $ty_bare_fn:ty
-        $tok_bin_op:tok
-        $tt_delimited:tt
+        $attr_list:attr_list
+        $attr_name_value:attr_name_value
+        $attr_word:attr_word
+        $expr_addr_of:expr_addr_of
+        $expr_assign:expr_assign
+        $expr_assign_op:expr_assign_op
+        $expr_binary:expr_binary
+        $expr_block:expr_block
+        $expr_box:expr_box
+        $expr_break:expr_break
+        $expr_call:expr_call
+        $expr_cast:expr_cast
+        $expr_closure:expr_closure
+        $expr_continue:expr_continue
+        $expr_field:expr_field
+        $expr_for_loop:expr_for_loop
+        $expr_if:expr_if
+        $expr_if_let:expr_if_let
+        $expr_in_place:expr_in_place
+        $expr_index:expr_index
+        $expr_inline_asm:expr_inline_asm
+        $expr_lit:expr_lit
+        $expr_loop:expr_loop
+        $expr_mac:expr_mac
+        $expr_match:expr_match
+        $expr_method_call:expr_method_call
+        $expr_paren:expr_paren
+        $expr_path:expr_path
+        $expr_range:expr_range
+        $expr_repeat:expr_repeat
+        $expr_ret:expr_ret
+        $expr_struct:expr_struct
+        $expr_try:expr_try
+        $expr_tup:expr_tup
+        $expr_tup_field:expr_tup_field
+        $expr_type:expr_type
+        $expr_unary:expr_unary
+        $expr_vec:expr_vec
+        $expr_while:expr_while
+        $expr_while_let:expr_while_let
+        $item_const:item_const
+        $item_default_impl:item_default_impl
+        $item_enum:item_enum
+        $item_extern_crate:item_extern_crate
+        $item_fn:item_fn
+        $item_foreign_mod:item_foreign_mod
+        $item_impl:item_impl
+        $item_mac:item_mac
+        $item_mod:item_mod
+        $item_static:item_static
+        $item_struct:item_struct
+        $item_trait:item_trait
+        $item_ty:item_ty
+        $item_use:item_use
+        $lit_bool:lit_bool
+        $lit_byte:lit_byte
+        $lit_byte_str:lit_byte_str
+        $lit_char:lit_char
+        $lit_float:lit_float
+        $lit_float_unsuffixed:lit_float_unsuffixed
+        $lit_int:lit_int
+        $lit_str:lit_str
+        $meta_list:meta_list
+        $meta_name_value:meta_name_value
+        $meta_word:meta_word
+        $pat_box:pat_box
+        $pat_ident:pat_ident
+        $pat_lit:pat_lit
+        $pat_mac:pat_mac
+        $pat_path:pat_path
+        $pat_range:pat_range
+        $pat_ref:pat_ref
+        $pat_struct:pat_struct
+        $pat_tuple:pat_tuple
+        $pat_tuple_struct:pat_tuple_struct
+        $pat_vec:pat_vec
+        $pat_wild:pat_wild
+        $stmt_expr:stmt_expr
+        $stmt_item:stmt_item
+        $stmt_local:stmt_local
+        $stmt_mac:stmt_mac
+        $stmt_semi:stmt_semi
+        $tok_and_and:tok_and_and
+        $tok_at:tok_at
+        $tok_bin_op:tok_bin_op
+        $tok_bin_op_eq:tok_bin_op_eq
+        $tok_close_delim:tok_close_delim
+        $tok_colon:tok_colon
+        $tok_comma:tok_comma
+        $tok_comment:tok_comment
+        $tok_doc_comment:tok_doc_comment
+        $tok_dollar:tok_dollar
+        $tok_dot:tok_dot
+        $tok_dot_dot:tok_dot_dot
+        $tok_dot_dot_dot:tok_dot_dot_dot
+        $tok_eof:tok_eof
+        $tok_eq:tok_eq
+        $tok_eq_eq:tok_eq_eq
+        $tok_fat_arrow:tok_fat_arrow
+        $tok_ge:tok_ge
+        $tok_gt:tok_gt
+        $tok_ident:tok_ident
+        $tok_interpolated:tok_interpolated
+        $tok_l_arrow:tok_l_arrow
+        $tok_le:tok_le
+        $tok_lifetime:tok_lifetime
+        $tok_literal:tok_literal
+        $tok_lt:tok_lt
+        $tok_match_nt:tok_match_nt
+        $tok_mod_sep:tok_mod_sep
+        $tok_ne:tok_ne
+        $tok_not:tok_not
+        $tok_open_delim:tok_open_delim
+        $tok_or_or:tok_or_or
+        $tok_pound:tok_pound
+        $tok_question:tok_question
+        $tok_r_arrow:tok_r_arrow
+        $tok_semi:tok_semi
+        $tok_shebang:tok_shebang
+        $tok_special_var_nt:tok_special_var_nt
+        $tok_subst_nt:tok_subst_nt
+        $tok_tilde:tok_tilde
+        $tok_underscore:tok_underscore
+        $tok_whitespace:tok_whitespace
+        $tt_delimited:tt_delimited
+        $tt_sequence:tt_sequence
+        $tt_token:tt_token
+        $ty_bare_fn:ty_bare_fn
+        $ty_fixed_length_vec:ty_fixed_length_vec
+        $ty_implicit_self:ty_implicit_self
+        $ty_infer:ty_infer
+        $ty_mac:ty_mac
+        $ty_object_sum:ty_object_sum
+        $ty_paren:ty_paren
+        $ty_path:ty_path
+        $ty_poly_trait_ref:ty_poly_trait_ref
+        $ty_ptr:ty_ptr
+        $ty_rptr:ty_rptr
+        $ty_tup:ty_tup
+        $ty_typeof:ty_typeof
+        $ty_vec:ty_vec
     }
 
+    #[allow(dead_code)]
     pub fn expand_convert(
-        _: &mut ExtCtxt, span: Span, arguments: Arguments
+        _: &mut ExtCtxt, span: Span, _: Arguments
     ) -> PluginResult<Box<MacResult>> {
-        attr_to_list(&arguments.attr_list).unwrap();
-        expr_to_addr_of(&arguments.expr_addr_of).unwrap();
-        item_to_const(&arguments.item_const).unwrap();
-        lit_to_bool(&arguments.lit_bool).unwrap();
-        meta_to_list(&arguments.meta_list).unwrap();
-        pat_to_ident(&arguments.pat_ident).unwrap();
-        stmt_to_local(&arguments.stmt_local).unwrap();
-        ty_to_bare_fn(&arguments.ty_bare_fn).unwrap();
-        tok_to_bin_op(&arguments.tok_bin_op).unwrap();
-        tt_to_delimited(&arguments.tt_delimited).unwrap();
         Ok(DummyResult::any(span))
     }
-}
-
-#[test]
-fn test_convert() {
-    let arguments = r#"
-        #[cfg(target_os="windows")]
-        &foo
-        const BAR: i32 = 322;
-        true
-        cfg(target_os="windows")
-        baz
-        let b = 322;
-        fn(i32, i32) -> i32
-        +
-        (1, 2, 3)
-    "#;
-
-    super::with_tts(arguments, |c, s, a| {
-        expand_convert(c, s, a);
-    });
 }

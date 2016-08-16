@@ -25,6 +25,7 @@ use syntax::tokenstream::{Delimited, TokenTree};
 
 use syntax_errors::{Handler};
 
+use super::convert;
 use super::{Amount, PluginResult, Specifier};
 use super::utility::{self, SaveEmitter, ToError, TransactionParser};
 
@@ -206,6 +207,11 @@ impl<'s> ArgumentParser<'s> {
                     return self.parser.get_last_span().to_error(error);
                 },
                 Specifier::Tt(ref name) => insert!(Tt, parse_token_tree, name),
+                Specifier::Convert(ref name, ref subspecifier, ref converter) => {
+                    try!(self.parse_args(&[subspecifier[0].clone()], matches));
+                    let node = convert::get_converter_val(converter, &*matches.get(name).unwrap().0);
+                    matches.insert(name.clone(), Match(try!(node)));
+                },
                 Specifier::Specific(ref expected) => try!(self.expect_specific_token(expected)),
                 Specifier::Delimited(delimiter, ref specification) => {
                     try!(self.expect_specific_token(&Token::OpenDelim(delimiter)));

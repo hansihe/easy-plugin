@@ -142,10 +142,18 @@
 //! | `meta`  | A "meta" item, as found in attributes. | `P<MetaItem>`         |
 //! | `pat`   | A pattern.                             | `P<Pat>`              |
 //! | `path`  | A qualified name.                      | `Path`                |
-//! | `stmt`  | A single statement.                    | `P<Stmt>`             |
+//! | `stmt`  | A single statement.                    | `Stmt`                |
 //! | `ty`    | A type.                                | `P<Ty>`               |
 //! | `tok`   | A single token.                        | `Spanned<Token>`      |
 //! | `tt`    | A single token tree.                   | `TokenTree`           |
+//!
+//! In addition to the specifiers above, there is also a specifier for each
+//! [`convert`][convert] function. For example, the specifier for the
+//! [`convert::lit_to_str`](convert/fn.lit_to_str.html) function is `lit_str`. The storage type for
+//! these specifiers is the return type of the corresponding [`convert`][convert] function. For
+//! example, the storage type of the `lit_str` specifier is `(String, StrStyle)`.
+//!
+//! [convert]: convert/index.html
 //!
 //! ## Sequences
 //!
