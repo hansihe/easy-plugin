@@ -133,6 +133,7 @@ easy_plugin! {
         $tt_sequence:tt_sequence
         $tt_token:tt_token
         $ty_bare_fn:ty_bare_fn
+        $ty_never:ty_never
         $ty_fixed_length_vec:ty_fixed_length_vec
         $ty_implicit_self:ty_implicit_self
         $ty_infer:ty_infer

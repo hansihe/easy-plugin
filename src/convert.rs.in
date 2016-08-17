@@ -121,6 +121,7 @@ __easy_plugin_convert!(attr: [Attribute], [Attribute](attr.node.value.node) -> M
     Ptr(_) -> (MutTy),
     Rptr(_, _) -> (Option<Lifetime>, MutTy),
     BareFn(_) -> (P<BareFnTy>),
+    Never() => (),
     Tup(_) -> (Vec<P<Ty>>),
     Path(_, _) -> (Option<QSelf>, Path),
     ObjectSum(_, _) -> (P<Ty>, TyParamBounds),

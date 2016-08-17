@@ -38,7 +38,7 @@ fn test_errors() {
         ($spec:expr, $ty:expr, $valid:expr) => ({
             let spec = $spec;
             assert_error_eq!(&spec, 0, 0, "", concat!("expected ", $ty, ": 'a'"));
-            assert_error_eq!(&spec, 0, 1, "!", concat!("expected ", $ty, ": 'a'"));
+            assert_error_eq!(&spec, 0, 1, "?", concat!("expected ", $ty, ": 'a'"));
             let start = ($valid.len() as u32) + 1;
             assert_error_eq!(&spec, start, start + 1, concat!($valid, " !"), "too many arguments");
         });
