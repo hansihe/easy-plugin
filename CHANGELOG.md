@@ -1,3 +1,19 @@
+## [0.10.0] - UNRELEASED
+
+### Removed
+- Removed `easy_plugin` enum variant
+
+### Added
+- Added `parse_specification_string` function
+
+### Changed
+- Renamed `convert` module to `extractor`
+- Renamed `parse_args` function to `parse_arguments`
+- Renamed `parse_spec` function to `parse_specification`
+- Refactored arguments and specifications
+
+### Removed
+
 ## [0.9.1] - 2016-08-17
 
 ### Fixed

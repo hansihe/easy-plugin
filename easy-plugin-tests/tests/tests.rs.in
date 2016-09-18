@@ -1,10 +1,33 @@
 use easy_plugin::{PluginResult};
 
-use syntax::codemap::{Span};
-use syntax::ext::base::{DummyResult, ExtCtxt, MacResult};
+use syntax::codemap::{Span, DUMMY_SP};
+use syntax::ext::base::{DummyResolver, DummyResult, ExtCtxt, MacResult};
+use syntax::ext::expand::{ExpansionConfig};
+use syntax::ext::quote::rt::{ExtParseUtils};
+use syntax::parse::{ParseSess};
+
+//================================================
+// Tests
+//================================================
 
 easy_plugin! {
     struct Arguments {
+        $attr:attr
+        $binop:binop
+        $block:block
+        $delim:delim
+        $expr:expr
+        $ident:ident
+        $item:item
+        $lftm:lftm
+        $lit:lit
+        $meta:meta
+        $pat:pat
+        $path:path
+        $stmt:stmt
+        $ty:ty
+        $tok:tok
+        $tt:tt
         $attr_list:attr_list
         $attr_name_value:attr_name_value
         $attr_word:attr_word
@@ -58,6 +81,7 @@ easy_plugin! {
         $item_struct:item_struct
         $item_trait:item_trait
         $item_ty:item_ty
+        $item_union:item_union
         $item_use:item_use
         $lit_bool:lit_bool
         $lit_byte:lit_byte
@@ -82,11 +106,6 @@ easy_plugin! {
         $pat_tuple_struct:pat_tuple_struct
         $pat_vec:pat_vec
         $pat_wild:pat_wild
-        $stmt_expr:stmt_expr
-        $stmt_item:stmt_item
-        $stmt_local:stmt_local
-        $stmt_mac:stmt_mac
-        $stmt_semi:stmt_semi
         $tok_and_and:tok_and_and
         $tok_at:tok_at
         $tok_bin_op:tok_bin_op
@@ -129,15 +148,18 @@ easy_plugin! {
         $tok_tilde:tok_tilde
         $tok_underscore:tok_underscore
         $tok_whitespace:tok_whitespace
-        $tt_delimited:tt_delimited
-        $tt_sequence:tt_sequence
-        $tt_token:tt_token
+        $stmt_expr:stmt_expr
+        $stmt_item:stmt_item
+        $stmt_local:stmt_local
+        $stmt_mac:stmt_mac
+        $stmt_semi:stmt_semi
         $ty_bare_fn:ty_bare_fn
-        $ty_never:ty_never
         $ty_fixed_length_vec:ty_fixed_length_vec
+        $ty_impl_trait:ty_impl_trait
         $ty_implicit_self:ty_implicit_self
         $ty_infer:ty_infer
         $ty_mac:ty_mac
+        $ty_never:ty_never
         $ty_object_sum:ty_object_sum
         $ty_paren:ty_paren
         $ty_path:ty_path
@@ -150,9 +172,74 @@ easy_plugin! {
     }
 
     #[allow(dead_code)]
-    pub fn expand_convert(
+    pub fn expand_exhaustive(
         _: &mut ExtCtxt, span: Span, _: Arguments
     ) -> PluginResult<Box<MacResult>> {
         Ok(DummyResult::any(span))
     }
+}
+
+easy_plugin! {
+    struct Arguments {
+        $attr:attr
+        $ty:ty
+        $tok:tok
+        $tt:tt
+        $attr_list:attr_list
+        $ty_vec:ty_vec
+        $($seqo:ident)?
+        $($($seqoo:ident)?)?
+        $($($($seqooo:ident)?)?)?
+        $($seqv:ident), +;
+        $($($seqvv:ident):*), +;
+        $($($($seqvvv:ident).*):*), +;
+        $nseqo:(foo)?
+        $nseqv:(foo), *;
+        $e1:{A($attr:attr), B($ty:ty)}
+        $e2:{A($attr:attr), B($ty:ty)}
+        $($oe:{A($attr:attr), B($ty:ty)})?
+        $($($ooe:{A($attr:attr), B($ty:ty)})?)?
+        $($ve:{A($attr:attr), B($ty:ty)}), *;
+        $($($vve:{A($attr:attr), B($ty:ty)}):*), *;
+    }
+
+    pub fn expand_struct(
+        _: &mut ExtCtxt, span: Span, _: Arguments
+    ) -> PluginResult<Box<MacResult>> {
+        Ok(DummyResult::any(span))
+    }
+}
+
+#[test]
+fn test_struct() {
+    let source = r#"
+        #[foo="bar"]
+        i32
+        foo
+        (bar)
+        #[foo(bar, baz)]
+        [i32]
+        foo
+        bar
+        baz
+        foo, bar, baz;
+        , foo, bar: baz;
+        , foo, foo.bar, foo: bar, foo.bar: baz.qux;
+        foo
+        foo, foo;
+        #[foo="bar"]
+        i32
+        #[foo="bar"]
+        i32
+        #[foo="bar"], i32, #[foo(bar, baz)], f32;
+        #[foo="bar"], i32: #[foo(bar, baz)], f32;
+    "#;
+
+
+    let session = ParseSess::new();
+    let config = ExpansionConfig::default("".into());
+    let mut resolver = DummyResolver;
+    let mut context = ExtCtxt::new(&session, vec![], config, &mut resolver);
+    let tts = context.parse_tts(source.into());
+    expand_struct(&mut context, DUMMY_SP, &tts);
 }

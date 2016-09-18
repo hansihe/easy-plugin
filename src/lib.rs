@@ -17,12 +17,8 @@
 //!
 //! `easy_plugin!` generates a wrapper function around your plugin function which handles argument
 //! parsing and error reporting for you, significantly reducing the time it takes to write a plugin.
-//! It can be used one of two ways, one which allows for only one argument specification and another
-//! that allows for multiple argument specifications.
 //!
-//! First, here is a trivial
-//! [example](https://github.com/KyleMayes/easy-plugin/blob/master/examples/struct.rs) of the first
-//! form that only allows for one argument specification.
+//! First, here is a trivial example.
 //!
 //! ```ignore
 //! #![feature(plugin, plugin_registrar, rustc_private)]
@@ -56,9 +52,9 @@
 //! In this example, note that the arguments of the plugin function `expand_plugin` differ from a
 //! typical plugin function in that the last argument is of type `Arguments` rather than
 //! `&[TokenTree]`. This is because the generated wrapper function handles argument parsing for you.
-//! The faux-definition of `Arguments` above `expand_plugin` provides the argument specification and
-//! the generated wrapper function parses the arguments and stores them in an instance of
-//! `Arguments`.
+//! The definition of the `Arguments` struct above `expand_plugin` provides the argument
+//! specification and the generated wrapper function parses the arguments and stores them in an
+//! instance of `Arguments`.
 //!
 //! In this example, the argument specification consists of `$a:ident`, which means that the only
 //! argument this plugin will accept is a single identifier which will be stored in a field named
@@ -72,55 +68,6 @@
 //! and attributes applied to your plugin function (including documentation comments) will be
 //! applied to the wrapper function. In this example, the wrapper function will be public and have
 //! a documentation comment.
-//!
-//! Next, here is a trivial
-//! [example](https://github.com/KyleMayes/easy-plugin/blob/master/examples/enum.rs) of the second
-//! form that allows for multiple argument specifications.
-//!
-//! ```ignore
-//! #![feature(plugin, plugin_registrar, rustc_private)]
-//! #![plugin(easy_plugin)]
-//!
-//! #[allow(plugin_as_library)]
-//! extern crate easy_plugin;
-//!
-//! use easy_plugin::{PluginResult};
-//!
-//! // rustc_plugin and syntax imports...
-//!
-//! easy_plugin! {
-//!     enum Arguments {
-//!         A { },
-//!         B { $a:ident }, // <- this trailing comma is required!
-//!     }
-//!
-//!     /// My plugin.
-//!     pub fn expand_plugin(
-//!         context: &mut ExtCtxt, span: Span, arguments: Arguments
-//!     ) -> PluginResult<Box<MacResult>> {
-//!         match arguments {
-//!             Arguments::A(a) => { },
-//!             Arguments::B(b) => println!("{:?}", b.a),
-//!         }
-//!
-//!         Ok(DummyResult::any(span))
-//!     }
-//! }
-//!
-//! #[plugin_registrar]
-//! pub fn plugin_registrar(registry: &mut Registry) {
-//!     registry.register_macro("plugin", expand_plugin);
-//! }
-//! ```
-//!
-//! This form behaves much like the first, except that a parse of the arguments will be attempted
-//! with each specification in the provided order until one succeeds. If every attempt fails, the
-//! resulting error message will be from the final parse attempt. The results of a successful parse
-//! will be stored in a struct which will then be stored in an enum variant of the same name.
-//!
-//! In this example, if the arguments consist of a single identifier, the first parse attempt will
-//! fail but the second will succeed. The identifier will be stored in a field named `a` in a struct
-//! named `B`. This struct will then be stored in the enum variant `Arguments::B`.
 //!
 //! # Specifications
 //!
@@ -147,13 +94,13 @@
 //! | `tok`   | A single token.                        | `Spanned<Token>`      |
 //! | `tt`    | A single token tree.                   | `TokenTree`           |
 //!
-//! In addition to the specifiers above, there is also a specifier for each
-//! [`convert`][convert] function. For example, the specifier for the
-//! [`convert::lit_to_str`](convert/fn.lit_to_str.html) function is `lit_str`. The storage type for
-//! these specifiers is the return type of the corresponding [`convert`][convert] function. For
-//! example, the storage type of the `lit_str` specifier is `(String, StrStyle)`.
+//! In addition to the specifiers above, there is also a specifier for each [`extractor`][extractor]
+//! function. For example, the specifier for the
+//! [`extractor::lit_to_str`](extractor/fn.lit_to_str.html) function is `lit_str`. The storage type
+//! for these specifiers is the return type of the corresponding [`extractor`][extractor] function.
+//! For example, the storage type of the `lit_str` specifier is `(String, StrStyle)`.
 //!
-//! [convert]: convert/index.html
+//! [extractor]: extractor/index.html
 //!
 //! ## Sequences
 //!
@@ -209,12 +156,30 @@
 //!
 //! Because named sequences are counted, the storage types are simply `usize` for `*` and `+` named
 //! sequences and `bool` for `?`named sequences.
+//!
+//! ## Enums
+//!
+//! There are also enumerated specifiers, which allow for a choice of possible values. For example,
+//! the following plugin argument specification will match either an identifier or a meta item.
+//!
+//! ```ignore
+//! $e:{A($a:ident), B($b:meta)}
+//! ```
+//!
+//! The storage types for enumerated specifiers are generated enums. For example, the storage type
+//! for `e` above would be the following enum.
+//!
+//! ```ignore
+//! #[derive(Debug)]
+//! enum e_Enum {
+//!     A { a: Spanned<Ident> },
+//!     B { b: P<MetaItem> },
+//! }
+//! ```
 
-#![cfg_attr(not(feature="syntex"), feature(plugin))]
-#![cfg_attr(not(feature="syntex"), feature(plugin_registrar))]
-#![cfg_attr(not(feature="syntex"), feature(rustc_private))]
+#![cfg_attr(not(feature="syntex"), feature(plugin, plugin_registrar, rustc_private))]
 
-#![cfg_attr(not(feature="syntex"), plugin(easy_plugin_plugins, synthax))]
+#![cfg_attr(not(feature="syntex"), plugin(synthax))]
 
 #![warn(missing_copy_implementations, missing_debug_implementations, missing_docs)]
 
@@ -226,30 +191,25 @@ extern crate syntex as rustc_plugin;
 #[cfg(feature="syntex")]
 extern crate syntex_syntax as syntax;
 #[cfg(feature="syntex")]
-extern crate syntex_errors as syntax_errors;
-
+extern crate syntex_errors as rustc_errors;
 #[cfg(not(feature="syntex"))]
 extern crate rustc_plugin;
 #[cfg(not(feature="syntex"))]
 extern crate syntax;
 #[cfg(not(feature="syntex"))]
-extern crate rustc_errors as syntax_errors;
+extern crate rustc_errors as rustc_errors;
 
+extern crate easy_plugin_parsers as parsers;
 extern crate synthax;
 
-/// Conversion of parsing results into other AST entities.
-pub mod convert { include!(concat!(env!("OUT_DIR"), "/convert.rs")); }
-
-mod arguments;
-pub use self::arguments::*;
-#[macro_use]
-mod specification { include!(concat!(env!("OUT_DIR"), "/specification.rs")); }
-pub use self::specification::*;
+pub use parsers::extractor;
+pub use parsers::{PluginResult};
+pub use parsers::arguments::*;
+pub use parsers::specification::*;
 
 mod utility;
 pub use utility::{PluginResultExt, ToError};
 
-mod enums { include!(concat!(env!("OUT_DIR"), "/enums.rs")); }
-mod structs { include!(concat!(env!("OUT_DIR"), "/structs.rs")); }
+mod ast { include!(concat!(env!("OUT_DIR"), "/ast.rs")); }
 
 include!(concat!(env!("OUT_DIR"), "/lib.rs"));

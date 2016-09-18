@@ -1,0 +1,231 @@
+[Attribute]
+
+enum = "MetaItemKind"
+description = "attribute"
+parameter = "attr: &Attribute"
+node = "attr.node.value.node"
+storage = "Attribute"
+
+[Attribute.extractors]
+
+List = ["String", "Vec<::syntax::ast::NestedMetaItem>"]
+NameValue = ["String", "::syntax::ast::Lit"]
+Word = ["String"]
+
+[Expr]
+
+enum = "ExprKind"
+description = "expression"
+parameter = "expr: &Expr"
+storage = "P<Expr>"
+
+[Expr.extractors]
+
+AddrOf = ["::syntax::ast::Mutability", "::syntax::ptr::P<::syntax::ast::Expr>"]
+AssignOp = ["::syntax::ast::BinOp", "::syntax::ptr::P<::syntax::ast::Expr>", "::syntax::ptr::P<::syntax::ast::Expr>"]
+Assign = ["::syntax::ptr::P<::syntax::ast::Expr>", "::syntax::ptr::P<::syntax::ast::Expr>"]
+Binary = ["::syntax::ast::BinOp", "::syntax::ptr::P<::syntax::ast::Expr>", "::syntax::ptr::P<::syntax::ast::Expr>"]
+Block = ["::syntax::ptr::P<::syntax::ast::Block>"]
+Box = ["::syntax::ptr::P<::syntax::ast::Expr>"]
+Break = ["Option<::syntax::ast::SpannedIdent>"]
+Call = ["::syntax::ptr::P<::syntax::ast::Expr>", "Vec<::syntax::ptr::P<::syntax::ast::Expr>>"]
+Cast = ["::syntax::ptr::P<::syntax::ast::Expr>", "::syntax::ptr::P<::syntax::ast::Ty>"]
+Closure = ["::syntax::ast::CaptureBy", "::syntax::ptr::P<::syntax::ast::FnDecl>", "::syntax::ptr::P<::syntax::ast::Block>", "Span"]
+Continue = ["Option<::syntax::ast::SpannedIdent>"]
+Field = ["::syntax::ptr::P<::syntax::ast::Expr>", "::syntax::ast::SpannedIdent"]
+ForLoop = ["::syntax::ptr::P<::syntax::ast::Pat>", "::syntax::ptr::P<::syntax::ast::Expr>", "::syntax::ptr::P<::syntax::ast::Block>", "Option<::syntax::ast::SpannedIdent>"]
+IfLet = ["::syntax::ptr::P<::syntax::ast::Pat>", "::syntax::ptr::P<::syntax::ast::Expr>", "::syntax::ptr::P<::syntax::ast::Block>", "Option<::syntax::ptr::P<::syntax::ast::Expr>>"]
+If = ["::syntax::ptr::P<::syntax::ast::Expr>", "::syntax::ptr::P<::syntax::ast::Block>", "Option<::syntax::ptr::P<::syntax::ast::Expr>>"]
+Index = ["::syntax::ptr::P<::syntax::ast::Expr>", "::syntax::ptr::P<::syntax::ast::Expr>"]
+InlineAsm = ["::syntax::ast::InlineAsm"]
+InPlace = ["::syntax::ptr::P<::syntax::ast::Expr>", "::syntax::ptr::P<::syntax::ast::Expr>"]
+Lit = ["::syntax::ptr::P<::syntax::ast::Lit>"]
+Loop = ["::syntax::ptr::P<::syntax::ast::Block>", "Option<::syntax::ast::SpannedIdent>"]
+Mac = ["::syntax::ast::Mac"]
+Match = ["::syntax::ptr::P<::syntax::ast::Expr>", "Vec<::syntax::ast::Arm>"]
+MethodCall = ["::syntax::ast::SpannedIdent", "Vec<::syntax::ptr::P<::syntax::ast::Ty>>", "Vec<::syntax::ptr::P<::syntax::ast::Expr>>"]
+Paren = ["::syntax::ptr::P<::syntax::ast::Expr>"]
+Path = ["Option<::syntax::ast::QSelf>", "::syntax::ast::Path"]
+Range = ["Option<::syntax::ptr::P<::syntax::ast::Expr>>", "Option<::syntax::ptr::P<::syntax::ast::Expr>>", "::syntax::ast::RangeLimits"]
+Repeat = ["::syntax::ptr::P<::syntax::ast::Expr>", "::syntax::ptr::P<::syntax::ast::Expr>"]
+Ret = ["Option<::syntax::ptr::P<::syntax::ast::Expr>>"]
+Struct = ["::syntax::ast::Path", "Vec<::syntax::ast::Field>", "Option<::syntax::ptr::P<::syntax::ast::Expr>>"]
+Try = ["::syntax::ptr::P<::syntax::ast::Expr>"]
+TupField = ["::syntax::ptr::P<::syntax::ast::Expr>", "::syntax::codemap::Spanned<usize>"]
+Tup = ["Vec<::syntax::ptr::P<::syntax::ast::Expr>>"]
+Type = ["::syntax::ptr::P<::syntax::ast::Expr>", "::syntax::ptr::P<::syntax::ast::Ty>"]
+Unary = ["::syntax::ast::UnOp", "::syntax::ptr::P<::syntax::ast::Expr>"]
+Vec = ["Vec<::syntax::ptr::P<::syntax::ast::Expr>>"]
+WhileLet = ["::syntax::ptr::P<::syntax::ast::Pat>", "::syntax::ptr::P<::syntax::ast::Expr>", "::syntax::ptr::P<::syntax::ast::Block>", "Option<::syntax::ast::SpannedIdent>"]
+While = ["::syntax::ptr::P<::syntax::ast::Expr>", "::syntax::ptr::P<::syntax::ast::Block>", "Option<::syntax::ast::SpannedIdent>"]
+
+[Item]
+
+enum = "ItemKind"
+description = "item"
+parameter = "item: &Item"
+storage = "P<Item>"
+
+[Item.extractors]
+
+Const = ["::syntax::ptr::P<::syntax::ast::Ty>", "::syntax::ptr::P<::syntax::ast::Expr>"]
+DefaultImpl = ["::syntax::ast::Unsafety", "::syntax::ast::TraitRef"]
+Enum = ["::syntax::ast::EnumDef", "::syntax::ast::Generics"]
+ExternCrate = ["Option<String>"]
+Fn = ["::syntax::ptr::P<::syntax::ast::FnDecl>", "::syntax::ast::Unsafety", "::syntax::codemap::Spanned<::syntax::ast::Constness>", "::syntax::abi::Abi", "::syntax::ast::Generics", "::syntax::ptr::P<::syntax::ast::Block>"]
+ForeignMod = ["::syntax::ast::ForeignMod"]
+Impl = ["::syntax::ast::Unsafety", "::syntax::ast::ImplPolarity", "::syntax::ast::Generics", "Option<::syntax::ast::TraitRef>", "::syntax::ptr::P<::syntax::ast::Ty>", "Vec<::syntax::ast::ImplItem>"]
+Mac = ["::syntax::ast::Mac"]
+Mod = ["::syntax::ast::Mod"]
+Static = ["::syntax::ptr::P<::syntax::ast::Ty>", "::syntax::ast::Mutability", "::syntax::ptr::P<::syntax::ast::Expr>"]
+Struct = ["::syntax::ast::VariantData", "::syntax::ast::Generics"]
+Trait = ["::syntax::ast::Unsafety", "::syntax::ast::Generics", "::syntax::ast::TyParamBounds", "Vec<::syntax::ast::TraitItem>"]
+Ty = ["::syntax::ptr::P<::syntax::ast::Ty>", "::syntax::ast::Generics"]
+Union = ["::syntax::ast::VariantData", "::syntax::ast::Generics"]
+Use = ["::syntax::ptr::P<::syntax::ast::ViewPath>"]
+
+[Lit]
+
+enum = "LitKind"
+description = "literal"
+parameter = "lit: &Lit"
+storage = "Lit"
+
+[Lit.extractors]
+
+Bool = ["bool"]
+ByteStr = ["::std::rc::Rc<Vec<u8>>"]
+Byte = ["u8"]
+Char = ["char"]
+Float = ["String", "::syntax::ast::FloatTy"]
+FloatUnsuffixed = ["String"]
+Int = ["u64", "::syntax::ast::LitIntType"]
+Str = ["String", "::syntax::ast::StrStyle"]
+
+[MetaItem]
+
+enum = "MetaItemKind"
+description = "meta item"
+parameter = "meta: &MetaItem"
+storage = "P<MetaItem>"
+
+[MetaItem.extractors]
+
+List = ["String", "Vec<::syntax::ast::NestedMetaItem>"]
+NameValue = ["String", "::syntax::ast::Lit"]
+Word = ["String"]
+
+[Pat]
+
+enum = "PatKind"
+description = "pattern"
+parameter = "pat: &Pat"
+storage = "P<::syntax::ast::Pat>"
+
+[Pat.extractors]
+
+Box = ["::syntax::ptr::P<::syntax::ast::Pat>"]
+Ident = ["::syntax::ast::BindingMode", "::syntax::ast::SpannedIdent", "Option<::syntax::ptr::P<::syntax::ast::Pat>>"]
+Lit = ["::syntax::ptr::P<::syntax::ast::Expr>"]
+Mac = ["::syntax::ast::Mac"]
+Path = ["Option<::syntax::ast::QSelf>", "::syntax::ast::Path"]
+Range = ["::syntax::ptr::P<::syntax::ast::Expr>", "::syntax::ptr::P<::syntax::ast::Expr>"]
+Ref = ["::syntax::ptr::P<::syntax::ast::Pat>", "::syntax::ast::Mutability"]
+Struct = ["::syntax::ast::Path", "Vec<::syntax::codemap::Spanned<::syntax::ast::FieldPat>>", "bool"]
+TupleStruct = ["::syntax::ast::Path", "Vec<::syntax::ptr::P<::syntax::ast::Pat>>", "Option<usize>"]
+Tuple = ["Vec<::syntax::ptr::P<::syntax::ast::Pat>>", "Option<usize>"]
+Vec = ["Vec<::syntax::ptr::P<::syntax::ast::Pat>>", "Option<::syntax::ptr::P<::syntax::ast::Pat>>", "Vec<::syntax::ptr::P<::syntax::ast::Pat>>"]
+Wild = []
+
+[Stmt]
+
+enum = "StmtKind"
+description = "statement"
+parameter = "stmt: &Stmt"
+storage = "Stmt"
+
+[Stmt.extractors]
+
+Expr = ["::syntax::ptr::P<::syntax::ast::Expr>"]
+Item = ["::syntax::ptr::P<::syntax::ast::Item>"]
+Local = ["::syntax::ptr::P<::syntax::ast::Local>"]
+Mac = ["::syntax::ptr::P<(::syntax::ast::Mac, ::syntax::ast::MacStmtStyle, ::syntax::ast::ThinVec<::syntax::ast::Attribute>)>"]
+Semi = ["::syntax::ptr::P<::syntax::ast::Expr>"]
+
+[Ty]
+
+enum = "TyKind"
+description = "type"
+parameter = "ty: &Ty"
+storage = "P<Ty>"
+
+[Ty.extractors]
+
+BareFn = ["::syntax::ptr::P<::syntax::ast::BareFnTy>"]
+FixedLengthVec = ["::syntax::ptr::P<::syntax::ast::Ty>", "::syntax::ptr::P<::syntax::ast::Expr>"]
+ImplicitSelf = []
+ImplTrait = ["::syntax::ast::TyParamBounds"]
+Infer = []
+Mac = ["::syntax::ast::Mac"]
+Never = []
+ObjectSum = ["::syntax::ptr::P<::syntax::ast::Ty>", "::syntax::ast::TyParamBounds"]
+Paren = ["::syntax::ptr::P<::syntax::ast::Ty>"]
+Path = ["Option<::syntax::ast::QSelf>", "::syntax::ast::Path"]
+PolyTraitRef = ["::syntax::ast::TyParamBounds"]
+Ptr = ["::syntax::ast::MutTy"]
+Rptr = ["Option<::syntax::ast::Lifetime>", "::syntax::ast::MutTy"]
+Tup = ["Vec<::syntax::ptr::P<::syntax::ast::Ty>>"]
+Typeof = ["::syntax::ptr::P<::syntax::ast::Expr>"]
+Vec = ["::syntax::ptr::P<::syntax::ast::Ty>"]
+
+["Spanned<Token>"]
+
+enum = "Token"
+description = "token"
+parameter = "tok: &Spanned<Token>"
+storage = "Spanned<Token>"
+
+["Spanned<Token>".extractors]
+
+AndAnd = []
+At = []
+BinOp = ["::syntax::parse::token::BinOpToken"]
+BinOpEq = ["::syntax::parse::token::BinOpToken"]
+CloseDelim = ["::syntax::parse::token::DelimToken"]
+Colon = []
+Comma = []
+Comment = []
+DocComment = ["String"]
+Dollar = []
+Dot = []
+DotDot = []
+DotDotDot = []
+Eof = []
+Eq = []
+EqEq = []
+FatArrow = []
+Ge = []
+Gt = []
+Ident = ["::syntax::ast::Ident"]
+Interpolated = ["::syntax::parse::token::Nonterminal"]
+LArrow = []
+Le = []
+Lifetime = ["::syntax::ast::Ident"]
+Literal = ["::syntax::parse::token::Lit", "Option<String>"]
+Lt = []
+MatchNt = ["::syntax::ast::Ident", "::syntax::ast::Ident"]
+ModSep = []
+Ne = []
+Not = []
+OpenDelim = ["::syntax::parse::token::DelimToken"]
+OrOr = []
+Pound = []
+Question = []
+RArrow = []
+Semi = []
+Shebang = ["String"]
+SpecialVarNt = ["::syntax::parse::token::SpecialMacroVar"]
+SubstNt = ["::syntax::ast::Ident"]
+Tilde = []
+Underscore = []
+Whitespace = []

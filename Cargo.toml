@@ -21,11 +21,11 @@ plugin = true
 
 [features]
 
-stable = ["syntex", "syntex_errors", "syntex_syntax", "synthax/stable", "easy-plugin-plugins/stable"]
+stable = ["easy-plugin-parsers/stable", "syntex", "syntex_errors", "syntex_syntax", "synthax/stable"]
 
 [dependencies]
 
-easy-plugin-plugins = { version = "0.9.1", path = "plugins" }
+easy-plugin-parsers = { version = "0.9.1", path = "parsers" }
 synthax = "0.3.2"
 
 syntex = { version = "0.*.0", optional = true }
@@ -36,7 +36,6 @@ clippy = { version = "0.0.*", optional = true }
 
 [build-dependencies]
 
-easy-plugin-plugins = { version = "0.9.1", path = "plugins" }
 synthax = "0.3.2"
 
 syntex = { version = "0.*.0", optional = true }

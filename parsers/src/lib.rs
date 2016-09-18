@@ -12,25 +12,28 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#![cfg_attr(not(feature="syntex"), feature(plugin))]
-#![cfg_attr(not(feature="syntex"), feature(plugin_registrar))]
+//! Parsers used internally by the easy-plugin crate.
+
 #![cfg_attr(not(feature="syntex"), feature(rustc_private))]
 
-#![cfg_attr(not(feature="syntex"), plugin(synthax))]
+#![warn(missing_copy_implementations, missing_debug_implementations, missing_docs)]
 
+#![cfg_attr(feature="clippy", feature(plugin))]
 #![cfg_attr(feature="clippy", plugin(clippy))]
 #![cfg_attr(feature="clippy", warn(clippy))]
 
 #[cfg(feature="syntex")]
-extern crate syntex as rustc_plugin;
-#[cfg(feature="syntex")]
 extern crate syntex_syntax as syntax;
-
-#[cfg(not(feature="syntex"))]
-extern crate rustc_plugin;
+#[cfg(feature="syntex")]
+extern crate syntex_errors as rustc_errors;
 #[cfg(not(feature="syntex"))]
 extern crate syntax;
+#[cfg(not(feature="syntex"))]
+extern crate rustc_errors as rustc_errors;
 
-extern crate synthax;
+mod utility;
+pub use utility::{PluginResult};
 
-include!(concat!(env!("OUT_DIR"), "/lib.rs"));
+pub mod arguments;
+pub mod extractor;
+pub mod specification;

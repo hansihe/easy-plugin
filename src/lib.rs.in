@@ -14,17 +14,14 @@
 
 use rustc_plugin::{Registry};
 
-use syntax::ast::*;
-use syntax::codemap::{Span};
-use syntax::ext::base::{ExtCtxt, DummyResult, MacResult};
-use syntax::parse::token::{Token};
+use syntax::print::pprust;
+use syntax::ast::{Attribute, Expr, Ident, Item, Visibility};
+use syntax::codemap::{Span, Spanned};
+use syntax::ext::base::{ExtCtxt, DummyResult, MacEager, MacResult};
+use syntax::parse::token::{DelimToken};
 use syntax::ptr::{P};
 use syntax::tokenstream::{TokenTree};
-
-use synthax::{ToExpr};
-
-/// A result type suitable for reporting errors in plugins.
-pub type PluginResult<T> = Result<T, (Span, String)>;
+use syntax::util::small_vector::{SmallVector};
 
 //================================================
 // Functions
@@ -54,22 +51,17 @@ pub fn strip_function(
 /// Returns a function that parse arguments according to the supplied specification.
 #[doc(hidden)]
 pub fn expand_parse_fn(
-    context: &ExtCtxt, span: Span, name: Ident, specification: &Specification, multiple: bool
+    context: &ExtCtxt, name: Ident, tts: &[TokenTree], specification: &[Specifier]
 ) -> P<Item> {
-    let function = if multiple {
-        context.ident_of(&format!("parse{}", name.name))
-    } else {
-        context.ident_of("parse")
-    };
-
+    let string = pprust::tts_to_string(tts);
     quote_item!(context,
         #[allow(non_snake_case)]
-        fn $function(
+        fn parse(
             session: &::syntax::parse::ParseSess, arguments: &[::syntax::tokenstream::TokenTree]
         ) -> ::easy_plugin::PluginResult<$name> {
-            let specification = ${specification.to_expr(context, span)};
-            ::easy_plugin::parse_args(session, arguments, &specification.0).map(|_m| {
-                ${specification.to_struct_expr(context, name)}
+            let specification = ::easy_plugin::parse_specification_string($string).unwrap();
+            ::easy_plugin::parse_arguments(session, arguments, &specification).map(|_a| {
+                ${ast::expand_struct_expr(context, name, specification)}
             })
         }
     ).unwrap()
@@ -95,25 +87,55 @@ pub fn expand_parse_expr(context: &ExtCtxt, expr: P<Expr>) -> P<Expr> {
 }
 
 fn expand_easy_plugin_(
-    context: &mut ExtCtxt, span: Span, arguments: &[TokenTree]
+    context: &mut ExtCtxt, arguments: &[TokenTree]
 ) -> PluginResult<Box<MacResult + 'static>> {
-    if arguments.is_empty() {
-        return span.to_error("unexpected end of arguments");
-    }
-    if let TokenTree::Token(_, Token::Ident(ref ident)) = arguments[0] {
-        match &*ident.name.as_str() {
-            "enum" => return enums::expand_easy_plugin_enum(context, span, arguments),
-            "struct" => return structs::expand_easy_plugin_struct(context, span, arguments),
-            _ => { },
+    // Build the argument specification.
+    let specification = &[
+        Specifier::ident("struct"),
+        Specifier::Ident("arguments".into()),
+        Specifier::Delimited(Delimited::new(DelimToken::Brace, vec![
+            Specifier::Sequence(None, Sequence::new(Amount::ZeroOrMore, None, vec![
+                Specifier::Tt("tt".into()),
+            ])),
+        ])),
+        Specifier::Item("function".into()),
+    ];
+
+    // Extract the arguments.
+    let matches = try!(parse_arguments(context.parse_sess, arguments, specification));
+    let arguments = matches.get::<Spanned<Ident>>("arguments").node;
+    let tts = matches.get_sequence("tt").into_vec::<TokenTree>();
+    let function = matches.get::<P<Item>>("function");
+
+    // Generate the plugin function.
+    let specification = try!(parse_specification(&tts));
+    let (function, identifier, visibility, attributes) = strip_function(context, function);
+
+    let expr = quote_expr!(context, |a| ${function.ident}(context, span, a));
+    let expr = quote_expr!(context, parse(context.parse_sess, arguments).and_then($expr));
+    let items = ast::expand_struct_items(context, arguments, &specification);
+
+    let item = quote_item!(context,
+        #[allow(non_camel_case_types)]
+        $($attributes)*
+        $visibility fn $identifier(
+            context: &mut ::syntax::ext::base::ExtCtxt,
+            span: ::syntax::codemap::Span,
+            arguments: &[::syntax::tokenstream::TokenTree],
+        ) -> Box<::syntax::ext::base::MacResult> {
+            $($items)*
+            ${expand_parse_fn(context, arguments, &tts, &specification)}
+            $function
+            ${expand_parse_expr(context, expr)}
         }
-    }
-    arguments[0].to_error("expected `enum` or `struct`")
+    ).unwrap();
+    Ok(MacEager::items(SmallVector::one(item)))
 }
 
 fn expand_easy_plugin<'cx>(
-    context: &'cx mut ExtCtxt, span: Span, arguments: &[TokenTree]
+    context: &'cx mut ExtCtxt, _: Span, arguments: &[TokenTree]
 ) -> Box<MacResult + 'cx> {
-    match expand_easy_plugin_(context, span, arguments) {
+    match expand_easy_plugin_(context, arguments) {
         Ok(result) => result,
         Err((span, message)) => {
             context.span_err(span, &message);
@@ -125,7 +147,6 @@ fn expand_easy_plugin<'cx>(
 /// Add the `easy-plugin` plugins to the supplied registry.
 #[cfg(feature="syntex")]
 pub fn plugin_registrar(registry: &mut Registry) {
-    registry.add_macro("parse_spec", expand_parse_spec);
     registry.add_macro("easy_plugin", expand_easy_plugin);
 }
 
@@ -144,6 +165,5 @@ pub fn expand<S: AsRef<std::path::Path>, D: AsRef<std::path::Path>>(
 #[doc(hidden)]
 #[plugin_registrar]
 pub fn plugin_registrar(registry: &mut Registry) {
-    registry.register_macro("parse_spec", expand_parse_spec);
     registry.register_macro("easy_plugin", expand_easy_plugin);
 }

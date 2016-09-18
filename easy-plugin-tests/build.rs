@@ -20,7 +20,7 @@ fn expand(source: &Path, destination: &Path) {
 }
 
 pub fn main() {
-    let files = &["arguments", "convert", "enums", "errors", "specification", "structs"];
+    let files = &["tests"];
     for file in files {
         let source = Path::new(&format!("tests/{}.rs.in", file)).to_path_buf();
         let destination = Path::new(&env!("OUT_DIR")).join(&format!("{}.rs", file));
