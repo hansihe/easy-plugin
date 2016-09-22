@@ -3,9 +3,8 @@
 name = "easy-plugin-parsers"
 authors = ["Kyle Mayes <kyle@mayeses.com>"]
 
-version = "0.9.1"
+version = "0.10.0"
 
-readme = "README.md"
 license = "Apache-2.0"
 
 description = "Parsers used internally by the easy-plugin crate."

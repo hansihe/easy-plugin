@@ -1,4 +1,4 @@
-## [0.10.0] - UNRELEASED
+## [0.10.0] - 2016-09-22
 
 ### Removed
 - Removed `easy_plugin` enum variant
