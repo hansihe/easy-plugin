@@ -43,17 +43,17 @@ impl Arguments {
 
     /// Returns the argument with the suppled name.
     pub fn get<T: Any + Clone>(&self, name: &str) -> T {
-        get(self.0.get(name).unwrap())
+        get(self.0.get(name).expect(name))
     }
 
     /// Returns the sequence arguments with the supplied name.
     pub fn get_sequence(&self, name: &str) -> SequenceArguments {
-        get_sequence(self.0.get(name).unwrap())
+        get_sequence(self.0.get(name).expect(name))
     }
 
     /// Returns the enum arguments with the supplied name.
     pub fn get_enum(&self, name: &str) -> EnumArguments {
-        get_enum(self.0.get(name).unwrap())
+        get_enum(self.0.get(name).expect(name))
     }
 }
 
@@ -156,12 +156,6 @@ fn parse_sequence(
 ) -> PluginResult<usize> {
     if sequence.specification.is_empty() {
         return Ok(0);
-    }
-    // Insert empty sequence matches for each named specifier in the sequence.
-    for specifier in &sequence.specification {
-        if let Some(name) = specifier.get_name() {
-            arguments.0.insert(name.clone(), Box::new(Vec::<Box<Any>>::new()));
-        }
     }
     let mut count = 0;
     loop {
@@ -283,6 +277,19 @@ fn parse_arguments_impl(
     Ok(())
 }
 
+// Inserts empty sequence matches for each named specifier in each sequence.
+fn insert_matches(specification: &[Specifier], arguments: &mut Arguments, nested: bool) -> () {
+    for specifier in specification {
+        if let Some(name) = specifier.get_name() {
+            if nested {
+                arguments.0.insert(name.clone(), Box::new(Vec::<Box<Any>>::new()));
+            }
+        } else if let Specifier::Sequence(_, ref sequence) = *specifier {
+            insert_matches(&sequence.specification, arguments, true);
+        }
+    }
+}
+
 /// Parses the supplied arguments with the supplied argument specification.
 pub fn parse_arguments(
     session: &ParseSess, tts: &[TokenTree], specification: &[Specifier]
@@ -292,6 +299,7 @@ pub fn parse_arguments(
     }
     let mut parser = TransactionParser::new(session, tts);
     let mut arguments = Arguments(HashMap::new());
+    insert_matches(specification, &mut arguments, false);
     try!(parse_arguments_impl(&mut parser, specification, &mut arguments));
     if let Some(remainder) = parser.get_remainder_span() {
         Err((remainder, "too many arguments".into()))

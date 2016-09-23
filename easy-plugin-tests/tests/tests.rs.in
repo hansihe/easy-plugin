@@ -187,14 +187,23 @@ easy_plugin! {
         $tt:tt
         $attr_list:attr_list
         $ty_vec:ty_vec
+    SEQUENCES_OPTION:
         $($seqo:ident)?
         $($($seqoo:ident)?)?
         $($($($seqooo:ident)?)?)?
+    SEQUENCES_VEC:
         $($seqv:ident), +;
         $($($seqvv:ident):*), +;
         $($($($seqvvv:ident).*):*), +;
+    SEQUENCES_MIXED:
+        $($($seqov:ident)?), +;
+        $($($seqvo:ident), +)?;
+        $($($($seqovo:ident)?), +)?;
+        $($($($seqvov:ident), +)?), +;
+    SEQUENCES_NAMED:
         $nseqo:(foo)?
         $nseqv:(foo), *;
+    ENUMS:
         $e1:{A($attr:attr), B($ty:ty)}
         $e2:{A($attr:attr), B($ty:ty)}
         $($oe:{A($attr:attr), B($ty:ty)})?
@@ -219,14 +228,23 @@ fn test_struct() {
         (bar)
         #[foo(bar, baz)]
         [i32]
+    SEQUENCES_OPTION:
         foo
         bar
         baz
+    SEQUENCES_VEC:
         foo, bar, baz;
         , foo, bar: baz;
         , foo, foo.bar, foo: bar, foo.bar: baz.qux;
+    SEQUENCES_MIXED:
+        foo, , bar;
+        foo, bar, baz;
+        foo, , bar;
+        foo, bar, baz;
+    SEQUENCES_NAMED:
         foo
         foo, foo;
+    ENUMS:
         #[foo="bar"]
         i32
         #[foo="bar"]

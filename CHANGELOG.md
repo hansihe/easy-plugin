@@ -1,3 +1,8 @@
+## [0.10.1] - UNRELEASED
+
+### Fixed
+- Fixed code generation for nested sequences with different amounts
+
 ## [0.10.0] - 2016-09-22
 
 ### Removed
@@ -11,8 +16,6 @@
 - Renamed `parse_args` function to `parse_arguments`
 - Renamed `parse_spec` function to `parse_specification`
 - Refactored arguments and specifications
-
-### Removed
 
 ## [0.9.1] - 2016-08-17
 

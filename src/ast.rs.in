@@ -155,12 +155,12 @@ fn to_field_expr<F: Fn(&ExtCtxt, &Expr) -> P<Expr>, G: Fn(&ExtCtxt, &Expr) -> P<
         }
     } else {
         let s = quote_expr!(context, s);
-        let mut expr = if stack[0] == Amount::ZeroOrOne {
+        let mut expr = if stack[stack.len() - 1] == Amount::ZeroOrOne {
             quote_expr!(context, |s| ${option(context, &s)})
         } else {
             quote_expr!(context, |s| ${vec(context, &s)})
         };
-        for amount in stack.iter().skip(2) {
+        for amount in stack.iter().skip(1).take(stack.len() - 2) {
             if *amount == Amount::ZeroOrOne {
                 expr = quote_expr!(context, |s| s.into_sequence_option($expr));
             } else {
