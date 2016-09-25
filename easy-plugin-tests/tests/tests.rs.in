@@ -194,6 +194,11 @@ easy_plugin! {
 }
 
 easy_plugin! {
+    enum Enum {
+        A { $attr:attr },
+        B { $ty:ty },
+    }
+
     struct Arguments {
         $attr:attr
         $ty:ty
@@ -218,12 +223,12 @@ easy_plugin! {
         $nseqo:(foo)?
         $nseqv:(foo), *;
     ENUMS:
-        $e1:{A($attr:attr), B($ty:ty)}
-        $e2:{A($attr:attr), B($ty:ty)}
-        $($oe:{A($attr:attr), B($ty:ty)})?
-        $($($ooe:{A($attr:attr), B($ty:ty)})?)?
-        $($ve:{A($attr:attr), B($ty:ty)}), *;
-        $($($vve:{A($attr:attr), B($ty:ty)}):*), *;
+        $e1:$Enum
+        $e2:$Enum
+        $($oe:$Enum)?
+        $($($ooe:$Enum)?)?
+        $($ve:$Enum), *;
+        $($($vve:$Enum):*), *;
     }
 
     pub fn expand_struct(
@@ -234,7 +239,7 @@ easy_plugin! {
 }
 
 #[test]
-fn test_struct() {
+fn test() {
     let source = r#"
         #[foo="bar"]
         i32
@@ -266,7 +271,6 @@ fn test_struct() {
         #[foo="bar"], i32, #[foo(bar, baz)], f32;
         #[foo="bar"], i32: #[foo(bar, baz)], f32;
     "#;
-
 
     let session = ParseSess::new();
     let config = ExpansionConfig::default("".into());

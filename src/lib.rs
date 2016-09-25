@@ -160,20 +160,33 @@
 //! ## Enums
 //!
 //! There are also enumerated specifiers, which allow for a choice of possible values. For example,
-//! the following plugin argument specification will match either an identifier or a meta item.
+//! the following enumerated argument specification will match either an identifier or a meta item.
 //!
 //! ```ignore
-//! $e:{A($a:ident), B($b:meta)}
+//! enum Enum {
+//!     A { $a:ident },
+//!     B { $b:meta },
+//! }
 //! ```
 //!
-//! The storage types for enumerated specifiers are generated enums. For example, the storage type
-//! for `e` above would be the following enum.
+//! Enumerated argument specifications are used by defining them before the argument specification
+//! and then referring to them in the argument specification. For example, the following usage of
+//! `easy_plugin!` uses the enumerated argument specification above.
 //!
 //! ```ignore
-//! #[derive(Debug)]
-//! enum e_Enum {
-//!     A { a: Spanned<Ident> },
-//!     B { b: P<MetaItem> },
+//! easy_plugin! {
+//!     enum Enum {
+//!         A { $a:ident },
+//!         B { $b:meta },
+//!     }
+//!
+//!     struct Arguments { $e:$Enum }
+//!
+//!     pub fn expand_plugin(
+//!         _: &mut ExtCtxt, span: Span, _: Arguments
+//!     ) -> PluginResult<Box<MacResult>> {
+//!         Ok(DummyResult::any(span))
+//!     }
 //! }
 //! ```
 

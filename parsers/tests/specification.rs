@@ -21,6 +21,8 @@ extern crate syntax;
 
 extern crate easy_plugin_parsers;
 
+use std::collections::{HashMap};
+
 use easy_plugin_parsers::specification::*;
 
 use syntax::parse::token::{DelimToken, Token};
@@ -30,7 +32,8 @@ macro_rules! spec {
 }
 
 fn parse(string: &str) -> Vec<Specifier> {
-    parse_specification_string(string).unwrap()
+    let enums = HashMap::new();
+    parse_specification_string(string, &enums).unwrap()
 }
 
 #[test]
@@ -190,51 +193,20 @@ fn test_parse_specification_named_sequence() {
 
 #[test]
 fn test_parse_specification_enum() {
-    macro_rules! assert_enum_eq {
-        ($string:expr, [$(($name:expr, $specification:expr)), +]) => ({
-            assert_enum_eq!($string, [$(($name, $specification)), +,])
-        });
-
-        ($string:expr, [$(($name:expr, $specification:expr)), +,]) => ({
-            let specification = parse($string);
-            assert_eq!(specification.len(), 1);
-            match specification[0] {
-                Specifier::Enum(ref name, ref variants) => {
-                    assert_eq!(name, "a");
-                    assert_eq!(variants, &vec![$(Variant::new($name.into(), $specification)), +]);
-                },
-                _ => panic!("expected enumerated specifier"),
-            }
-        });
+    let variants = vec![
+        Variant::new("A".into(), parse("$a:attr")),
+        Variant::new("B".into(), parse("$b:ty")),
+    ];
+    let mut enums = HashMap::new();
+    enums.insert("Enum".to_string(), Enum::new("Enum".into(), variants.clone()));
+    let specification = parse_specification_string("$a:$Enum", &enums).unwrap();
+    assert_eq!(specification.len(), 1);
+    match specification[0] {
+        Specifier::Enum(ref name, ref enum_) => {
+            assert_eq!(name, "a");
+            assert_eq!(enum_.name, "Enum");
+            assert_eq!(enum_.variants, variants);
+        },
+        _ => panic!("expected enumerated specifier"),
     }
-
-    assert_enum_eq!("$a:{A()}", [("A", spec![])]);
-    assert_enum_eq!("$a:{A(), B()}", [("A", spec![]), ("B", spec![])]);
-
-    assert_enum_eq!("$a:{A($a:attr), B($b:binop)}", [
-        ("A", spec![Attr("a".into())]),
-        ("B", spec![BinOp("b".into())]),
-    ]);
-
-    assert_enum_eq!("$a:{A(=), B(foo)}", [
-        ("A", spec![Specific(Token::Eq)]),
-        ("B", spec![ident("foo")]),
-    ]);
-
-    let a = Sequence::new(Amount::ZeroOrOne, None, spec![]);
-    let b = Sequence::new(Amount::OneOrMore, Some(Token::Comma), spec![]);
-    assert_enum_eq!("$a:{A($()?), B($(), +)}", [
-        ("A", spec![Sequence(None, a.clone())]),
-        ("B", spec![Sequence(None, b.clone())]),
-    ]);
-
-    assert_enum_eq!("$a:{A({}), B(())}", [
-        ("A", spec![Delimited(Delimited::new(DelimToken::Brace, spec![]))]),
-        ("B", spec![Delimited(Delimited::new(DelimToken::Paren, spec![]))]),
-    ]);
-
-    assert_enum_eq!("$a:{A($a:()?), B($b:(), +)}", [
-        ("A", spec![Sequence(Some("a".into()), a)]),
-        ("B", spec![Sequence(Some("b".into()), b)]),
-    ]);
 }

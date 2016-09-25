@@ -21,9 +21,11 @@ extern crate syntax;
 
 extern crate easy_plugin_parsers;
 
-use easy_plugin_parsers::specification;
+use std::collections::{HashMap};
+
 use easy_plugin_parsers::{PluginResult};
 use easy_plugin_parsers::arguments::*;
+use easy_plugin_parsers::specification::{self, Enum, Specifier};
 
 use syntax::print::pprust;
 use syntax::ast::*;
@@ -48,13 +50,18 @@ macro_rules! assert_span_eq {
     });
 }
 
-fn parse(specification: &str, string: &str) -> PluginResult<Arguments> {
-    let specification = specification::parse_specification_string(specification).unwrap();
+fn parse_(specification: &[Specifier], string: &str) -> PluginResult<Arguments> {
     let session = ParseSess::new();
     let name = "<arguments>".into();
     let mut parser = parse::new_parser_from_source_str(&session, vec![], name, string.into());
     let tts = parser.parse_all_token_trees().unwrap();
-    parse_arguments(&session, &tts, &specification)
+    parse_arguments(&session, &tts, specification)
+}
+
+fn parse(specification: &str, string: &str) -> PluginResult<Arguments> {
+    let enums = HashMap::new();
+    let specification = specification::parse_specification_string(specification, &enums).unwrap();
+    parse_(&specification, string)
 }
 
 #[test]
@@ -290,8 +297,14 @@ fn test_parse_arguments_sequence() {
     assert_eq!(pprust::attribute_to_string(&arguments[1]), "#[foo(bar, baz)]");
     //assert_span_eq!(arguments[1].span, 8, 24);
 
-    let specification = "$($a:{A($a:attr), B($b:binop)})+";
-    let arguments = parse(specification, "#[test] + #[foo(bar, baz)] -").unwrap();
+    let variants = vec![
+        specification::Variant::new("A".into(), vec![Specifier::Attr("a".into())]),
+        specification::Variant::new("B".into(), vec![Specifier::BinOp("b".into())]),
+    ];
+    let mut enums = HashMap::new();
+    enums.insert("Enum".to_string(), Enum::new("Enum".into(), variants.clone()));
+    let specification = specification::parse_specification_string("$($a:$Enum)+", &enums).unwrap();
+    let arguments = parse_(&specification, "#[test] + #[foo(bar, baz)] -").unwrap();
     let arguments = arguments.get_sequence("a").into_enum_vec(|e| e);
     assert_eq!(arguments.len(), 4);
 
@@ -338,18 +351,22 @@ fn test_parse_arguments_named_sequence() {
 
 #[test]
 fn test_parse_arguments_enum() {
-    let arguments = parse("$a:{A()}", "").unwrap();
-    let arguments = arguments.get_enum("a");
-    assert_eq!(arguments.variant, 0);
+    let variants = vec![
+        specification::Variant::new("A".into(), vec![Specifier::Attr("a".into())]),
+        specification::Variant::new("B".into(), vec![Specifier::BinOp("b".into())]),
+    ];
+    let mut enums = HashMap::new();
+    enums.insert("Enum".to_string(), Enum::new("Enum".into(), variants.clone()));
+    let specification = specification::parse_specification_string("$a:$Enum", &enums).unwrap();
 
-    let arguments = parse("$a:{A($a:attr), B($b:binop)}", "#[test]").unwrap();
+    let arguments = parse_(&specification, "#[test]").unwrap();
     let arguments = arguments.get_enum("a");
     assert_eq!(arguments.variant, 0);
     let argument = arguments.arguments.get::<Attribute>("a");
     assert_eq!(pprust::attribute_to_string(&argument), "#[test]");
     //assert_span_eq!(argument.span, 0, 7);
 
-    let arguments = parse("$a:{A($a:attr), B($b:binop)}", "+").unwrap();
+    let arguments = parse_(&specification, "+").unwrap();
     let arguments = arguments.get_enum("a");
     assert_eq!(arguments.variant, 1);
     let argument = arguments.arguments.get::<Spanned<BinOpToken>>("b");

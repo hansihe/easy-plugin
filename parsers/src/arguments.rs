@@ -25,7 +25,7 @@ use syntax::tokenstream::{TokenTree};
 
 use super::extractor;
 use super::{PluginResult};
-use super::specification::{Amount, Sequence, Specifier, Variant};
+use super::specification::{Amount, Enum, Sequence, Specifier};
 use super::utility::{self, TransactionParser};
 
 //================================================
@@ -190,16 +190,13 @@ fn parse_sequence(
 }
 
 /// Parses enumerated arguments.
-fn parse_enum(
-    parser: &mut TransactionParser,
-    variants: &[Variant],
-) -> PluginResult<Box<Any>> {
-    for (index, variant) in variants.iter().enumerate() {
+fn parse_enum(parser: &mut TransactionParser, enum_: &Enum) -> PluginResult<Box<Any>> {
+    for (index, variant) in enum_.variants.iter().enumerate() {
         parser.save();
         let mut subarguments = Arguments(HashMap::new());
         match parse_arguments_impl(parser, &variant.specification, &mut subarguments) {
             Ok(()) => return Ok(Box::new((index, subarguments))),
-            Err(error) => if index + 1 == variants.len() {
+            Err(error) => if index + 1 == enum_.variants.len() {
                 return Err(error);
             },
         }
@@ -269,8 +266,8 @@ fn parse_arguments_impl(
                     }
                 }
             },
-            Specifier::Enum(ref name, ref variants) => {
-                arguments.0.insert(name.clone(), try!(parse_enum(parser, variants)));
+            Specifier::Enum(ref name, ref enum_) => {
+                arguments.0.insert(name.clone(), try!(parse_enum(parser, enum_)));
             },
         }
     }
@@ -284,8 +281,14 @@ fn insert_matches(specification: &[Specifier], arguments: &mut Arguments, nested
             if nested {
                 arguments.0.insert(name.clone(), Box::new(Vec::<Box<Any>>::new()));
             }
-        } else if let Specifier::Sequence(_, ref sequence) = *specifier {
-            insert_matches(&sequence.specification, arguments, true);
+        } else {
+            match *specifier {
+                Specifier::Delimited(ref delimited) =>
+                    insert_matches(&delimited.specification, arguments, true),
+                Specifier::Sequence(_, ref sequence) =>
+                    insert_matches(&sequence.specification, arguments, true),
+                _ => { },
+            }
         }
     }
 }

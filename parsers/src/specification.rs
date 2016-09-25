@@ -14,7 +14,7 @@
 
 //! Argument specifications.
 
-use std::collections::{HashSet};
+use std::collections::{HashMap, HashSet};
 
 use syntax::codemap::{Span};
 use syntax::parse::{self, ParseSess};
@@ -57,7 +57,7 @@ pub enum Amount {
 // Specifier _____________________________________
 
 /// A piece of a plugin argument specification.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Specifier {
     /// An attribute.
     Attr(String),
@@ -100,7 +100,7 @@ pub enum Specifier {
     /// A sequence piece which may be named.
     Sequence(Option<String>, Sequence),
     /// An enumerated piece.
-    Enum(String, Vec<Variant>),
+    Enum(String, Enum),
 }
 
 impl Specifier {
@@ -172,10 +172,30 @@ impl Specifier {
 // Structs
 //================================================
 
+// Enum __________________________________________
+
+/// An enumerated specification.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct Enum {
+    /// The name of this enumerated specification.
+    pub name: String,
+    /// The specification variants defined by this enumerated specification.
+    pub variants: Vec<Variant>,
+}
+
+impl Enum {
+    //- Constructors -----------------------------
+
+    /// Constructs a new `Enum`.
+    pub fn new(name: String, variants: Vec<Variant>) -> Enum {
+        Enum { name: name, variants: variants }
+    }
+}
+
 // Delimited _____________________________________
 
 /// A delimited piece of an argument specification.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Delimited {
     /// The type of delimiter that marks the borders of this delimited piece.
     pub delimiter: DelimToken,
@@ -195,7 +215,7 @@ impl Delimited {
 // Extractor _____________________________________
 
 /// A specifier that will be filtered through an extraction function.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Extractor {
     /// The specifier for the value that will filtered.
     pub specifier: Box<Specifier>,
@@ -215,7 +235,7 @@ impl Extractor {
 // Sequence ______________________________________
 
 /// A sequence piece of an argument specification.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Sequence {
     /// The number of times this sequence piece is expected to occur.
     pub amount: Amount,
@@ -239,7 +259,7 @@ impl Sequence {
 // Variant _______________________________________
 
 /// A variant in an enumerated piece of an argument specification.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Variant {
     /// The name of this variant.
     pub name: String,
@@ -259,6 +279,11 @@ impl Variant {
 //================================================
 // Functions
 //================================================
+
+struct State<'a> {
+    enums: &'a HashMap<String, Enum>,
+    names: HashSet<String>,
+}
 
 /// Parses a simple named specifier.
 fn parse_simple_specifier(
@@ -280,74 +305,51 @@ fn parse_simple_specifier(
 fn parse_sequence_specifier<'i, I: Iterator<Item=&'i TokenTree>>(
     span: Span, tts: &mut I, name: String, subtts: &[TokenTree]
 ) -> PluginResult<Specifier> {
-    let mut names = HashSet::new();
-    let sequence = try!(parse_sequence(span, tts, subtts, &mut names));
-    if names.is_empty() {
+    let enums = HashMap::new();
+    let mut state = State { enums: &enums, names: HashSet::new() };
+    let sequence = try!(parse_sequence(span, tts, subtts, &mut state));
+    if state.names.is_empty() {
         Ok(Specifier::Sequence(Some(name), sequence))
     } else {
         Err((span, "named specifiers are disallowed in named sequences".into()))
     }
 }
 
-/// Parses an enumerated named specifier.
-fn parse_enumerated_specifier(
-    span: Span, name: String, subtts: &[TokenTree]
-) -> PluginResult<Specifier> {
-    let mut tts = subtts.iter();
-    let mut variants = vec![];
-    while let Some(tt) = tts.next() {
-        let name = match tt {
-            &TokenTree::Token(_, Token::Ident(ident)) => ident.to_string(),
-            tt => return Err((tt.span(), "expected variant name".into())),
-        };
-        match expect_tt!(span, tts) {
-            &TokenTree::Delimited(subspan, ref delimited) => {
-                let mut names = HashSet::new();
-                let specification = parse_specification_impl(subspan, &delimited.tts, &mut names);
-                variants.push(Variant::new(name, try!(specification)));
-            },
-            tt => return Err((tt.span(), "expected variant specification".into())),
-        }
-        if let Some(tt) = tts.next() {
-            if !tt.eq_token(Token::Comma) {
-                return Err((tt.span(), "expected `,`".into()));
-            }
-        } else {
-            break;
-        }
-    }
-    if !variants.is_empty() {
-        Ok(Specifier::Enum(name.clone(), variants))
-    } else {
-        Err((span, "empty enumerated specifiers are disallowed".into()))
-    }
-}
-
 /// Parses a named specifier.
-fn parse_named_specifier<'i, I: Iterator<Item=&'i TokenTree>>(
-    span: Span, tts: &mut I, name: String
+fn parse_named_specifier<'a, 'i, I: Iterator<Item=&'i TokenTree>>(
+    span: Span, tts: &mut I, name: String, state: &mut State<'a>
 ) -> PluginResult<Specifier> {
     match expect_tt!(span, tts) {
         &TokenTree::Token(_, Token::Colon) => { },
         tt => return Err((tt.span(), "expected `:`".into())),
     }
     match expect_tt!(span, tts) {
+        &TokenTree::Token(_, Token::Dollar) => {
+            let (subspan, enum_) = match expect_tt!(span, tts) {
+                &TokenTree::Token(subspan, Token::Ident(ident)) => (subspan, ident),
+                tt => return Err((tt.span(), "expected enum name".into())),
+            };
+            match state.enums.get(&*enum_.name.as_str()) {
+                Some(enum_) => Ok(Specifier::Enum(name, enum_.clone())),
+                _ => Err((subspan, "no such enum".into())),
+            }
+        },
         &TokenTree::Token(subspan, Token::Ident(ident)) =>
             parse_simple_specifier(subspan, name, &*ident.name.as_str()),
-        &TokenTree::Delimited(subspan, ref delimited) => match delimited.delim {
-            DelimToken::Paren => parse_sequence_specifier(subspan, tts, name, &delimited.tts),
-            DelimToken::Brace => parse_enumerated_specifier(subspan, name, &delimited.tts),
-            _ => Err((subspan, "expected named specifier specification".into())),
+        &TokenTree::Delimited(subspan, ref delimited) => if delimited.delim == DelimToken::Paren {
+            parse_sequence_specifier(subspan, tts, name, &delimited.tts)
+        } else {
+            Err((subspan, "expected named specifier specification".into()))
         },
         tt => Err((tt.span(), "expected named specifier specification".into())),
     }
 }
 
 /// Parses an unnamed sequence.
-fn parse_sequence<'i, I: Iterator<Item=&'i TokenTree>>(
-    span: Span, tts: &mut I, subtts: &[TokenTree], names: &mut HashSet<String>
+fn parse_sequence<'a, 'i, I: Iterator<Item=&'i TokenTree>>(
+    span: Span, tts: &mut I, subtts: &[TokenTree], state: &mut State<'a>
 ) -> PluginResult<Sequence> {
-    let specification = try!(parse_specification_impl(span, subtts, names));
+    let specification = try!(parse_specification_impl(span, subtts, state));
     let (amount, separator) = match expect_tt!(span, tts) {
         &TokenTree::Token(_, Token::Question) => (Amount::ZeroOrOne, None),
         &TokenTree::Token(_, Token::BinOp(BinOpToken::Star)) => (Amount::ZeroOrMore, None),
@@ -365,20 +367,20 @@ fn parse_sequence<'i, I: Iterator<Item=&'i TokenTree>>(
 }
 
 /// Parses a named specifier or an unnamed sequence.
-fn parse_specifier<'i, I: Iterator<Item=&'i TokenTree>>(
-    span: Span, tts: &mut I, names: &mut HashSet<String>
+fn parse_specifier<'a, 'i, I: Iterator<Item=&'i TokenTree>>(
+    span: Span, tts: &mut I, state: &mut State<'a>
 ) -> PluginResult<Specifier> {
     match expect_tt!(span, tts) {
         &TokenTree::Token(subspan, Token::Ident(ident)) => {
             let name = format!("{}", ident);
-            if names.insert(name.clone()) {
-                parse_named_specifier(span, tts, name)
+            if state.names.insert(name.clone()) {
+                parse_named_specifier(span, tts, name, state)
             } else {
                 Err((subspan, "duplicate named specifier".into()))
             }
         },
         &TokenTree::Delimited(subspan, ref delimited) => if delimited.delim == DelimToken::Paren {
-            let sequence = try!(parse_sequence(span, tts, &delimited.tts, names));
+            let sequence = try!(parse_sequence(span, tts, &delimited.tts, state));
             Ok(Specifier::Sequence(None, sequence))
         } else {
             Err((subspan, "expected named specifier or unnamed sequence".into()))
@@ -388,17 +390,17 @@ fn parse_specifier<'i, I: Iterator<Item=&'i TokenTree>>(
 }
 
 /// Actually parses the supplied argument specification.
-fn parse_specification_impl(
-    span: Span, tts: &[TokenTree], names: &mut HashSet<String>
+fn parse_specification_impl<'a>(
+    span: Span, tts: &[TokenTree], state: &mut State<'a>
 ) -> PluginResult<Vec<Specifier>> {
     let mut tts = tts.iter();
     let mut specification = vec![];
     while let Some(tt) = tts.next() {
         let specifier = match *tt {
-            TokenTree::Token(_, Token::Dollar) => try!(parse_specifier(span, &mut tts, names)),
+            TokenTree::Token(_, Token::Dollar) => try!(parse_specifier(span, &mut tts, state)),
             TokenTree::Token(_, ref token) => Specifier::Specific(token.clone()),
             TokenTree::Delimited(subspan, ref delimited) => {
-                let specification = try!(parse_specification_impl(subspan, &delimited.tts, names));
+                let specification = try!(parse_specification_impl(subspan, &delimited.tts, state));
                 Specifier::Delimited(Delimited::new(delimited.delim, specification))
             },
             _ => panic!("{:?}", tt),
@@ -409,16 +411,20 @@ fn parse_specification_impl(
 }
 
 /// Parses the supplied argument specification.
-pub fn parse_specification(tts: &[TokenTree]) -> PluginResult<Vec<Specifier>> {
-    let mut names = HashSet::new();
-    parse_specification_impl(utility::span_tts(tts), tts, &mut names)
+pub fn parse_specification(
+    tts: &[TokenTree], enums: &HashMap<String, Enum>
+) -> PluginResult<Vec<Specifier>> {
+    let mut state = State { enums: enums, names: HashSet::new() };
+    parse_specification_impl(utility::span_tts(tts), tts, &mut state)
 }
 
 /// Parses the supplied argument specification string.
-pub fn parse_specification_string(string: &str) -> PluginResult<Vec<Specifier>> {
+pub fn parse_specification_string(
+    string: &str, enums: &HashMap<String, Enum>
+) -> PluginResult<Vec<Specifier>> {
     let session = ParseSess::new();
     let name = "<specification>".into();
     let mut parser = parse::new_parser_from_source_str(&session, vec![], name, string.into());
     let tts = parser.parse_all_token_trees().unwrap();
-    parse_specification(&tts)
+    parse_specification(&tts, enums)
 }

@@ -1,4 +1,7 @@
-## [0.10.1] - UNRELEASED
+## [0.11.0] - UNRELEASED
+
+### Changed
+- Changed enumerated specifiers to be required to be defined outside of argument specifications
 
 ### Fixed
 - Fixed code generation for nested sequences with different amounts
