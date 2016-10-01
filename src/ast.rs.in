@@ -12,39 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::collections::{HashSet};
-
 use syntax::ast::{Expr, Field, Ident, Item, StructField, Ty, Visibility};
-use syntax::codemap::{Span};
 use syntax::ext::base::{ExtCtxt};
-use syntax::ext::build::{AstBuilder};
 use syntax::ext::quote::rt::{ExtParseUtils};
-use syntax::parse::token::{DelimToken, Token};
 use syntax::ptr::{P};
 
-use synthax;
-
 use super::*;
-
-//================================================
-// Macros
-//================================================
-
-// struct_expr! __________________________________
-
-macro_rules! struct_expr {
-    ($context:expr, $span:expr, $struct_:expr, $name:ident, [$($field:ident), +]) => ({
-        let path = mk_idents($context, &["easy_plugin", stringify!($name)]);
-        let fields = vec![
-            $($context.field_imm(
-                $span,
-                $context.ident_of(stringify!($field)),
-                $struct_.$field.to_expr($context, $span),
-            )), +
-        ];
-        $context.expr_struct($span, $context.path_global($span, path), fields)
-    });
-}
 
 //================================================
 // Traits
@@ -92,6 +65,7 @@ impl SpecifierExt for Specifier {
                 }
             },
             Specifier::Enum(_, ref enum_) => enum_.name.clone(),
+            Specifier::Struct(_, ref struct_) => struct_.name.clone(),
             _ => unreachable!(),
         };
         let tts = context.parse_tts(ty);
@@ -128,27 +102,33 @@ impl SpecifierExt for Specifier {
             None => return None,
         };
         let expr = if stack.is_empty() {
-            if let Specifier::Enum(ref name, ref enum_) = *self {
-                let enum_ = context.ident_of(&enum_.name);
-                quote_expr!(context, $enum_::extract($source.get_enum($name)))
-            } else {
-                quote_expr!(context, $source.get(stringify!($name)))
+            match *self {
+                Specifier::Enum(ref name, _) | Specifier::Struct(ref name, _) => {
+                    let ident = self.get_ident(context).unwrap();
+                    quote_expr!(context, $ident::extract($source.get_arguments($name)))
+                },
+                _ => quote_expr!(context, $source.get(stringify!($name))),
             }
-        } else if let Specifier::Enum(ref name, ref enum_) = *self {
-            let enum_ = context.ident_of(&enum_.name);
-            let root = quote_expr!(context, $source.get_sequence($name));
-            to_field_expr(context, stack, &root, |c, r| {
-                quote_expr!(c, $r.into_enum_option($enum_::extract))
-            }, |c, r| {
-                quote_expr!(c, $r.into_enum_vec($enum_::extract))
-            })
         } else {
-            let root = quote_expr!(context, $source.get_sequence(stringify!($name)));
-            to_field_expr(context, stack, &root, |c, r| {
-                quote_expr!(c, $r.into_option())
-            }, |c, r| {
-                quote_expr!(c, $r.into_vec())
-            })
+            match *self {
+                Specifier::Enum(ref name, _) | Specifier::Struct(ref name, _) => {
+                    let ident = self.get_ident(context).unwrap();
+                    let root = quote_expr!(context, $source.get_sequence($name));
+                    to_field_expr(context, stack, &root, |c, r| {
+                        quote_expr!(c, $r.to_arguments_option($ident::extract))
+                    }, |c, r| {
+                        quote_expr!(c, $r.to_arguments_vec($ident::extract))
+                    })
+                },
+                _ => {
+                    let root = quote_expr!(context, $source.get_sequence(stringify!($name)));
+                    to_field_expr(context, stack, &root, |c, r| {
+                        quote_expr!(c, $r.to_option())
+                    }, |c, r| {
+                        quote_expr!(c, $r.to_vec())
+                    })
+                },
+            }
         };
         Some(quote_field!(context, $name: $expr))
     }
@@ -167,134 +147,9 @@ impl SpecifierExt for Specifier {
     }
 }
 
-// ToExpr ________________________________________
-
-pub trait ToExpr {
-    fn to_expr(&self, context: &ExtCtxt, span: Span) -> P<Expr>;
-}
-
-impl<T: ToExpr> ToExpr for Box<T> {
-    fn to_expr(&self, context: &ExtCtxt, span: Span) -> P<Expr> {
-        let idents = mk_idents(context, &["std", "boxed", "Box", "new"]);
-        context.expr_call_global(span, idents, vec![(&*self as &T).to_expr(context, span)])
-    }
-}
-
-impl<T: ToExpr> ToExpr for Option<T> {
-    fn to_expr(&self, context: &ExtCtxt, span: Span) -> P<Expr> {
-        match *self {
-            Some(ref some) => context.expr_some(span, some.to_expr(context, span)),
-            None => context.expr_none(span),
-        }
-    }
-}
-
-impl<T: ToExpr> ToExpr for Vec<T> {
-    fn to_expr(&self, context: &ExtCtxt, span: Span) -> P<Expr> {
-        let exprs = self.iter().map(|e| e.to_expr(context, span)).collect();
-        let vec = context.expr_vec(span, exprs);
-        context.expr_method_call(span, vec, context.ident_of("to_vec"), vec![])
-    }
-}
-
-impl ToExpr for Amount {
-    fn to_expr(&self, context: &ExtCtxt, span: Span) -> P<Expr> {
-        let idents = mk_idents(context, &["easy_plugin", "Amount", &format!("{:?}", self)]);
-        context.expr_path(context.path_global(span, idents))
-    }
-}
-
-impl ToExpr for Delimited {
-    fn to_expr(&self, context: &ExtCtxt, span: Span) -> P<Expr> {
-        struct_expr!(context, span, self, Delimited, [delimiter, specification])
-    }
-}
-
-impl ToExpr for DelimToken {
-    fn to_expr(&self, context: &ExtCtxt, span: Span) -> P<Expr> {
-        synthax::ToExpr::to_expr(self, context, span)
-    }
-}
-
-impl ToExpr for Enum {
-    fn to_expr(&self, context: &ExtCtxt, span: Span) -> P<Expr> {
-        struct_expr!(context, span, self, Enum, [name, variants])
-    }
-}
-
-impl ToExpr for Extractor {
-    fn to_expr(&self, context: &ExtCtxt, span: Span) -> P<Expr> {
-        struct_expr!(context, span, self, Extractor, [specifier, extractor])
-    }
-}
-
-impl ToExpr for Sequence {
-    fn to_expr(&self, context: &ExtCtxt, span: Span) -> P<Expr> {
-        struct_expr!(context, span, self, Sequence, [amount, separator, specification])
-    }
-}
-
-impl ToExpr for Specifier {
-    fn to_expr(&self, context: &ExtCtxt, span: Span) -> P<Expr> {
-        macro_rules! exprs {
-            ($($expr:expr), +) => ({
-                vec![$($expr.to_expr(context, span)), +]
-            });
-        }
-
-        let (variant, arguments) = match *self {
-            Specifier::Attr(ref name) => ("Attr", exprs![name]),
-            Specifier::BinOp(ref name) => ("BinOp", exprs![name]),
-            Specifier::Block(ref name) => ("Block", exprs![name]),
-            Specifier::Delim(ref name) => ("Delim", exprs![name]),
-            Specifier::Expr(ref name) => ("Expr", exprs![name]),
-            Specifier::Ident(ref name) => ("Ident", exprs![name]),
-            Specifier::Item(ref name) => ("Item", exprs![name]),
-            Specifier::Lftm(ref name) => ("Lftm", exprs![name]),
-            Specifier::Lit(ref name) => ("Lit", exprs![name]),
-            Specifier::Meta(ref name) => ("Meta", exprs![name]),
-            Specifier::Pat(ref name) => ("Pat", exprs![name]),
-            Specifier::Path(ref name) => ("Path", exprs![name]),
-            Specifier::Stmt(ref name) => ("Stmt", exprs![name]),
-            Specifier::Ty(ref name) => ("Ty", exprs![name]),
-            Specifier::Tok(ref name) => ("Tok", exprs![name]),
-            Specifier::Tt(ref name) => ("Tt", exprs![name]),
-            Specifier::Extractor(ref name, ref value) => ("Extractor", exprs![name, value]),
-            Specifier::Specific(ref value) => ("Specific", exprs![value]),
-            Specifier::Delimited(ref value) => ("Delimited", exprs![value]),
-            Specifier::Sequence(ref name, ref value) => ("Sequence", exprs![name, value]),
-            Specifier::Enum(ref name, ref value) => ("Enum", exprs![name, value]),
-        };
-        let idents = mk_idents(context, &["easy_plugin", "Specifier", variant]);
-        context.expr_call_global(span, idents, arguments)
-    }
-}
-
-impl ToExpr for String {
-    fn to_expr(&self, context: &ExtCtxt, span: Span) -> P<Expr> {
-        synthax::ToExpr::to_expr(self, context, span)
-    }
-}
-
-impl ToExpr for Token {
-    fn to_expr(&self, context: &ExtCtxt, span: Span) -> P<Expr> {
-        synthax::ToExpr::to_expr(self, context, span)
-    }
-}
-
-impl ToExpr for Variant {
-    fn to_expr(&self, context: &ExtCtxt, span: Span) -> P<Expr> {
-        struct_expr!(context, span, self, Variant, [name, specification])
-    }
-}
-
 //================================================
 // Functions
 //================================================
-
-fn mk_idents(context: &ExtCtxt, idents: &[&str]) -> Vec<Ident> {
-    idents.iter().map(|i| context.ident_of(i)).collect()
-}
 
 fn to_field_expr<F: Fn(&ExtCtxt, &Expr) -> P<Expr>, G: Fn(&ExtCtxt, &Expr) -> P<Expr>>(
     context: &ExtCtxt, stack: &[Amount], root: &Expr, option: F, vec: G
@@ -314,29 +169,31 @@ fn to_field_expr<F: Fn(&ExtCtxt, &Expr) -> P<Expr>, G: Fn(&ExtCtxt, &Expr) -> P<
         };
         for amount in stack.iter().skip(1).take(stack.len() - 2) {
             if *amount == Amount::ZeroOrOne {
-                expr = quote_expr!(context, |s| s.into_sequence_option($expr));
+                expr = quote_expr!(context, |s| s.to_sequence_option($expr));
             } else {
-                expr = quote_expr!(context, |s| s.into_sequence_vec($expr));
+                expr = quote_expr!(context, |s| s.to_sequence_vec($expr));
             }
         }
         if stack[0] == Amount::ZeroOrOne {
-            quote_expr!(context, $root.into_sequence_option($expr))
+            quote_expr!(context, $root.to_sequence_option($expr))
         } else {
-            quote_expr!(context, $root.into_sequence_vec($expr))
+            quote_expr!(context, $root.to_sequence_vec($expr))
         }
     }
 }
 
-fn to_enum_items(context: &ExtCtxt, enum_: &Enum) -> Vec<P<Item>> {
+pub fn expand_enum_items(context: &ExtCtxt, name: Ident, variants: &[Variant]) -> Vec<P<Item>> {
     let mut items = vec![];
-    let name = context.ident_of(&enum_.name);
-    let pats = enum_.variants.iter().enumerate().map(|(i, v)| {
+
+    let pats = variants.iter().enumerate().map(|(i, v)| {
         let variant = context.ident_of(&v.name);
-        let expr = quote_expr!(context, enum_.arguments);
+        let expr = quote_expr!(context, _enum);
         let fields = specification_to_fields(context, &v.specification, &[], &expr);
         quote_arm!(context, $i => $name::$variant { $($fields), * },)
     }).collect::<Vec<_>>();
-    let variants = enum_.variants.iter().map(|v| {
+
+    // Generate the enum item.
+    let variants = variants.iter().map(|v| {
         let name = context.ident_of(&v.name);
         let mut fields = specification_to_struct_fields(context, &v.specification);
         for field in &mut fields {
@@ -344,11 +201,14 @@ fn to_enum_items(context: &ExtCtxt, enum_: &Enum) -> Vec<P<Item>> {
         }
         quote_variant!(context, $name { $($fields), * })
     }).collect::<Vec<_>>();
-    items.push(quote_item!(context, #[derive(Debug)] enum $name { $($variants), * }).unwrap());
+    items.push(quote_item!(context, #[derive(Clone, Debug)] enum $name { $($variants), * }).unwrap());
+
+    // Generate the enum impl item.
     let item = quote_item!(context,
         impl $name {
-            fn extract(enum_: ::easy_plugin::EnumArguments) -> $name {
-                match enum_.variant {
+            #[allow(dead_code)]
+            fn extract(_enum: &::easy_plugin::Arguments) -> $name {
+                match _enum.variant.expect("expected variant") {
                     $($pats)*
                     _ => unreachable!()
                 }
@@ -356,24 +216,8 @@ fn to_enum_items(context: &ExtCtxt, enum_: &Enum) -> Vec<P<Item>> {
         }
     ).unwrap();
     items.push(item);
+
     items
-}
-
-fn specification_to_enums(specification: &[Specifier], enums: &mut HashSet<Enum>) {
-    for specifier in specification {
-        match *specifier {
-            Specifier::Sequence(ref name, ref sequence) if name.is_none() =>
-                specification_to_enums(&sequence.specification, enums),
-            Specifier::Enum(_, ref enum_) => { enums.insert(enum_.clone()); },
-            _ => { },
-        }
-    }
-}
-
-fn specification_to_enum_items(context: &ExtCtxt, specification: &[Specifier]) -> Vec<P<Item>> {
-    let mut enums = HashSet::new();
-    specification_to_enums(specification, &mut enums);
-    enums.iter().flat_map(|e| to_enum_items(context, e).into_iter()).collect()
 }
 
 fn specification_to_struct_fields(
@@ -391,21 +235,34 @@ fn specification_to_fields(
 pub fn expand_struct_items(
     context: &ExtCtxt, name: Ident, specification: &[Specifier]
 ) -> Vec<P<Item>> {
-    let mut items = specification_to_enum_items(context, specification);
-    let fields = specification_to_struct_fields(context, specification);
-    if fields.is_empty() {
-        items.push(quote_item!(context, #[derive(Debug)] struct $name;).unwrap());
-    } else {
-        items.push(quote_item!(context, #[derive(Debug)] struct $name { $($fields), * }).unwrap());
-    }
-    items
-}
+    let mut items = vec![];
 
-pub fn expand_struct_expr(context: &ExtCtxt, name: Ident, specification: &[Specifier]) -> P<Expr> {
-    let fields = specification_to_fields(context, specification, &[], &quote_expr!(context, _a));
-    if fields.is_empty() {
+    // Generate the struct item.
+    let fields = specification_to_struct_fields(context, specification);
+    let item = if fields.is_empty() {
+        quote_item!(context, #[derive(Clone, Debug)] struct $name;).unwrap()
+    } else {
+        quote_item!(context, #[derive(Clone, Debug)] struct $name { $($fields), * }).unwrap()
+    };
+    items.push(item);
+
+    // Generate the struct impl item.
+    let expr = quote_expr!(context, _struct);
+    let fields = specification_to_fields(context, specification, &[], &expr);
+    let expr = if fields.is_empty() {
         quote_expr!(context, $name)
     } else {
         quote_expr!(context, $name { $($fields), * })
-    }
+    };
+    let item = quote_item!(context,
+        impl $name {
+            #[allow(dead_code)]
+            fn extract(_struct: &::easy_plugin::Arguments) -> $name {
+                $expr
+            }
+        }
+    ).unwrap();
+    items.push(item);
+
+    items
 }

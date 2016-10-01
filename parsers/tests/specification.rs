@@ -32,8 +32,8 @@ macro_rules! spec {
 }
 
 fn parse(string: &str) -> Vec<Specifier> {
-    let enums = HashMap::new();
-    parse_specification_string(string, &enums).unwrap()
+    let specifications = HashMap::new();
+    parse_specifiers_string(string, &specifications).unwrap()
 }
 
 #[test]
@@ -193,20 +193,49 @@ fn test_parse_specification_named_sequence() {
 
 #[test]
 fn test_parse_specification_enum() {
-    let variants = vec![
-        Variant::new("A".into(), parse("$a:attr")),
-        Variant::new("B".into(), parse("$b:ty")),
-    ];
-    let mut enums = HashMap::new();
-    enums.insert("Enum".to_string(), Enum::new("Enum".into(), variants.clone()));
-    let specification = parse_specification_string("$a:$Enum", &enums).unwrap();
+    let mut specifications = HashMap::new();
+    let specification = parse_specification_string(r#"
+        enum Enum {
+            A { $a:attr },
+            B { $b:ty },
+        }
+    "#, &specifications).unwrap();
+
+    specifications.insert("Enum".into(), specification);
+    let specification = parse_specifiers_string("$a:$Enum", &specifications).unwrap();
     assert_eq!(specification.len(), 1);
     match specification[0] {
         Specifier::Enum(ref name, ref enum_) => {
             assert_eq!(name, "a");
             assert_eq!(enum_.name, "Enum");
-            assert_eq!(enum_.variants, variants);
+            assert_eq!(enum_.variants.len(), 2);
+            assert_eq!(enum_.variants[0].name, "A");
+            assert_eq!(enum_.variants[0].specification, parse("$a:attr"));
+            assert_eq!(enum_.variants[1].name, "B");
+            assert_eq!(enum_.variants[1].specification, parse("$b:ty"));
         },
         _ => panic!("expected enumerated specifier"),
+    }
+}
+
+#[test]
+fn test_parse_specification_struct() {
+    let mut specifications = HashMap::new();
+    let specification = parse_specification_string(r#"
+        struct Struct {
+            $a:attr $b:ty
+        }
+    "#, &specifications).unwrap();
+
+    specifications.insert("Struct".into(), specification);
+    let specification = parse_specifiers_string("$a:$Struct", &specifications).unwrap();
+    assert_eq!(specification.len(), 1);
+    match specification[0] {
+        Specifier::Struct(ref name, ref struct_) => {
+            assert_eq!(name, "a");
+            assert_eq!(struct_.name, "Struct");
+            assert_eq!(struct_.specification, parse("$a:attr $b:ty"));
+        },
+        _ => panic!("expected structured specifier"),
     }
 }

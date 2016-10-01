@@ -195,40 +195,43 @@ easy_plugin! {
 
 easy_plugin! {
     enum Enum {
-        A { $attr:attr },
-        B { $ty:ty },
+        Attr { $attr:attr },
+        Ty { $ty:ty },
+    }
+
+    struct Struct {
+        $attr:attr $ty:ty
     }
 
     struct Arguments {
         $attr:attr
         $ty:ty
-        $tok:tok
-        $tt:tt
-        $attr_list:attr_list
-        $ty_vec:ty_vec
-    SEQUENCES_OPTION:
-        $($seqo:ident)?
-        $($($seqoo:ident)?)?
-        $($($($seqooo:ident)?)?)?
-    SEQUENCES_VEC:
-        $($seqv:ident), +;
-        $($($seqvv:ident):*), +;
-        $($($($seqvvv:ident).*):*), +;
-    SEQUENCES_MIXED:
-        $($($seqov:ident)?), +;
-        $($($seqvo:ident), +)?;
-        $($($($seqovo:ident)?), +)?;
-        $($($($seqvov:ident), +)?), +;
-    SEQUENCES_NAMED:
-        $nseqo:(foo)?
-        $nseqv:(foo), *;
-    ENUMS:
-        $e1:$Enum
-        $e2:$Enum
-        $($oe:$Enum)?
-        $($($ooe:$Enum)?)?
-        $($ve:$Enum), *;
-        $($($vve:$Enum):*), *;
+    NAMED_SEQUENCES:
+        $nseqzo1:(foo)?;
+        $nseqzo2:(foo)?;
+        $($nseqzo3:(bar)?), +;
+        $($($nseqzo4:(baz)?), *): +;
+        $nseqzm1:(foo)*;
+        $nseqzm2:(foo)*;
+        $($nseqzm3:(bar)*), +;
+        $($($nseqzm4:(baz)*), +): +;
+    UNNAMED_SEQUENCES:
+        $($unseqzo1:ty)?;
+        $($unseqzo2:ty)?;
+        $($($unseqzo3:ty)?), +;
+        $($($($unseqzo4:ty)?), +): +;
+        $($unseqzm1:ty)*;
+        $($unseqzm2:ty)*;
+        $($($unseqzm3:ty)*), +;
+        $($($($unseqzm4:ty)*), +): +;
+    ENUMERATED:
+        $enum1:$Enum
+        $enum2:$Enum
+        $($($enum3:$Enum)?), +;
+    STRUCTURED:
+        $struct1:$Struct
+        $struct2:$Struct
+        $($($struct3:$Struct)?), +;
     }
 
     pub fn expand_struct(
@@ -241,35 +244,34 @@ easy_plugin! {
 #[test]
 fn test() {
     let source = r#"
-        #[foo="bar"]
+        #[test]
         i32
-        foo
-        (bar)
-        #[foo(bar, baz)]
-        [i32]
-    SEQUENCES_OPTION:
-        foo
-        bar
-        baz
-    SEQUENCES_VEC:
-        foo, bar, baz;
-        , foo, bar: baz;
-        , foo, foo.bar, foo: bar, foo.bar: baz.qux;
-    SEQUENCES_MIXED:
-        foo, , bar;
-        foo, bar, baz;
-        foo, , bar;
-        foo, bar, baz;
-    SEQUENCES_NAMED:
-        foo
-        foo, foo;
-    ENUMS:
-        #[foo="bar"]
+    NAMED_SEQUENCES:
+        ;
+        foo;
+        , bar;
+        : baz: , baz;
+        ;
+        foo;
+        , bar, bar bar;
+        : baz: , baz: , baz, baz baz;
+    UNNAMED_SEQUENCES:
+        ;
+        i32;
+        , i32;
+        : i32: , i32;
+        ;
+        i32;
+        , i32, i32 f32;
+        : i32: , i32: , i32, i32 f32;
+    ENUMERATED:
+        #[test]
         i32
-        #[foo="bar"]
-        i32
-        #[foo="bar"], i32, #[foo(bar, baz)], f32;
-        #[foo="bar"], i32: #[foo(bar, baz)], f32;
+        , #[test], , i32;
+    STRUCTURED:
+        #[test] i32
+        #[foo="bar"] f32
+        , #[test] i32, , #[foo="bar"] f32;
     "#;
 
     let session = ParseSess::new();

@@ -19,14 +19,31 @@ use std::collections::{HashMap};
 
 use syntax::codemap;
 use syntax::print::pprust;
-use syntax::parse::{ParseSess};
+use syntax::ext::base::{ExtCtxt};
 use syntax::parse::token::{Token};
 use syntax::tokenstream::{TokenTree};
 
 use super::extractor;
 use super::{PluginResult};
-use super::specification::{Amount, Enum, Sequence, Specifier};
+use super::specification::{Amount, Enum, Sequence, Specification, Specifier, Struct};
 use super::utility::{self, TransactionParser};
+
+//================================================
+// Macros
+//================================================
+
+// downcast_ref! _________________________________
+
+macro_rules! downcast_ref {
+    ($ty:ty, $argument:expr, $name:expr) => ({
+        match $argument.downcast_ref::<$ty>() {
+            Some(argument) => argument,
+            _ => panic!("invalid argument type: '{}'", $name),
+        }
+    });
+
+    ($argument:expr, $name:expr) => (downcast_ref!(T, $argument, $name));
+}
 
 //================================================
 // Structs
@@ -36,24 +53,53 @@ use super::utility::{self, TransactionParser};
 
 /// A set of parsed arguments.
 #[derive(Debug)]
-pub struct Arguments(HashMap<String, Box<Any>>);
+pub struct Arguments {
+    /// The variant index of this set of parsed arguments, if any.
+    pub variant: Option<usize>,
+    /// The parsed arguments.
+    pub arguments: HashMap<String, Box<Any>>,
+}
 
 impl Arguments {
+    //- Constructors -----------------------------
+
+    fn new() -> Arguments {
+        Arguments { variant: None, arguments: HashMap::new() }
+    }
+
+    //- Mutators ---------------------------------
+
+    fn insert<T: Any>(&mut self, name: String, value: T) {
+        self.arguments.insert(name, Box::new(value));
+    }
+
     //- Accessors --------------------------------
+
+    fn get_ref<T: Any>(&self, name: &str) -> &T {
+        match self.arguments.get(name) {
+            Some(argument) => downcast_ref!(argument, name),
+            _ => panic!("no such argument: '{}'", name),
+        }
+    }
 
     /// Returns the argument with the suppled name.
     pub fn get<T: Any + Clone>(&self, name: &str) -> T {
-        get(self.0.get(name).expect(name))
+        self.get_ref::<T>(name).clone()
+    }
+
+    /// Returns the enumerated or structured arguments with the supplied name.
+    pub fn get_arguments(&self, name: &str) -> &Arguments {
+        self.get_ref::<Arguments>(name)
     }
 
     /// Returns the sequence arguments with the supplied name.
     pub fn get_sequence(&self, name: &str) -> SequenceArguments {
-        get_sequence(self.0.get(name).expect(name))
-    }
-
-    /// Returns the enum arguments with the supplied name.
-    pub fn get_enum(&self, name: &str) -> EnumArguments {
-        get_enum(self.0.get(name).expect(name))
+        let arguments = if self.arguments.contains_key(name) {
+            self.get_ref::<Vec<Box<Any>>>(name).iter().collect()
+        } else {
+            vec![]
+        };
+        SequenceArguments::new(name, arguments)
     }
 }
 
@@ -61,70 +107,65 @@ impl Arguments {
 
 /// A set of parsed arguments found in a sequence.
 #[derive(Debug)]
-pub struct SequenceArguments<'a>(Vec<&'a Box<Any>>);
-
-impl<'a> SequenceArguments<'a> {
-    //- Consumers -------------------------------
-
-    /// Returns the arguments as an `Option`.
-    pub fn into_option<T: Any + Clone>(self) -> Option<T> {
-        self.0.into_iter().next().map(get)
-    }
-
-    /// Returns the arguments as a `Vec`.
-    pub fn into_vec<T: Any + Clone>(self) -> Vec<T> {
-        self.0.into_iter().map(get).collect()
-    }
-
-    /// Returns the arguments as an `Option`.
-    pub fn into_enum_option<T, F: Fn(EnumArguments<'a>) -> T>(self, f: F) -> Option<T> {
-        self.0.into_iter().next().map(get_enum).map(f)
-    }
-
-    /// Returns the arguments as a `Vec`.
-    pub fn into_enum_vec<T, F: Fn(EnumArguments<'a>) -> T>(self, f: F) -> Vec<T> {
-        self.0.into_iter().map(get_enum).map(f).collect()
-    }
-
-    /// Returns the arguments as sequences.
-    pub fn into_sequence_option<T, F: Fn(SequenceArguments<'a>) -> T>(self, f: F) -> Option<T> {
-        self.0.into_iter().next().map(get_sequence).map(f)
-    }
-
-    /// Returns the arguments as sequences.
-    pub fn into_sequence_vec<T, F: Fn(SequenceArguments<'a>) -> T>(self, f: F) -> Vec<T> {
-        self.0.into_iter().map(get_sequence).map(f).collect()
-    }
+pub struct SequenceArguments<'a> {
+    name: String,
+    arguments: Vec<&'a Box<Any>>,
 }
 
-// EnumArguments _________________________________
+impl<'a> SequenceArguments<'a> {
+    //- Constructors -----------------------------
 
-/// A set of parsed arguments found in an enum.
-#[derive(Debug)]
-pub struct EnumArguments<'a> {
-    /// The variant index of these arguments.
-    pub variant: usize,
-    /// The arguments.
-    pub arguments: &'a Arguments,
+    fn new(name: &str, arguments: Vec<&'a Box<Any>>) -> SequenceArguments<'a> {
+        SequenceArguments { name: name.into(), arguments: arguments }
+    }
+
+    //- Accessors --------------------------------
+
+    /// Returns the arguments as an `Option`.
+    pub fn to_option<T: Any + Clone>(&self) -> Option<T> {
+        self.arguments.iter().next().map(|a| downcast_ref!(a, &self.name).clone())
+    }
+
+    /// Returns the arguments as a `Vec`.
+    pub fn to_vec<T: Any + Clone>(&self) -> Vec<T> {
+        self.arguments.iter().map(|a| downcast_ref!(a, &self.name).clone()).collect()
+    }
+
+    /// Returns the arguments as an `Option`.
+    pub fn to_arguments_option<T, F: Fn(&'a Arguments) -> T>(&self, f: F) -> Option<T> {
+        self.arguments.iter().next().map(|a| f(downcast_ref!(Arguments, a, &self.name)))
+    }
+
+    /// Returns the arguments as a `Vec`.
+    pub fn to_arguments_vec<T, F: Fn(&'a Arguments) -> T>(&self, f: F) -> Vec<T> {
+        self.arguments.iter().map(|a| f(downcast_ref!(Arguments, a, &self.name))).collect()
+    }
+
+    /// Returns the arguments as sequences.
+    pub fn to_sequence_option<T, F: Fn(SequenceArguments<'a>) -> T>(&self, f: F) -> Option<T> {
+        self.arguments.iter().next().map(|a| {
+            let arguments = downcast_ref!(Vec<Box<Any>>, a, &self.name);
+            f(SequenceArguments::new(&self.name, arguments.iter().collect()))
+        })
+    }
+
+    /// Returns the arguments as sequences.
+    pub fn to_sequence_vec<T, F: Fn(SequenceArguments<'a>) -> T>(&self, f: F) -> Vec<T> {
+        self.arguments.iter().map(|a| {
+            let arguments = downcast_ref!(Vec<Box<Any>>, a, &self.name);
+            f(SequenceArguments::new(&self.name, arguments.iter().collect()))
+        }).collect()
+    }
 }
 
 //================================================
 // Functions
 //================================================
 
-fn get<T: Any + Clone>(any: &Box<Any>) -> T {
-    any.downcast_ref::<T>().unwrap().clone()
-}
-
-#[cfg_attr(feature="clippy", allow(needless_lifetimes))]
-fn get_sequence<'a>(any: &'a Box<Any>) -> SequenceArguments<'a> {
-    SequenceArguments(any.downcast_ref::<Vec<Box<Any>>>().unwrap().iter().collect())
-}
-
-#[cfg_attr(feature="clippy", allow(needless_lifetimes))]
-fn get_enum<'a>(any: &'a Box<Any>) -> EnumArguments<'a> {
-    let &(variant, ref arguments) = any.downcast_ref::<(usize, Arguments)>().unwrap();
-    EnumArguments { variant: variant, arguments: arguments }
+#[allow(dead_code)]
+struct State<'a, 'b: 'a> {
+    context: &'a ExtCtxt<'b>,
+    parser: TransactionParser,
 }
 
 /// Returns whether the supplied tokens are equal.
@@ -138,9 +179,9 @@ fn mtwt_eq(left: &Token, right: &Token) -> bool {
 }
 
 /// Returns `Ok` if the supplied token is next in the supplied parser.
-fn expect_specific_token(parser: &mut TransactionParser, expected: &Token) -> PluginResult<()> {
+fn expect_specific_token(state: &mut State, expected: &Token) -> PluginResult<()> {
     let description = format!("`{}`", pprust::token_to_string(expected));
-    let (span, found) = try!(parser.next_token(&description, None));
+    let (span, found) = try!(state.parser.next_token(&description, None));
     if mtwt_eq(&found, expected) {
         Ok(())
     } else {
@@ -150,36 +191,36 @@ fn expect_specific_token(parser: &mut TransactionParser, expected: &Token) -> Pl
 
 /// Parses sequence arguments.
 fn parse_sequence(
-    parser: &mut TransactionParser,
-    sequence: &Sequence,
-    arguments: &mut Arguments,
+    state: &mut State, sequence: &Sequence, arguments: &mut Arguments
 ) -> PluginResult<usize> {
     if sequence.specification.is_empty() {
         return Ok(0);
     }
     let mut count = 0;
     loop {
-        parser.save();
+        let transaction = state.parser.transaction();
         // Check for a separator if expected.
         if let Some(ref separator) = sequence.separator {
-            if count != 0 && !parser.eat(separator) {
+            if count != 0 && !state.parser.eat(separator) {
                 return Ok(count);
             }
         }
         // Attempt to parse an occurrence of the sequence.
-        let mut subarguments = Arguments(HashMap::new());
-        match parse_arguments_impl(parser, &sequence.specification, &mut subarguments) {
+        let mut subarguments = Arguments::new();
+        match parse_arguments_impl(state, &sequence.specification, &mut subarguments) {
             Ok(()) => count += 1,
             Err(error) => if count == 0 && sequence.amount == Amount::OneOrMore {
                 return Err(error);
             } else {
-                parser.rollback();
+                transaction.rollback(&mut state.parser);
                 return Ok(count);
             },
         }
         // Append the occurrence arguments to the parent arguments.
-        for (k, v) in subarguments.0 {
-            let argument = arguments.0.entry(k).or_insert_with(|| Box::new(Vec::<Box<Any>>::new()));
+        for (k, v) in subarguments.arguments {
+            let argument = arguments.arguments.entry(k).or_insert_with(|| {
+                Box::new(Vec::<Box<Any>>::new())
+            });
             argument.downcast_mut::<Vec<Box<Any>>>().unwrap().push(v);
         }
         // Return if this sequence doesn't expect multiple occurrences.
@@ -190,36 +231,45 @@ fn parse_sequence(
 }
 
 /// Parses enumerated arguments.
-fn parse_enum(parser: &mut TransactionParser, enum_: &Enum) -> PluginResult<Box<Any>> {
+fn parse_enum(state: &mut State, enum_: &Enum) -> PluginResult<Arguments> {
     for (index, variant) in enum_.variants.iter().enumerate() {
-        parser.save();
-        let mut subarguments = Arguments(HashMap::new());
-        match parse_arguments_impl(parser, &variant.specification, &mut subarguments) {
-            Ok(()) => return Ok(Box::new((index, subarguments))),
-            Err(error) => if index + 1 == enum_.variants.len() {
-                return Err(error);
-            },
+        let transaction = state.parser.transaction();
+        let mut subarguments = Arguments::new();
+        subarguments.variant = Some(index);
+        if variant.specification.is_empty() {
+            return Ok(subarguments);
+        }
+        match parse_arguments_impl(state, &variant.specification, &mut subarguments) {
+            Ok(()) => return Ok(subarguments),
+            _ => transaction.rollback(&mut state.parser),
         }
     }
-    unreachable!()
+    Err((state.parser.get_span(), format!("expected 'enum {}'", enum_.name)))
+}
+
+/// Parses structured arguments.
+fn parse_struct(state: &mut State, struct_: &Struct) -> PluginResult<Arguments> {
+    let mut arguments = Arguments::new();
+    try!(parse_arguments_impl(state, &struct_.specification, &mut arguments));
+    Ok(arguments)
 }
 
 /// Actually parses the supplied arguments with the supplied argument specification.
 fn parse_arguments_impl(
-    parser: &mut TransactionParser,
+    state: &mut State,
     specification: &[Specifier],
     arguments: &mut Arguments,
 ) -> PluginResult<()> {
     macro_rules! insert {
         ($parse:ident$(.$field:ident)*, $name:expr) => ({
-            let (_, argument) = try!(parser.$parse($name));
-            arguments.0.insert($name.clone(), Box::new(argument$(.$field)*));
+            let (_, argument) = try!(state.parser.$parse($name));
+            arguments.insert($name.clone(), argument$(.$field)*);
         });
 
         (SPANNED: $parse:ident$(.$field:ident)*, $name:expr) => ({
-            let (span, argument) = try!(parser.$parse($name));
+            let (span, argument) = try!(state.parser.$parse($name));
             let spanned = codemap::respan(span, argument$(.$field)*);
-            arguments.0.insert($name.clone(), Box::new(spanned));
+            arguments.insert($name.clone(), spanned);
         });
     }
 
@@ -242,71 +292,87 @@ fn parse_arguments_impl(
             Specifier::Tok(ref name) => insert!(SPANNED: parse_token, name),
             Specifier::Tt(ref name) => insert!(parse_token_tree, name),
             Specifier::Extractor(ref name, ref extractor) => {
-                try!(parse_arguments_impl(parser, &[(*extractor.specifier).clone()], arguments));
+                try!(parse_arguments_impl(state, &[(*extractor.specifier).clone()], arguments));
                 let extractor = &extractor.extractor;
-                let argument = extractor::extract(extractor, &*arguments.0.get(name).unwrap());
-                arguments.0.insert(name.clone(), try!(argument));
+                let argument = extractor::extract(extractor, &*arguments.arguments.get(name).unwrap());
+                arguments.arguments.insert(name.clone(), try!(argument));
             },
-            Specifier::Specific(ref token) => try!(expect_specific_token(parser, token)),
+            Specifier::Specific(ref token) => try!(expect_specific_token(state, token)),
             Specifier::Delimited(ref delimited) => {
-                try!(expect_specific_token(parser, &Token::OpenDelim(delimited.delimiter)));
-                try!(parse_arguments_impl(parser, &delimited.specification, arguments));
-                try!(expect_specific_token(parser, &Token::CloseDelim(delimited.delimiter)));
+                try!(expect_specific_token(state, &Token::OpenDelim(delimited.delimiter)));
+                try!(parse_arguments_impl(state, &delimited.specification, arguments));
+                try!(expect_specific_token(state, &Token::CloseDelim(delimited.delimiter)));
             },
             Specifier::Sequence(ref name, ref sequence) => {
-                let start = parser.get_span();
-                let count = try!(parse_sequence(parser, sequence, arguments));
+                let start = state.parser.get_span();
+                let count = try!(parse_sequence(state, sequence, arguments));
                 if let Some(ref name) = *name {
-                    let span = utility::span_spans(start, parser.get_last_span());
+                    let span = utility::span_spans(start, state.parser.get_last_span());
                     if sequence.amount == Amount::ZeroOrOne {
                         let found = count != 0;
-                        arguments.0.insert(name.clone(), Box::new(codemap::respan(span, found)));
+                        arguments.insert(name.clone(), codemap::respan(span, found));
                     } else {
-                        arguments.0.insert(name.clone(), Box::new(codemap::respan(span, count)));
+                        arguments.insert(name.clone(), codemap::respan(span, count));
                     }
                 }
             },
             Specifier::Enum(ref name, ref enum_) => {
-                arguments.0.insert(name.clone(), try!(parse_enum(parser, enum_)));
+                arguments.insert(name.clone(), try!(parse_enum(state, enum_)));
+            },
+            Specifier::Struct(ref name, ref struct_) => {
+                arguments.insert(name.clone(), try!(parse_struct(state, struct_)));
             },
         }
     }
     Ok(())
 }
 
-// Inserts empty sequence matches for each named specifier in each sequence.
-fn insert_matches(specification: &[Specifier], arguments: &mut Arguments, nested: bool) -> () {
-    for specifier in specification {
-        if let Some(name) = specifier.get_name() {
-            if nested {
-                arguments.0.insert(name.clone(), Box::new(Vec::<Box<Any>>::new()));
-            }
-        } else {
-            match *specifier {
-                Specifier::Delimited(ref delimited) =>
-                    insert_matches(&delimited.specification, arguments, true),
-                Specifier::Sequence(_, ref sequence) =>
-                    insert_matches(&sequence.specification, arguments, true),
-                _ => { },
+/// Parses the supplied arguments with the supplied enumerated argument specification.
+fn parse_arguments_enum(
+    context: &ExtCtxt, tts: &[TokenTree], enum_: &Enum
+) -> PluginResult<Arguments> {
+    if tts.is_empty() {
+        for (index, variant) in enum_.variants.iter().enumerate() {
+            if variant.specification.is_empty() {
+                let mut arguments = Arguments::new();
+                arguments.variant = Some(index);
+                return Ok(arguments);
             }
         }
+    }
+    let parser = TransactionParser::new(context.parse_sess, tts);
+    let mut state = State { context: context, parser: parser };
+    let arguments = try!(parse_enum(&mut state, enum_));
+    if let Some(remainder) = state.parser.get_remainder_span() {
+        Err((remainder, "too many arguments".into()))
+    } else {
+        Ok(arguments)
+    }
+}
+
+/// Parses the supplied arguments with the supplied structured argument specification.
+fn parse_arguments_struct(
+    context: &ExtCtxt, tts: &[TokenTree], struct_: &Struct
+) -> PluginResult<Arguments> {
+    if tts.is_empty() && struct_.specification.is_empty() {
+        return Ok(Arguments::new());
+    }
+    let parser = TransactionParser::new(context.parse_sess, tts);
+    let mut state = State { context: context, parser: parser };
+    let arguments = try!(parse_struct(&mut state, struct_));
+    if let Some(remainder) = state.parser.get_remainder_span() {
+        Err((remainder, "too many arguments".into()))
+    } else {
+        Ok(arguments)
     }
 }
 
 /// Parses the supplied arguments with the supplied argument specification.
 pub fn parse_arguments(
-    session: &ParseSess, tts: &[TokenTree], specification: &[Specifier]
+    context: &ExtCtxt, tts: &[TokenTree], specification: &Specification
 ) -> PluginResult<Arguments> {
-    if tts.is_empty() && specification.is_empty() {
-        return Ok(Arguments(HashMap::new()));
-    }
-    let mut parser = TransactionParser::new(session, tts);
-    let mut arguments = Arguments(HashMap::new());
-    insert_matches(specification, &mut arguments, false);
-    try!(parse_arguments_impl(&mut parser, specification, &mut arguments));
-    if let Some(remainder) = parser.get_remainder_span() {
-        Err((remainder, "too many arguments".into()))
-    } else {
-        Ok(arguments)
+    match *specification {
+        Specification::Enum(ref enum_) => parse_arguments_enum(context, tts, enum_),
+        Specification::Struct(ref struct_) => parse_arguments_struct(context, tts, struct_),
     }
 }

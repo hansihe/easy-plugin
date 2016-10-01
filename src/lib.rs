@@ -16,64 +16,93 @@
 //! plugins.
 //!
 //! `easy_plugin!` generates a wrapper function around your plugin function which handles argument
-//! parsing and error reporting for you, significantly reducing the time it takes to write a plugin.
+//! parsing and error reporting for you, significantly reducing the effort required to write a
+//! plugin.
 //!
-//! First, here is a trivial example.
+//! A usage of `easy_plugin!` consists of one or more `enum` or `struct` argument specifications
+//! followed by a plugin function. Here is a trivial example with only one argument specification
+//! which accepts an identifier.
 //!
 //! ```ignore
-//! #![feature(plugin, plugin_registrar, rustc_private)]
-//! #![plugin(easy_plugin)]
-//!
-//! #[allow(plugin_as_library)]
-//! extern crate easy_plugin;
-//!
-//! use easy_plugin::{PluginResult};
-//!
-//! // rustc_plugin and syntax imports...
-//!
 //! easy_plugin! {
 //!     struct Arguments { $a:ident }
 //!
-//!     /// My plugin.
-//!     pub fn expand_plugin(
-//!         context: &mut ExtCtxt, span: Span, arguments: Arguments
+//!     /// My trivial plugin.
+//!     pub fn expand_trivial_plugin(
+//!         _: &mut ExtCtxt, span: Span, arguments: Arguments
 //!     ) -> PluginResult<Box<MacResult>> {
 //!         println!("{:?}", arguments.a);
 //!         Ok(DummyResult::any(span))
 //!     }
 //! }
+//! ```
 //!
-//! #[plugin_registrar]
-//! pub fn plugin_registrar(registry: &mut Registry) {
-//!     registry.register_macro("plugin", expand_plugin);
+//! Note that the third argument of the plugin function differs from the usual signature of a plugin
+//! function in that the type is `Arguments` instead of `&[TokenTree]`. This is because the
+//! generated wrapper function handles argument parsing and stores the parsed arguments into a
+//! generated struct named `Arguments`.
+//!
+//! The type you specify for the third argument of the plugin function will determine which of the
+//! argument specifications will be used to parse the plugin arguments. Here is an example with an
+//! `enum` argument specification that accepts either an attribute or a type.
+//!
+//! ```ignore
+//! easy_plugin! {
+//!     enum Enum {
+//!         Attribute { $attr:attr },
+//!         Type { $ty:ty },
+//!     }
+//!
+//!     /// My `enum` plugin.
+//!     pub fn expand_enum_plugin(
+//!         _: &mut ExtCtxt, span: Span, arguments: Enum
+//!     ) -> PluginResult<Box<MacResult>> {
+//!         match arguments {
+//!             Enum::Attribute { attr } => println!("{:?}", attr),
+//!             Enum::Type { ty } => println!("{:?}", ty),
+//!         }
+//!         Ok(DummyResult::any(span))
+//!     }
 //! }
 //! ```
 //!
-//! In this example, note that the arguments of the plugin function `expand_plugin` differ from a
-//! typical plugin function in that the last argument is of type `Arguments` rather than
-//! `&[TokenTree]`. This is because the generated wrapper function handles argument parsing for you.
-//! The definition of the `Arguments` struct above `expand_plugin` provides the argument
-//! specification and the generated wrapper function parses the arguments and stores them in an
-//! instance of `Arguments`.
+//! Every argument specification can use any previous argument specification as a part of itself.
+//! Here is an example with two argument specifications that accepts two comma-separated unary or
+//! binary expressions.
 //!
-//! In this example, the argument specification consists of `$a:ident`, which means that the only
-//! argument this plugin will accept is a single identifier which will be stored in a field named
-//! `a` in the `Arguments` struct. For more information on argument specifications, see the relevant
-//! section [below](#specifications).
+//! ```ignore
+//! easy_plugin! {
+//!     enum Expr {
+//!         Binary { $left:expr $op:binop $right:expr },
+//!         Unary { $op:binop $expr:expr },
+//!     }
 //!
-//! If the arguments do not match the argument specification or your plugin function returns `Err`,
-//! the wrapper function will report an error with `ExtCtxt::span_err` for you.
+//!     struct Arguments { $a:$Expr, $b:$Expr }
 //!
-//! Note that the `expand_plugin` function is public and has a documentation comment. The visibility
-//! and attributes applied to your plugin function (including documentation comments) will be
-//! applied to the wrapper function. In this example, the wrapper function will be public and have
-//! a documentation comment.
+//!     /// My expression plugin.
+//!     pub fn expand_expression_plugin(
+//!         _: &mut ExtCtxt, span: Span, arguments: Arguments
+//!     ) -> PluginResult<Box<MacResult>> {
+//!         match arguments.a {
+//!             Expr::Binary { left, op, right } => println!("{:?}, {:?}, {:?}", left, op, right),
+//!             Expr::Unary { op, expr } => println!("{:?}, {:?}", op, expr),
+//!         }
+//!         Ok(DummyResult::any(span))
+//!     }
+//! }
+//! ```
+//!
+//! Finally, note that the `expand_expression_plugin` function is public and has a documentation
+//! comment. The visibility and attributes applied to your plugin function (including documentation
+//! comments) will be removed and applied to the generated wrapper function instead. In this
+//! example, the wrapper function will be public and have a documentation comment.
 //!
 //! # Specifications
 //!
-//! Plugin argument specifications are very similar to the argument specifications you are used to
-//! writing for macros. There are two primary differences: no restrictions on ordering and
-//! additional types of named specifiers.
+//! `easy_plugin!` argument specifications are very similar to the argument specifications you are
+//! used to writing for macros. There are three primary differences: inclusion of other argument
+//! specifications (as seen above), no restrictions on ordering, and additional types of named
+//! specifiers.
 //!
 //! | Name    | Description                            |  Storage Type         |
 //! |:--------|:---------------------------------------|:----------------------|
@@ -104,21 +133,21 @@
 //!
 //! ## Sequences
 //!
-//! Plugin argument specifications support sequences that are very similar to the sequences in macro
-//! argument specifications. For example, the following plugin argument specification matches zero
+//! Argument specifications support sequences that are very similar to the sequences in macro
+//! argument specifications. For example, the following argument specification matches zero
 //! or more comma-separated parenthesized binary expressions.
 //!
 //! ```ignore
-//! $(($left:ident $operator:binop $right:ident)), *
+//! $(($left:ident $op:binop $right:ident)), *
 //! ```
 //!
 //! In addition to the `*` and `+` sequence operators, there is also a `?` operator which allows for
 //! sequences with either zero or one repetitions. This operator does not support separators.  For
-//! example, the following plugin argument specification can match either a binary expression or
+//! example, the following argument specification can match either a binary expression or
 //! nothing at all.
 //!
 //! ```ignore
-//! $($left:ident $operator:binop $right:ident)?
+//! $($left:ident $op:binop $right:ident)?
 //! ```
 //!
 //! Named specifiers that occur in sequences cannot be stored directly as their storage type because
@@ -127,9 +156,9 @@
 //! base storage type. `Vec<$type>` is used for `*` and `+` sequences and `Option<$type>` is used
 //! for `?` sequences.
 //!
-//! An additional level of `Vec` is added for each sequence level. For example, in the plugin
-//! argument specification below, `$b:ident` occurs two sequences deep. The storage type for `b` in
-//! this case would be `Vec<Vec<syntax::ast::Ident>>`.
+//! An additional level of `Vec` or `Option` is added for each sequence level. For example, in the
+//! argument specification below, `$b:ident` occurs two sequence levels deep. The storage type for
+//! `b` in this case would be `Vec<Vec<Spanned<Ident>>>`.
 //!
 //! ```ignore
 //! $($a:ident $($b:ident)*)*
@@ -137,10 +166,10 @@
 //!
 //! ## Named Sequences
 //!
-//! There are also named sequences, which behave rather differently than regular sequences. Named
-//! sequences cannot contain named specifiers and instead consist of specific token trees that you
-//! wish to be counted. For example, the following plugin argument specification will match
-//! either `pub struct { }` or just `struct { }`.
+//! Argument specifications also support named sequences, which behave rather differently than
+//! regular sequences. Named sequences cannot contain named specifiers and instead consist of
+//! specific token trees that you wish to be counted. For example, the following argument
+//! specification will match either `pub struct { }` or just `struct { }`.
 //!
 //! ```ignore
 //! $public:(pub)? struct { }
@@ -148,7 +177,7 @@
 //!
 //! These named sequences allow the usage of the same suffixes as regular sequences. The `*`, `+`,
 //! and `?` operators are supported and separators are supported for the `*` and `+` operators. For
-//! example, the following plugin argument specification matches any number of comma-separated `A`s.
+//! example, the following argument specification matches any number of comma-separated `A`s.
 //!
 //! ```ignore
 //! $a:(A), *
@@ -156,39 +185,6 @@
 //!
 //! Because named sequences are counted, the storage types are simply `usize` for `*` and `+` named
 //! sequences and `bool` for `?`named sequences.
-//!
-//! ## Enums
-//!
-//! There are also enumerated specifiers, which allow for a choice of possible values. For example,
-//! the following enumerated argument specification will match either an identifier or a meta item.
-//!
-//! ```ignore
-//! enum Enum {
-//!     A { $a:ident },
-//!     B { $b:meta },
-//! }
-//! ```
-//!
-//! Enumerated argument specifications are used by defining them before the argument specification
-//! and then referring to them in the argument specification. For example, the following usage of
-//! `easy_plugin!` uses the enumerated argument specification above.
-//!
-//! ```ignore
-//! easy_plugin! {
-//!     enum Enum {
-//!         A { $a:ident },
-//!         B { $b:meta },
-//!     }
-//!
-//!     struct Arguments { $e:$Enum }
-//!
-//!     pub fn expand_plugin(
-//!         _: &mut ExtCtxt, span: Span, _: Arguments
-//!     ) -> PluginResult<Box<MacResult>> {
-//!         Ok(DummyResult::any(span))
-//!     }
-//! }
-//! ```
 
 #![cfg_attr(not(feature="syntex"), feature(plugin, plugin_registrar, rustc_private))]
 
@@ -223,6 +219,7 @@ pub use parsers::specification::*;
 mod utility;
 pub use utility::{PluginResultExt, ToError};
 
+mod expr;
 mod ast { include!(concat!(env!("OUT_DIR"), "/ast.rs")); }
 
 include!(concat!(env!("OUT_DIR"), "/lib.rs"));

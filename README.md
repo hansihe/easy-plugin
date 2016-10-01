@@ -22,30 +22,42 @@ feature.
 
 ### Example
 
+The following usage of `easy_plugin!` defines a plugin which accepts key-value pairs.
+
 ```rust
 easy_plugin! {
-    struct Arguments {
-		// An argument specification that accepts a simple binary expression.
-    	$a:ident $operator:binop $b:ident
+    // A key can either be an identifier or a string literal.
+    enum Key {
+        Ident { $key:ident },
+        Lit { $key:lit_str },
     }
 
-    // The `arguments: Arguments` argument contains the parsed results of the
-    // plugin arguments according to the above specification. An error is reported
-    // if the plugin arguments cannot be parsed.
-    pub fn expand_plugin(
-        context: &mut ExtCtxt, span: Span, arguments: Arguments
-    ) -> PluginResult<Box<MacResult>> {
-    	// Accesses the parsed results.
-        println!("{:?} {:?} {:?}", arguments.a, arguments.operator, arguments.b);
+    // A key-value pair is a key followed by `=>` and any expression.
+    struct KeyValuePair {
+        $key:$Key => $value:expr
+    }
 
-        // Returns `Ok` to signal this plugin completed successfully. An error is
-        // reported if `Err` is returned instead.
+    // This plugin accepts one or more comma-separated key-value pairs.
+    struct Arguments {
+        $($kvp:$KeyValuePair), + $(,)?
+    }
+
+    pub fn expand_kvp(
+        _: &mut ExtCtxt, span: Span, arguments: Arguments
+    ) -> PluginResult<Box<MacResult>> {
+        for KeyValuePair { key, value } in arguments.kvp {
+            match key {
+                Key::Ident { key } => println!("Key:   {}", key.node),
+                Key::Lit { key } => println!("Key:   {:?}", key.0),
+            }
+            println!("Value: {}", pprust::expr_to_string(&value));
+        }
         Ok(DummyResult::any(span))
     }
 }
 
 #[plugin_registrar]
 pub fn plugin_registrar(registry: &mut Registry) {
-    registry.register_macro("plugin", expand_plugin);
+    registry.register_macro("kvp", expand_kvp);
 }
 ```

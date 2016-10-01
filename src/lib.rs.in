@@ -16,14 +16,15 @@ use std::collections::{HashMap};
 
 use rustc_plugin::{Registry};
 
-use syntax::ast::{Attribute, Expr, Ident, Item, Visibility};
+use syntax::print::pprust;
+use syntax::ast::{Attribute, Expr, Ident, Item, ItemKind, Visibility};
 use syntax::codemap::{Span, Spanned};
 use syntax::ext::base::{ExtCtxt, DummyResult, MacEager, MacResult};
 use syntax::ptr::{P};
 use syntax::tokenstream::{TokenTree};
 use syntax::util::small_vector::{SmallVector};
 
-use ast::{ToExpr};
+use expr::{ToExpr};
 
 //================================================
 // Functions
@@ -51,18 +52,16 @@ fn strip_function(
 
 /// Returns a function that parse arguments according to the supplied specification.
 fn expand_parse_fn(
-    context: &ExtCtxt, span: Span, name: Ident, specification: Vec<Specifier>
+    context: &ExtCtxt, span: Span, name: Ident, specification: &Specification
 ) -> P<Item> {
     let expr = specification.to_expr(context, span);
     quote_item!(context,
         #[allow(non_snake_case)]
         fn parse(
-            session: &::syntax::parse::ParseSess, arguments: &[::syntax::tokenstream::TokenTree]
+            context: &::syntax::ext::base::ExtCtxt, arguments: &[::syntax::tokenstream::TokenTree]
         ) -> ::easy_plugin::PluginResult<$name> {
             let specification = $expr;
-            ::easy_plugin::parse_arguments(session, arguments, &specification).map(|_a| {
-                ${ast::expand_struct_expr(context, name, &specification)}
-            })
+            ::easy_plugin::parse_arguments(context, arguments, &specification).map(|a| $name::extract(&a))
         }
     ).unwrap()
 }
@@ -89,44 +88,89 @@ fn expand_easy_plugin_(
     context: &mut ExtCtxt, span: Span, arguments: &[TokenTree]
 ) -> PluginResult<Box<MacResult + 'static>> {
     // Build the argument specification.
-    let enums = HashMap::new();
+    let mut specifications = HashMap::new();
+    let variant = parse_specification_string(r#"
+        struct Variant {
+            $name:ident {
+                $($tt:tt)*
+            }
+        }
+    "#, &specifications).unwrap();
+    specifications.insert("Variant".into(), variant);
+    let definition = parse_specification_string(r#"
+        enum Definition {
+            Enum {
+                enum $name:ident {
+                    $($variant:$Variant), + $(,)*
+                }
+            },
+            Struct {
+                struct $name:ident {
+                    $($tt:tt)*
+                }
+            },
+        }
+    "#, &specifications).unwrap();
+    specifications.insert("Definition".into(), definition);
     let specification = parse_specification_string(r#"
-        $(enum $definition:ident { $($variant:ident { $($vtt:tt)* }), + $(,)* })*
-        struct $arguments:ident { $($tt:tt)* }
-        $function:item
-    "#, &enums).unwrap();
+        struct Arguments {
+            $($definition:$Definition)+
+            $function:item
+        }
+    "#, &specifications).unwrap();
 
     // Extract the arguments.
-    let matches = try!(parse_arguments(context.parse_sess, arguments, &specification));
-    let definitions = matches.get_sequence("definition").into_vec::<Spanned<Ident>>();
-    let variants = matches.get_sequence("variant").into_sequence_vec(|s| {
-        s.into_vec::<Spanned<Ident>>()
-    });
-    let vtts = matches.get_sequence("vtt").into_sequence_vec(|s| {
-        s.into_sequence_vec(|s| s.into_vec::<TokenTree>())
-    });
-    let arguments = matches.get::<Spanned<Ident>>("arguments").node;
-    let tts = matches.get_sequence("tt").into_vec::<TokenTree>();
+    let matches = try!(parse_arguments(context, arguments, &specification));
+    let definitions = matches.get_sequence("definition").to_arguments_vec(|a| a);
     let function = matches.get::<P<Item>>("function");
 
-    // Generate the plugin function.
-    let mut enums = HashMap::new();
-    for i in 0..definitions.len() {
-        let mut subvariants = vec![];
-        for (variant, tts) in variants[i].iter().zip(vtts[i].iter()) {
-            let specification = try!(parse_specification(tts, &enums));
-            subvariants.push(Variant::new(variant.node.name.as_str().to_string(), specification));
+    // Parse the specification enums and structs.
+    let mut specifications = HashMap::new();
+    for definition in definitions {
+        let name = definition.get::<Spanned<Ident>>("name").node.name.as_str().to_string();
+        if definition.variant == Some(0) {
+            let mut variants = vec![];
+            for arguments in definition.get_sequence("variant").to_arguments_vec(|a| a) {
+                let name = arguments.get::<Spanned<Ident>>("name");
+                let tts = arguments.get_sequence("tt").to_vec::<TokenTree>();
+                let specifiers = try!(parse_specifiers(&tts, &specifications));
+                variants.push(Variant::new(name.node.name.as_str().to_string(), specifiers));
+            }
+            specifications.insert(name.clone(), Specification::Enum(Enum::new(name, variants)));
+        } else {
+            let tts = definition.get_sequence("tt").to_vec::<TokenTree>();
+            let specifiers = try!(parse_specifiers(&tts, &specifications));
+            specifications.insert(name.clone(), Specification::Struct(Struct::new(name, specifiers)));
         }
-        let name = definitions[i].node.name.as_str().to_string();
-        enums.insert(name.clone(), Enum::new(name, subvariants));
     }
-    let specification = try!(parse_specification(&tts, &enums));
+
+    // Generate the specification enums and structs.
+    let items = specifications.iter().flat_map(|(n, e)| {
+        let name = context.ident_of(n);
+        match *e {
+            Specification::Enum(ref enum_) =>
+                ast::expand_enum_items(context, name, &enum_.variants).into_iter(),
+            Specification::Struct(ref struct_) =>
+                ast::expand_struct_items(context, name, &struct_.specification).into_iter(),
+        }
+    }).collect::<Vec<_>>();
+
+    // Determine the primary argument specification.
+    let (name, specification) = match function.node {
+        ItemKind::Fn(ref decl, _, _, _, _, _) if decl.inputs.len() == 3 => {
+            let ty = pprust::ty_to_string(&decl.inputs[2].ty);
+            match specifications.get(&ty) {
+                Some(arguments) => (ty, arguments),
+                _ => return decl.inputs[2].ty.to_error("expected specification"),
+            }
+        },
+        _ => return function.to_error("expected plugin function"),
+    };
+
+    // Generate the plugin function.
     let (function, identifier, visibility, attributes) = strip_function(context, function);
-
     let expr = quote_expr!(context, |a| ${function.ident}(context, span, a));
-    let expr = quote_expr!(context, parse(context.parse_sess, arguments).and_then($expr));
-    let items = ast::expand_struct_items(context, arguments, &specification);
-
+    let expr = quote_expr!(context, parse(context, arguments).and_then($expr));
     let item = quote_item!(context,
         #[allow(non_camel_case_types)]
         $($attributes)*
@@ -136,7 +180,7 @@ fn expand_easy_plugin_(
             arguments: &[::syntax::tokenstream::TokenTree],
         ) -> Box<::syntax::ext::base::MacResult> {
             $($items)*
-            ${expand_parse_fn(context, span, arguments, specification)}
+            ${expand_parse_fn(context, span, context.ident_of(&name), specification)}
             $function
             ${expand_parse_expr(context, expr)}
         }
@@ -156,14 +200,13 @@ fn expand_easy_plugin<'cx>(
     }
 }
 
-/// Add the `easy-plugin` plugins to the supplied registry.
+/// Add `easy_plugin!` to the supplied registry.
 #[cfg(feature="syntex")]
 pub fn plugin_registrar(registry: &mut Registry) {
     registry.add_macro("easy_plugin", expand_easy_plugin);
 }
 
-/// Expand the supplied source file into the supplied destination file using the `easy-plugin`
-/// plugins.
+/// Expand the supplied source file into the supplied destination file using `easy_plugin!`.
 #[cfg(feature="syntex")]
 pub fn expand<S: AsRef<std::path::Path>, D: AsRef<std::path::Path>>(
     source: S, destination: D

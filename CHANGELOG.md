@@ -1,10 +1,14 @@
 ## [0.11.0] - UNRELEASED
 
+### Added
+- Added structured argument specifications
+
 ### Changed
-- Changed enumerated specifiers to be required to be defined outside of argument specifications
+- Changed enumerated argument specifications to be defined outside other argument specifications
 
 ### Fixed
 - Fixed code generation for nested sequences with different amounts
+- Fixed partial parsing of sequences and enumerated specifiers
 
 ## [0.10.0] - 2016-09-22
 

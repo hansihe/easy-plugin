@@ -126,6 +126,20 @@ impl<'s> Reader for TokenReader<'s> {
     }
 }
 
+// Transaction ___________________________________
+
+/// A parser transaction.
+pub struct Transaction(usize);
+
+impl Transaction {
+    //- Accessors ---------------------------------
+
+    /// Resets the parser to the state it was in when this transaction was created.
+    pub fn rollback(&self, parser: &mut TransactionParser) {
+        parser.index = self.0;
+    }
+}
+
 // TransactionParser _____________________________
 
 /// A wrapper around a `Parser` which allows for rolling back parsing actions.
@@ -134,7 +148,6 @@ pub struct TransactionParser {
     session: ParseSess,
     tokens: Vec<TokenAndSpan>,
     index: usize,
-    start: usize,
     span: Span,
 }
 
@@ -150,7 +163,6 @@ impl TransactionParser {
             session: ParseSess::with_span_handler(handler, Rc::new(codemap)),
             tokens: flatten_tts(session, tts),
             index: 0,
-            start: 0,
             span: span_tts(tts),
         }
     }
@@ -181,16 +193,9 @@ impl TransactionParser {
         }
     }
 
-    //- Mutators ---------------------------------
-
-    /// Sets the saved index to the current index.
-    pub fn save(&mut self) {
-        self.start = self.index;
-    }
-
-    /// Sets the current index to the saved index.
-    pub fn rollback(&mut self) {
-        self.index = self.start;
+    /// Creates a new transaction which saves the current state of this parser.
+    pub fn transaction(&self) -> Transaction {
+        Transaction(self.index)
     }
 
     /// Returns a parsing error.
@@ -206,6 +211,8 @@ impl TransactionParser {
         }
         (span, message)
     }
+
+    //- Mutators ---------------------------------
 
     /// Applies a parsing action to this parser, returning the result of the action.
     #[cfg_attr(feature="clippy", allow(needless_lifetimes))]
