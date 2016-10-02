@@ -196,6 +196,12 @@ fn parse_sequence(
     if sequence.specification.is_empty() {
         return Ok(0);
     }
+    // Insert empty sequence matches for each named specifier in the sequence.
+    for specifier in &sequence.specification {
+        if let Some(name) = specifier.get_name() {
+            arguments.insert(name.clone(), Vec::<Box<Any>>::new());
+        }
+    }
     let mut count = 0;
     loop {
         let transaction = state.parser.transaction();

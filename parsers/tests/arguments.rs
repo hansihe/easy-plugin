@@ -347,6 +347,19 @@ fn test_parse_arguments_sequence() {
     assert_eq!(arguments[0].len(), 1);
     assert_eq!(pprust::attribute_to_string(&arguments[0][0]), "#[test]");
     assert_span_eq!(arguments[0][0].span, 0, 7);
+
+    let arguments = parse_string("$($a:ty $($b:ty)?), *", "i32, i32 f32, i32").unwrap();
+    let arguments = arguments.get_sequence("b").to_sequence_vec(|s| s.to_option::<P<Ty>>());
+    assert_eq!(arguments.len(), 3);
+    assert!(arguments[0].is_none());
+    assert!(arguments[1].is_some());
+    assert!(arguments[2].is_none());
+
+    let arguments = parse_string("$($a:ty $($b:ty)*), *", "i32, i32 f32, i32").unwrap();
+    let arguments = arguments.get_sequence("b").to_sequence_vec(|s| s.to_vec::<P<Ty>>());
+    assert_eq!(arguments[0].len(), 0);
+    assert_eq!(arguments[1].len(), 1);
+    assert_eq!(arguments[2].len(), 0);
 }
 
 #[test]
