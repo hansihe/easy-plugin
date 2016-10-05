@@ -115,10 +115,10 @@ easy_plugin! {
         $pat_path:pat_path
         $pat_range:pat_range
         $pat_ref:pat_ref
+        $pat_slice:pat_slice
         $pat_struct:pat_struct
         $pat_tuple:pat_tuple
         $pat_tuple_struct:pat_tuple_struct
-        $pat_vec:pat_vec
         $pat_wild:pat_wild
         $tok_and_and:tok_and_and
         $tok_at:tok_at
@@ -167,8 +167,8 @@ easy_plugin! {
         $stmt_local:stmt_local
         $stmt_mac:stmt_mac
         $stmt_semi:stmt_semi
+        $ty_array:ty_array
         $ty_bare_fn:ty_bare_fn
-        $ty_fixed_length_vec:ty_fixed_length_vec
         $ty_impl_trait:ty_impl_trait
         $ty_implicit_self:ty_implicit_self
         $ty_infer:ty_infer
@@ -180,9 +180,9 @@ easy_plugin! {
         $ty_poly_trait_ref:ty_poly_trait_ref
         $ty_ptr:ty_ptr
         $ty_rptr:ty_rptr
+        $ty_slice:ty_slice
         $ty_tup:ty_tup
         $ty_typeof:ty_typeof
-        $ty_vec:ty_vec
     }
 
     #[allow(dead_code)]

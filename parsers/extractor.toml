@@ -131,10 +131,10 @@ Mac = ["::syntax::ast::Mac"]
 Path = ["Option<::syntax::ast::QSelf>", "::syntax::ast::Path"]
 Range = ["::syntax::ptr::P<::syntax::ast::Expr>", "::syntax::ptr::P<::syntax::ast::Expr>"]
 Ref = ["::syntax::ptr::P<::syntax::ast::Pat>", "::syntax::ast::Mutability"]
+Slice = ["Vec<::syntax::ptr::P<::syntax::ast::Pat>>", "Option<::syntax::ptr::P<::syntax::ast::Pat>>", "Vec<::syntax::ptr::P<::syntax::ast::Pat>>"]
 Struct = ["::syntax::ast::Path", "Vec<::syntax::codemap::Spanned<::syntax::ast::FieldPat>>", "bool"]
 TupleStruct = ["::syntax::ast::Path", "Vec<::syntax::ptr::P<::syntax::ast::Pat>>", "Option<usize>"]
 Tuple = ["Vec<::syntax::ptr::P<::syntax::ast::Pat>>", "Option<usize>"]
-Vec = ["Vec<::syntax::ptr::P<::syntax::ast::Pat>>", "Option<::syntax::ptr::P<::syntax::ast::Pat>>", "Vec<::syntax::ptr::P<::syntax::ast::Pat>>"]
 Wild = []
 
 [Stmt]
@@ -161,8 +161,8 @@ storage = "P<Ty>"
 
 [Ty.extractors]
 
+Array = ["::syntax::ptr::P<::syntax::ast::Ty>", "::syntax::ptr::P<::syntax::ast::Expr>"]
 BareFn = ["::syntax::ptr::P<::syntax::ast::BareFnTy>"]
-FixedLengthVec = ["::syntax::ptr::P<::syntax::ast::Ty>", "::syntax::ptr::P<::syntax::ast::Expr>"]
 ImplicitSelf = []
 ImplTrait = ["::syntax::ast::TyParamBounds"]
 Infer = []
@@ -174,9 +174,9 @@ Path = ["Option<::syntax::ast::QSelf>", "::syntax::ast::Path"]
 PolyTraitRef = ["::syntax::ast::TyParamBounds"]
 Ptr = ["::syntax::ast::MutTy"]
 Rptr = ["Option<::syntax::ast::Lifetime>", "::syntax::ast::MutTy"]
+Slice = ["::syntax::ptr::P<::syntax::ast::Ty>"]
 Tup = ["Vec<::syntax::ptr::P<::syntax::ast::Ty>>"]
 Typeof = ["::syntax::ptr::P<::syntax::ast::Expr>"]
-Vec = ["::syntax::ptr::P<::syntax::ast::Ty>"]
 
 ["Spanned<Token>"]
 

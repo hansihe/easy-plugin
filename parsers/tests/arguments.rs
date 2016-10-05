@@ -132,8 +132,8 @@ fn test_parse_arguments_error() {
     assert_unexpected_error_eq!("$a:attr_list", "attribute");
     assert_error_eq!("$a:attr_list", "#[test]", 0, 7, "expected `MetaItemKind::List` attribute");
 
-    assert_unexpected_error_eq!("$a:ty_vec", "type");
-    assert_error_eq!("$a:ty_vec", "&[i32]", 0, 6, "expected `TyKind::Vec` type");
+    assert_unexpected_error_eq!("$a:ty_slice", "type");
+    assert_error_eq!("$a:ty_slice", "&[i32]", 0, 6, "expected `TyKind::Slice` type");
 
     assert_error_eq!("foo + bar", "", 0, 0, "unexpected end of arguments: expected `foo`");
     assert_error_eq!("foo + bar", "bar", 0, 3, "expected `foo`");
@@ -234,7 +234,7 @@ fn test_parse_arguments_extractor() {
     assert_eq!(name, "foo");
     assert_eq!(pprust::lit_to_string(&value), "\"bar\"");
 
-    let argument = parse_string("$a:ty_vec", "[i32]").unwrap().get::<P<Ty>>("a");
+    let argument = parse_string("$a:ty_slice", "[i32]").unwrap().get::<P<Ty>>("a");
     assert_eq!(pprust::ty_to_string(&argument), "i32");
 }
 

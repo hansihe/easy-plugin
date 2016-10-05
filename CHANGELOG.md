@@ -1,3 +1,8 @@
+## [0.11.1] - UNRELEASED
+
+### Fixed
+- Updated for latest nightly
+
 ## [0.11.0] - 2016-10-02
 
 ### Added
